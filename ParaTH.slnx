@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="ParaTH/ParaTH.csproj" />
+    <Folder Name="/Libs/">
+    <Project Path="FNA/FNA.Core.csproj" />
+    <Project Path="FontStashSharp/src/XNA/FontStashSharp.FNA.Core.csproj" />
+  </Folder>
+</Solution>

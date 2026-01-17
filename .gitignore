@@ -1,0 +1,67 @@
+# --- Visual Studio / IDE ---
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.opensdf
+*.sdf
+*.cache
+*.xyz
+*.users
+*.wsu
+
+# --- Build Results (C# Standard) ---
+[Bb]in/
+[Oo]bj/
+[Pp]ackages/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Dd]ebug/
+[Rr]elease/
+[Ll]ogs/
+*.dll
+*.exe
+*.pdb
+*.ipdb
+*.iobj
+*.tlog
+*.log
+
+!MonoHexagon/lib/
+!MonoHexagon/lib/**
+
+# --- MonoGame Specific ---
+**/Content/bin/
+**/Content/obj/
+.mgstats
+
+# --- Rider / Resharper ---
+.idea/
+*.sln.iml
+_ReSharper*/
+*.DotSettings.user
+
+# --- OS Generated Files ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- AI & Temporary Files ---
+# Ignore local AI tool cache and temp files
+.claude/
+*.txt
+*.tmp
+*.lock
+
+# 注意: CLAUDE.md 通常建议提交到仓库中，
+# 这样你在其他电脑上也能保持 AI 的上下文一致。
+# 如果你确定不想提交它，请取消下面这行的注释：
+CLAUDE.md
