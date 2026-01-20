@@ -13,10 +13,6 @@
     <ProjectReference Include="..\FontStashSharp\src\XNA\FontStashSharp.FNA.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="FNA.dll.config" CopyToOutputDirectory="PreserveNewest" Visible="false" />
-  </ItemGroup>
-
 <Target Name="CopyNativeLibs" AfterTargets="Build">
     <PropertyGroup>
       <NativeLibPath Condition="$([MSBuild]::IsOSPlatform('Windows')) AND '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'">lib\x64</NativeLibPath>
@@ -32,5 +28,22 @@
     <Copy SourceFiles="@(NativeBinaryFiles)"
           DestinationFolder="$(OutDir)"
           SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
+    <None Include="Content\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ShaderFiles Include="src\Shaders\*.fx" />
+    <UpToDateCheckInput Include="@(ShaderFiles)" Set="ShaderFiles" />
+    <UpToDateCheckBuilt Include="@(ShaderFiles->'Content\%(Filename).fxb')" Original="%(ShaderFiles.Identity)" Set="ShaderFiles" />
+  </ItemGroup>
+
+  <Target Name="CompileShaders" BeforeTargets="BeforeBuild" Inputs="@(ShaderFiles)" Outputs="@(ShaderFiles->'Content\%(Filename).fxb')">
+    <MakeDir Directories="Content" Condition="!Exists('Content')" />
+    <Exec Command="fxc /T fx_2_0 &quot;%(ShaderFiles.Identity)&quot; /Fo &quot;Content\%(ShaderFiles.Filename).fxb&quot;" />
   </Target>
 </Project>
