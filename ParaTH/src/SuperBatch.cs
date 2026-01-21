@@ -65,7 +65,7 @@ public sealed class SuperBatch : IDisposable
     #endregion
 
     #region Public Constructor
-    public SuperBatch(GraphicsDevice graphicsDevice, Effect shaderEffect) // todo make this load fucking internally
+    public SuperBatch(GraphicsDevice graphicsDevice)
     {
         GraphicsDevice = graphicsDevice;
 
@@ -91,7 +91,13 @@ public sealed class SuperBatch : IDisposable
             BufferUsage.WriteOnly
         );
 
-        effect = shaderEffect.Clone();
+        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+        using var stream = assembly.GetManifestResourceStream("ParaSpriteEffect") ??
+                           throw new InvalidOperationException("ParaSpriteEffect not found.");
+        byte[] effectCode = new byte[stream.Length];
+        stream.ReadExactly(effectCode, 0, effectCode.Length);
+
+        effect = new Effect(GraphicsDevice, effectCode);
         matrixParameter = effect.Parameters["MatrixTransform"];
 
         hasBegun = false;
@@ -139,6 +145,116 @@ public sealed class SuperBatch : IDisposable
     #endregion
 
     #region Public Draw Methods
+    public void Draw(
+        Texture2D texture,
+        Vector2 position,
+        Rectangle? sourceRectangle,
+        Color color,
+        float rotation,
+        Vector2 origin,
+        Vector2 scale,
+        SpriteEffects spriteEffects,
+        byte layerDepth)
+    {
+        if (!hasBegun)
+            throw new InvalidOperationException("Draw called before Begin.");
+
+        if (vertexCount + 4 > rawVertices.Length ||
+            indexCount + 6 > rawIndices.Length)
+        {
+            FlushBatch();
+        }
+
+        Rectangle source = sourceRectangle ??
+                           new Rectangle(0, 0, texture.Width, texture.Height);
+
+        float width = source.Width * scale.X;
+        float height = source.Height * scale.Y;
+
+        float ox = origin.X * scale.X;
+        float oy = origin.Y * scale.Y;
+
+        float tlX = -ox;
+        float tlY = -oy;
+        float trX = width - ox;
+        float trY = -oy;
+        float brX = width - ox;
+        float brY = height - oy;
+        float blX = -ox;
+        float blY = height - oy;
+
+        Vector2 tl, tr, br, bl;
+        if (rotation != 0)
+        {
+            float cos = MathF.Cos(rotation);
+            float sin = MathF.Sin(rotation);
+
+            tl = new Vector2(
+                position.X + tlX * cos - tlY * sin,
+                position.Y + tlX * sin + tlY * cos
+            );
+            tr = new Vector2(
+                position.X + trX * cos - trY * sin,
+                position.Y + trX * sin + trY * cos
+            );
+            br = new Vector2(
+                position.X + brX * cos - brY * sin,
+                position.Y + brX * sin + brY * cos
+            );
+            bl = new Vector2(
+                position.X + blX * cos - blY * sin,
+                position.Y + blX * sin + blY * cos
+            );
+        }
+        else
+        {
+            tl = new Vector2(position.X + tlX, position.Y + tlY);
+            tr = new Vector2(position.X + trX, position.Y + trY);
+            br = new Vector2(position.X + brX, position.Y + brY);
+            bl = new Vector2(position.X + blX, position.Y + blY);
+        }
+
+        float invTexWidth = 1f / texture.Width;
+        float invTexHeight = 1f / texture.Height;
+
+        float u0 = source.X * invTexWidth;
+        float v0 = source.Y * invTexHeight;
+        float u1 = (source.X + source.Width) * invTexWidth;
+        float v1 = (source.Y + source.Height) * invTexHeight;
+
+        if (spriteEffects.HasFlag(SpriteEffects.FlipHorizontally))
+            (u0, u1) = (u1, u0);
+
+        if (spriteEffects.HasFlag(SpriteEffects.FlipVertically))
+            (v0, v1) = (v1, v0);
+
+        int startVertex = vertexCount;
+        int startIndex = indexCount;
+
+        rawVertices[vertexCount++] = new VertexPositionColorTexture(
+            new Vector3(tl, 0), color, new Vector2(u0, v0)
+        );
+        rawVertices[vertexCount++] = new VertexPositionColorTexture(
+            new Vector3(tr, 0), color, new Vector2(u1, v0)
+        );
+        rawVertices[vertexCount++] = new VertexPositionColorTexture(
+            new Vector3(br, 0), color, new Vector2(u1, v1)
+        );
+        rawVertices[vertexCount++] = new VertexPositionColorTexture(
+            new Vector3(bl, 0), color, new Vector2(u0, v1)
+        );
+
+        rawIndices[indexCount++] = (short)(startVertex);
+        rawIndices[indexCount++] = (short)(startVertex + 1);
+        rawIndices[indexCount++] = (short)(startVertex + 2);
+        rawIndices[indexCount++] = (short)(startVertex);
+        rawIndices[indexCount++] = (short)(startVertex + 2);
+        rawIndices[indexCount++] = (short)(startVertex + 3);
+
+        buckets[layerDepth].Add(new DrawCommand(commandCount, startIndex, 6));
+        textureInfo[commandCount++] = texture;
+    }
+
     public void DrawConvexPolygon(
         Texture2D texture,
         Vector2[] vertices,

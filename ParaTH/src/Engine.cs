@@ -7,32 +7,24 @@ namespace ParaTH;
 
 public sealed class Engine : Game
 {
-    // 渲染器
     private SpriteBatch spriteBatch = null!;
     private SuperBatch superBatch = null!;
 
-    // 资源
-    private Texture2D[] textures = null!; // 纹理数组
-    private const int TextureCount = 16;  // 纹理数量
+    private Texture2D[] textures = null!;
+    private const int TextureCount = 16;
     private Matrix projection;
 
-    // 测试状态
     private enum RenderMode { SpriteBatch, SuperBatch }
     private RenderMode currentMode = RenderMode.SpriteBatch;
     private int spriteCount = 5000;
     private float rotation = 0f;
     private Random rng = new Random();
 
-    // 性能统计
     private Stopwatch stopwatch = new Stopwatch();
     private double lastDrawTimeMs = 0;
     private int frameCount = 0;
     private double fpsTimer = 0;
     private int currentFps = 0;
-
-    // 预分配数组
-    private Vector2[] tempVertices = new Vector2[4];
-    private Vector2[] tempUVs = [Vector2.Zero, Vector2.UnitX, Vector2.One, Vector2.UnitY];
 
     public Engine()
     {
@@ -40,26 +32,22 @@ public sealed class Engine : Game
         gdm.PreferredBackBufferWidth = 1280;
         gdm.PreferredBackBufferHeight = 720;
         gdm.SynchronizeWithVerticalRetrace = false;
-        gdm.GraphicsProfile = GraphicsProfile.HiDef; // 确保支持较新的特性
+        gdm.GraphicsProfile = GraphicsProfile.HiDef;
         IsFixedTimeStep = false;
         Content.RootDirectory = "Content";
     }
 
     protected override void LoadContent()
     {
-        var effect = Content.Load<Effect>("ParaSpriteEffect");
-
         spriteBatch = new SpriteBatch(GraphicsDevice);
-        superBatch = new SuperBatch(GraphicsDevice, effect);
+        superBatch = new SuperBatch(GraphicsDevice);
 
-        // 生成 16 张不同颜色的纹理
         textures = new Texture2D[TextureCount];
         for (int i = 0; i < TextureCount; i++)
         {
-            textures[i] = new Texture2D(GraphicsDevice, 32, 32); // 32x32 大小
-            Color[] data = new Color[32 * 32];
+            textures[i] = new Texture2D(GraphicsDevice, 32, 32);
+            var data = new Color[32 * 32];
 
-            // 生成随机亮色
             Color c = new Color(rng.Next(50, 255), rng.Next(50, 255), rng.Next(50, 255));
             Array.Fill(data, c);
             textures[i].SetData(data);
@@ -123,19 +111,16 @@ public sealed class Engine : Game
     {
         spriteBatch.Begin(SpriteSortMode.BackToFront, BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise);
 
-        var origin = new Vector2(16, 16); // 32x32 中心
-        Vector2 scale = new Vector2(0.6f, 0.6f); // 缩放一点
+        var origin = new Vector2(16, 16);
+        Vector2 scale = new Vector2(0.6f, 0.6f);
 
         for (int i = 0; i < spriteCount; i++)
         {
             float x = (i % 100) * 12 + 40;
             float y = (i / 100f) * 12 + 40;
 
-            // 随机层级
             byte layer = (byte)rng.Next(0, 256);
 
-            // 纹理选择：故意打乱，让相邻的索引使用不同的纹理
-            // 例如：0号用Tex0, 1号用Tex1...
             Texture2D tex = textures[i % TextureCount];
 
             spriteBatch.Draw(
@@ -158,39 +143,27 @@ public sealed class Engine : Game
     {
         superBatch.Begin(projection);
 
-        float size = 10f; // 视觉大小的一半
+        var origin = new Vector2(16, 16);
+        Vector2 scale = new Vector2(0.6f, 0.6f);
 
         for (int i = 0; i < spriteCount; i++)
         {
-            float cx = (i % 100) * 12 + 40;
-            float cy = (i / 100f) * 12 + 40;
+            float x = (i % 100) * 12 + 40;
+            float y = (i / 100f) * 12 + 40;
 
-            // 保持和 SpriteBatch 一样的随机种子逻辑是不可能的，因为 rng.Next 在每帧都变
-            // 但大概率分布是一样的
             byte layer = (byte)rng.Next(0, 256);
 
-            // 同样的纹理选择逻辑
             Texture2D tex = textures[i % TextureCount];
 
-            float rot = rotation + i * 0.01f;
-            float cos = MathF.Cos(rot);
-            float sin = MathF.Sin(rot);
-
-            // 手动计算顶点 (保持你的逻辑)
-            tempVertices[0].X = cx + (-size * cos - -size * sin);
-            tempVertices[0].Y = cy + (-size * sin + -size * cos);
-            tempVertices[1].X = cx + (size * cos - -size * sin);
-            tempVertices[1].Y = cy + (size * sin + -size * cos);
-            tempVertices[2].X = cx + (size * cos - size * sin);
-            tempVertices[2].Y = cy + (size * sin + size * cos);
-            tempVertices[3].X = cx + (-size * cos - size * sin);
-            tempVertices[3].Y = cy + (-size * sin + size * cos);
-
-            superBatch.DrawConvexPolygon(
+            superBatch.Draw(
                 tex,
-                tempVertices,
-                tempUVs,
+                new Vector2(x, y),
+                null,
                 Color.White,
+                rotation + i * 0.01f,
+                origin,
+                scale,
+                SpriteEffects.None,
                 layer
             );
         }

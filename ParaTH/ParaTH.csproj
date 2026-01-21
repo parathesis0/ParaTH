@@ -37,13 +37,29 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ShaderFiles Include="src\Shaders\*.fx" />
-    <UpToDateCheckInput Include="@(ShaderFiles)" Set="ShaderFiles" />
-    <UpToDateCheckBuilt Include="@(ShaderFiles->'Content\%(Filename).fxb')" Original="%(ShaderFiles.Identity)" Set="ShaderFiles" />
+    <ShaderSource Include="src\Effects\HLSL\**\*.fx" />
   </ItemGroup>
 
-  <Target Name="CompileShaders" BeforeTargets="BeforeBuild" Inputs="@(ShaderFiles)" Outputs="@(ShaderFiles->'Content\%(Filename).fxb')">
-    <MakeDir Directories="Content" Condition="!Exists('Content')" />
-    <Exec Command="fxc /T fx_2_0 &quot;%(ShaderFiles.Identity)&quot; /Fo &quot;Content\%(ShaderFiles.Filename).fxb&quot;" />
+  <ItemGroup>
+    <Content Include="Content\Effects\**\*.fxb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="CompileShaders" BeforeTargets="ResolveReferences;PrepareForBuild"
+          Inputs="@(ShaderSource)"
+          Outputs="@(ShaderSource->'Content\Effects\%(Filename).fxb')">
+
+    <Message Text="Compiling HLSL Shader: %(ShaderSource.Filename)" Importance="High" />
+
+    <MakeDir Directories="Content\Effects" />
+
+    <Exec Command="fxc /T fx_2_0 /nologo &quot;%(ShaderSource.Identity)&quot; /Fo &quot;Content\Effects\%(ShaderSource.Filename).fxb&quot;" />
   </Target>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Content\Effects\**\*.*">
+      <LogicalName>%(Filename)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
 </Project>
