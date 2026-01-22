@@ -37,7 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ShaderSource Include="src\Effects\HLSL\**\*.fx" />
+    <ShaderSource Include="src\Graphics\Effects\HLSL\**\*.fx" />
   </ItemGroup>
 
   <ItemGroup>
