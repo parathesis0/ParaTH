@@ -1,9 +1,10 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System.Runtime.InteropServices;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-public sealed class SuperBatch : IDisposable
+public sealed unsafe class SuperBatch : IDisposable
 {
     #region Private Consts
     private const int MaxVertices = 65536;
@@ -14,9 +15,9 @@ public sealed class SuperBatch : IDisposable
     #region Private Containers
     private struct DrawCommand(int textureIndex, int indexStart, int indexCount)
     {
-        public int TextureIndex = textureIndex;
+        public readonly int TextureIndex = textureIndex;
         public int IndexStart = indexStart;
-        public int IndexCount = indexCount;
+        public readonly int IndexCount = indexCount;
     }
 
     private class CommandBucket
@@ -46,6 +47,14 @@ public sealed class SuperBatch : IDisposable
     private readonly Texture2D[] textureInfo;
     private readonly CommandBucket[] buckets;
 
+    private GCHandle vHandle;
+    private GCHandle iHandle;
+    private GCHandle sHandle;
+
+    private VertexPositionColorTexture* vPtr;
+    private short* iPtr;
+    private short* sPtr;
+
     private int vertexCount;
     private int indexCount;
     private int commandCount;
@@ -57,13 +66,13 @@ public sealed class SuperBatch : IDisposable
     private Matrix transformMatrix;
     private Effect? customEffect;
 
-    private Effect effect;
-    private EffectParameter matrixParameter;
+    private readonly Effect effect;
+    private readonly EffectParameter matrixParameter;
 
     #endregion
 
     #region Public Properties
-    public GraphicsDevice GraphicsDevice { get; private set; }
+    public GraphicsDevice GraphicsDevice { get; }
     public bool IsDisposed { get; private set; }
     #endregion
 
@@ -94,6 +103,14 @@ public sealed class SuperBatch : IDisposable
             BufferUsage.WriteOnly
         );
 
+        vHandle = GCHandle.Alloc(rawVertices, GCHandleType.Pinned);
+        iHandle = GCHandle.Alloc(rawIndices, GCHandleType.Pinned);
+        sHandle = GCHandle.Alloc(sortedIndices, GCHandleType.Pinned);
+
+        vPtr = (VertexPositionColorTexture*)vHandle.AddrOfPinnedObject();
+        iPtr = (short*)iHandle.AddrOfPinnedObject();
+        sPtr = (short*)sHandle.AddrOfPinnedObject();
+
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
         using var stream = assembly.GetManifestResourceStream("ParaSpriteEffect") ??
                            throw new InvalidOperationException("ParaSpriteEffect not found.");
@@ -104,6 +121,37 @@ public sealed class SuperBatch : IDisposable
         matrixParameter = effect.Parameters["MatrixTransform"];
 
         hasBegun = false;
+    }
+    #endregion
+
+    #region Dispose Methods
+    ~SuperBatch()
+    {
+        Dispose(false);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (IsDisposed) return;
+
+        if (vHandle.IsAllocated) vHandle.Free();
+        if (iHandle.IsAllocated) iHandle.Free();
+        if (sHandle.IsAllocated) sHandle.Free();
+
+        if (disposing)
+        {
+            vertexBuffer.Dispose();
+            indexBuffer.Dispose();
+            effect.Dispose();
+        }
+
+        IsDisposed = true;
     }
     #endregion
 
@@ -239,25 +287,49 @@ public sealed class SuperBatch : IDisposable
         int startVertex = vertexCount;
         int startIndex = indexCount;
 
-        rawVertices[vertexCount++] = new VertexPositionColorTexture(
-            new Vector3(tl, 0), color, new Vector2(u0, v0)
-        );
-        rawVertices[vertexCount++] = new VertexPositionColorTexture(
-            new Vector3(tr, 0), color, new Vector2(u1, v0)
-        );
-        rawVertices[vertexCount++] = new VertexPositionColorTexture(
-            new Vector3(br, 0), color, new Vector2(u1, v1)
-        );
-        rawVertices[vertexCount++] = new VertexPositionColorTexture(
-            new Vector3(bl, 0), color, new Vector2(u0, v1)
-        );
+        VertexPositionColorTexture* currVertex = vPtr + vertexCount;
 
-        rawIndices[indexCount++] = (short)(startVertex);
-        rawIndices[indexCount++] = (short)(startVertex + 1);
-        rawIndices[indexCount++] = (short)(startVertex + 2);
-        rawIndices[indexCount++] = (short)(startVertex);
-        rawIndices[indexCount++] = (short)(startVertex + 2);
-        rawIndices[indexCount++] = (short)(startVertex + 3);
+        currVertex->Position.X = tl.X;
+        currVertex->Position.Y = tl.Y;
+        currVertex->Position.Z = 0;
+        currVertex->Color = color;
+        currVertex->TextureCoordinate.X = u0;
+        currVertex->TextureCoordinate.Y = v0;
+        currVertex++;
+
+        currVertex->Position.X = tr.X;
+        currVertex->Position.Y = tr.Y;
+        currVertex->Position.Z = 0;
+        currVertex->Color = color;
+        currVertex->TextureCoordinate.X = u1;
+        currVertex->TextureCoordinate.Y = v0;
+        currVertex++;
+
+        currVertex->Position.X = br.X;
+        currVertex->Position.Y = br.Y;
+        currVertex->Position.Z = 0;
+        currVertex->Color = color;
+        currVertex->TextureCoordinate.X = u1;
+        currVertex->TextureCoordinate.Y = v1;
+        currVertex++;
+
+        currVertex->Position.X = bl.X;
+        currVertex->Position.Y = bl.Y;
+        currVertex->Position.Z = 0;
+        currVertex->Color = color;
+        currVertex->TextureCoordinate.X = u0;
+        currVertex->TextureCoordinate.Y = v1;
+
+        short* currIndex = iPtr + indexCount;
+        *(currIndex++) = (short)(startVertex);
+        *(currIndex++) = (short)(startVertex + 1);
+        *(currIndex++) = (short)(startVertex + 2);
+        *(currIndex++) = (short)(startVertex);
+        *(currIndex++) = (short)(startVertex + 2);
+        *(currIndex)   = (short)(startVertex + 3);
+
+        vertexCount += 4;
+        indexCount += 6;
 
         buckets[layerDepth].Add(new DrawCommand(commandCount, startIndex, 6));
         textureInfo[commandCount++] = texture;
@@ -272,14 +344,15 @@ public sealed class SuperBatch : IDisposable
     {
         if (!hasBegun)
             throw new InvalidOperationException("Draw called before Begin.");
+
         if (vertices.Length < 3) return;
 
         int vCount = vertices.Length;
         int triCount = vCount - 2;
         int iCount = triCount * 3;
 
-        if (vertexCount + vCount > rawVertices.Length ||
-            indexCount + iCount > rawIndices.Length)
+        if (vertexCount + vCount > MaxVertices ||
+            indexCount + iCount > MaxVertices * 3)
         {
             FlushBatch();
         }
@@ -287,22 +360,30 @@ public sealed class SuperBatch : IDisposable
         int startVertex = vertexCount;
         int startIndex = indexCount;
 
-        // Write vertices
+        VertexPositionColorTexture* currVertex = vPtr + vertexCount;
+
         for (int i = 0; i < vCount; i++)
         {
-            rawVertices[vertexCount].Position = new Vector3(vertices[i], 0);
-            rawVertices[vertexCount].Color = color;
-            rawVertices[vertexCount].TextureCoordinate = textureCoords[i];
-            vertexCount++;
+            currVertex->Position.X = vertices[i].X;
+            currVertex->Position.Y = vertices[i].Y;
+            currVertex->Position.Z = 0;
+            currVertex->Color = color;
+            currVertex->TextureCoordinate = textureCoords[i];
+            currVertex++;
         }
 
-        // Write indices, fan triangulation
+        short* currIndex = iPtr + indexCount;
+        short baseV = (short)startVertex;
+
         for (int i = 0; i < triCount; i++)
         {
-            rawIndices[indexCount++] = (short)(startVertex);
-            rawIndices[indexCount++] = (short)(startVertex + i + 1);
-            rawIndices[indexCount++] = (short)(startVertex + i + 2);
+            *(currIndex++) = baseV;
+            *(currIndex++) = (short)(baseV + i + 1);
+            *(currIndex++) = (short)(baseV + i + 2);
         }
+
+        vertexCount += vCount;
+        indexCount += iCount;
 
         buckets[layerDepth].Add(new DrawCommand(commandCount, startIndex, iCount));
         textureInfo[commandCount++] = texture;
@@ -314,25 +395,53 @@ public sealed class SuperBatch : IDisposable
     {
         if (vertexCount == 0) return;
 
-        int sortedIndexPtr = 0;
+        int sortedIndexPtrOffset = 0;
 
         for (int i = 0; i < BucketCount; i++)
         {
             ref var bucket = ref buckets[i];
 
-            for (int j = 0; j < bucket.Count; j++)
+            if (bucket.Count == 0) continue;
+
+            var cmds = bucket.Commands;
+            int count = bucket.Count;
+
+            for (int j = 0; j < count; j++)
             {
-                ref var cmd = ref bucket.Commands[j];
-                Array.Copy(rawIndices, cmd.IndexStart, sortedIndices, sortedIndexPtr, cmd.IndexCount);
-                cmd.IndexStart = sortedIndexPtr;
-                sortedIndexPtr += cmd.IndexCount;
+                ref var cmd = ref cmds[j];
+
+                int bytesToCopy = cmd.IndexCount * sizeof(short);
+
+                short* src = iPtr + cmd.IndexStart;
+                short* dst = sPtr + sortedIndexPtrOffset;
+
+                Buffer.MemoryCopy(src, dst, bytesToCopy, bytesToCopy);
+
+                cmd.IndexStart = sortedIndexPtrOffset;
+                sortedIndexPtrOffset += cmd.IndexCount;
             }
         }
 
-        int totalIndexCount = sortedIndexPtr;
+        int totalIndexCount = sortedIndexPtrOffset;
 
-        vertexBuffer.SetData(rawVertices, 0, vertexCount, SetDataOptions.Discard);
-        indexBuffer.SetData(sortedIndices, 0, totalIndexCount, SetDataOptions.Discard);
+        int vertexDataBytes = vertexCount * sizeof(VertexPositionColorTexture);
+
+        vertexBuffer.SetDataPointerEXT(
+            0,
+            (IntPtr)vPtr,
+            vertexDataBytes,
+            SetDataOptions.Discard
+        );
+
+        int indexDataBytes = totalIndexCount * sizeof(short);
+
+        indexBuffer.SetDataPointerEXT(
+            0,
+            (IntPtr)sPtr,
+            indexDataBytes,
+            SetDataOptions.Discard
+        );
+
 
         PrepRenderState();
 
@@ -426,33 +535,6 @@ public sealed class SuperBatch : IDisposable
                 primitiveCount
             );
         }
-    }
-    #endregion
-
-    #region Dispose Methods
-    ~SuperBatch()
-    {
-        Dispose(false);
-    }
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    private void Dispose(bool disposing)
-    {
-        if (IsDisposed) return;
-
-        if (disposing)
-        {
-            vertexBuffer.Dispose();
-            indexBuffer.Dispose();
-            effect.Dispose();
-        }
-
-        IsDisposed = true;
     }
     #endregion
 }

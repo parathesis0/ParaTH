@@ -11,7 +11,7 @@ public sealed class Engine : Game
     private SuperBatch superBatch = null!;
 
     private Texture2D[] textures = null!;
-    private const int TextureCount = 16;
+    private const int TextureCount = 1;
     private Matrix projection;
 
     private enum RenderMode { SpriteBatch, SuperBatch }
