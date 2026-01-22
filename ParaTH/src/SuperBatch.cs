@@ -55,8 +55,11 @@ public sealed class SuperBatch : IDisposable
     private SamplerState samplerState = null!;
     private RasterizerState rasterizerState = null!;
     private Matrix transformMatrix;
+    private Effect? customEffect;
+
     private Effect effect;
     private EffectParameter matrixParameter;
+
     #endregion
 
     #region Public Properties
@@ -111,6 +114,7 @@ public sealed class SuperBatch : IDisposable
             BlendState.AlphaBlend,
             SamplerState.PointClamp,
             RasterizerState.CullCounterClockwise,
+            null,
             transformMatrix
         );
     }
@@ -119,6 +123,7 @@ public sealed class SuperBatch : IDisposable
         BlendState blendState,
         SamplerState samplerState,
         RasterizerState rasterizerState,
+        Effect? customEffect,
         Matrix transformMatrix)
     {
         if (hasBegun)
@@ -129,6 +134,7 @@ public sealed class SuperBatch : IDisposable
         this.samplerState = samplerState;
         this.rasterizerState = rasterizerState;
 
+        this.customEffect = customEffect;
         this.transformMatrix = transformMatrix;
     }
     #endregion
@@ -141,6 +147,8 @@ public sealed class SuperBatch : IDisposable
         hasBegun = false;
 
         FlushBatch();
+
+        customEffect = null;
     }
     #endregion
 
@@ -390,15 +398,34 @@ public sealed class SuperBatch : IDisposable
     {
         if (primitiveCount <= 0) return;
 
-        GraphicsDevice.Textures[0] = texture;
-        GraphicsDevice.DrawIndexedPrimitives(
-            PrimitiveType.TriangleList,
-            0,
-            0,
-            vertexCount,
-            startIndex,
-            primitiveCount
-        );
+        if (customEffect is not null)
+        {
+            foreach (var pass in customEffect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                GraphicsDevice.Textures[0] = texture;
+                GraphicsDevice.DrawIndexedPrimitives(
+                    PrimitiveType.TriangleList,
+                    0,
+                    0,
+                    vertexCount,
+                    startIndex,
+                    primitiveCount
+                );
+            }
+        }
+        else
+        {
+            GraphicsDevice.Textures[0] = texture;
+            GraphicsDevice.DrawIndexedPrimitives(
+                PrimitiveType.TriangleList,
+                0,
+                0,
+                vertexCount,
+                startIndex,
+                primitiveCount
+            );
+        }
     }
     #endregion
 
