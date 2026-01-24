@@ -30,10 +30,10 @@ public sealed class TextureAtlas(Texture2D fullTexture)
     }
 }
 
-public struct TextureRegion
+public readonly record struct TextureRegion
 {
-    public Rectangle Bounds;
-    public Vector2 Offset;
+    public readonly Rectangle Bounds;
+    public readonly Vector2 Offset;
 
     public TextureRegion(int x, int y, int w, int h, Vector2 offset)
     {

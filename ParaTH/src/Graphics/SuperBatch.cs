@@ -51,9 +51,9 @@ public sealed unsafe class SuperBatch : IDisposable
     private GCHandle iHandle;
     private GCHandle sHandle;
 
-    private VertexPositionColorTexture* vPtr;
-    private short* iPtr;
-    private short* sPtr;
+    private readonly VertexPositionColorTexture* vPtr;
+    private readonly short* iPtr;
+    private readonly short* sPtr;
 
     private int vertexCount;
     private int indexCount;
@@ -68,7 +68,6 @@ public sealed unsafe class SuperBatch : IDisposable
 
     private readonly Effect effect;
     private readonly EffectParameter matrixParameter;
-
     #endregion
 
     #region Public Properties
@@ -423,18 +422,14 @@ public sealed unsafe class SuperBatch : IDisposable
         }
 
         int totalIndexCount = sortedIndexPtrOffset;
-
         int vertexDataBytes = vertexCount * sizeof(VertexPositionColorTexture);
-
         vertexBuffer.SetDataPointerEXT(
             0,
             (IntPtr)vPtr,
             vertexDataBytes,
             SetDataOptions.Discard
         );
-
         int indexDataBytes = totalIndexCount * sizeof(short);
-
         indexBuffer.SetDataPointerEXT(
             0,
             (IntPtr)sPtr,
@@ -442,9 +437,7 @@ public sealed unsafe class SuperBatch : IDisposable
             SetDataOptions.Discard
         );
 
-
         PrepRenderState();
-
         DrawAllBuckets();
 
         vertexCount = 0;
