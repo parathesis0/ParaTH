@@ -3,16 +3,16 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-public class ParaSpriteEffect : Effect
+public class StgSpriteEffect : Effect
 {
     private EffectParameter matrixParam = null!;
 
-    public ParaSpriteEffect(GraphicsDevice device, byte[] effectCode) : base(device, effectCode)
+    public StgSpriteEffect(GraphicsDevice device, byte[] effectCode) : base(device, effectCode)
     {
         CacheParameters();
     }
 
-    public ParaSpriteEffect(Effect cloneSource) : base(cloneSource)
+    public StgSpriteEffect(Effect cloneSource) : base(cloneSource)
     {
         CacheParameters();
     }

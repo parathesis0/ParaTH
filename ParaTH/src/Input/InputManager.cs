@@ -192,7 +192,7 @@ public sealed class InputManager
 
     public void ClearActionBindings(GameAction action)
     {
-        if (inputBindings.TryGetValue(action, out List<InputBinding> value))
+        if (inputBindings.TryGetValue(action, out var value))
             value.Clear();
     }
 

@@ -1,4 +1,6 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
@@ -9,43 +11,38 @@ public sealed class ParticleManager
     private const int CurveCapacity = 0xFF;
     private const int SampleCount = 64;
 
-    private static float[] curves = new float[CurveCapacity * SampleCount];
+    private static readonly float[] curves = new float[CurveCapacity * SampleCount];
     private static int curveCount;
 
     private int particleCount;
 
     #region Particle SoA Fields
-    private readonly float[]     x            = new float[Capacity];
-    private readonly float[]     y            = new float[Capacity];
+    private readonly Vector2[]       pos          = new Vector2[Capacity];
+    private readonly Vector2[]       vel          = new Vector2[Capacity];
+    private readonly Vector2[]       acc          = new Vector2[Capacity];
 
-    private readonly float[]     vx           = new float[Capacity];
-    private readonly float[]     vy           = new float[Capacity];
+    private readonly float[]         rot          = new float[Capacity];
+    private readonly float[]         omega        = new float[Capacity];
 
-    private readonly float[]     ax           = new float[Capacity];
-    private readonly float[]     ay           = new float[Capacity];
+    private readonly float[]         sizeX0       = new float[Capacity];
+    private readonly float[]         sizeY0       = new float[Capacity];
+    private readonly float[]         sizeX1       = new float[Capacity];
+    private readonly float[]         sizeY1       = new float[Capacity];
+    private readonly float[]         opacity0     = new float[Capacity];
+    private readonly float[]         opacity1     = new float[Capacity];
 
-    private readonly float[]     rot          = new float[Capacity];
-    private readonly float[]     omega        = new float[Capacity];
+    private readonly int[]           time         = new int[Capacity];
+    private readonly int[]           duration     = new int[Capacity];
 
-    private readonly float[]     sizeX0       = new float[Capacity];
-    private readonly float[]     sizeY0       = new float[Capacity];
-    private readonly float[]     sizeX1       = new float[Capacity];
-    private readonly float[]     sizeY1       = new float[Capacity];
-    private readonly float[]     opacity0     = new float[Capacity];
-    private readonly float[]     opacity1     = new float[Capacity];
+    private readonly Texture2D[]     texture      = new Texture2D[Capacity];
+    private readonly Vector2[]       offset       = new Vector2[Capacity];
+    private readonly Color[]         color        = new Color[Capacity];
+    private readonly byte[]          layer        = new byte[Capacity];
+    private readonly StgBlendState[] blend        = new StgBlendState[Capacity];
 
-    private readonly int[]       time         = new int[Capacity];
-    private readonly int[]       duration     = new int[Capacity];
-
-    private readonly Texture2D[] texture      = new Texture2D[Capacity];
-    private readonly float[]     offsetX      = new float[Capacity];
-    private readonly float[]     offsetY      = new float[Capacity];
-    private readonly Color[]     color        = new Color[Capacity];
-    private readonly byte[]      layer        = new byte[Capacity];
-
-    private readonly byte[]      sizeXCurve   = new byte[Capacity];
-    private readonly byte[]      sizeYCurve   = new byte[Capacity];
-    private readonly byte[]      opacityCurve = new byte[Capacity];
+    private readonly byte[]          sizeXCurve   = new byte[Capacity];
+    private readonly byte[]          sizeYCurve   = new byte[Capacity];
+    private readonly byte[]          opacityCurve = new byte[Capacity];
     #endregion
 
     public int ParticleCount => particleCount;
@@ -64,6 +61,10 @@ public sealed class ParticleManager
         AddCurve(Easing.SmoothStep);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static ref T At<T>(T[] array, int index) =>
+        ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index);
+
     private static int AddCurve(Func<float, float> curve)
     {
         if (curveCount == CurveCapacity) return -1;
@@ -76,77 +77,83 @@ public sealed class ParticleManager
     }
 
     public void Emit(
-        float x, float y, float vx, float vy, float ax, float ay, float rot, float omega,
+        Vector2 pos, Vector2 vel, Vector2 acc, float rot, float omega,
         float sizeX0, float sizeY0, float sizeX1, float sizeY1, float opacity0, float opacity1,
-        Texture2D texture, float offsetX, float offsetY, Color color, byte layer,
+        Texture2D texture, Vector2 offset, Color color, byte layer, StgBlendState blend,
         int duration, byte sizeXCurve, byte sizeYCurve, byte opacityCurve)
     {
-        if (particleCount >= Capacity) return;
+        int i = particleCount;
+        if (i >= Capacity) return;
 
-        this.x[particleCount]            = x;
-        this.y[particleCount]            = y;
-        this.vx[particleCount]           = vx;
-        this.vy[particleCount]           = vy;
-        this.ax[particleCount]           = ax;
-        this.ay[particleCount]           = ay;
-        this.rot[particleCount]          = rot;
-        this.omega[particleCount]        = omega;
-        this.sizeX0[particleCount]       = sizeX0;
-        this.sizeY0[particleCount]       = sizeY0;
-        this.sizeX1[particleCount]       = sizeX1;
-        this.sizeY1[particleCount]       = sizeY1;
-        this.opacity0[particleCount]     = opacity0;
-        this.opacity1[particleCount]     = opacity1;
-        this.duration[particleCount]     = duration;
-        this.texture[particleCount]      = texture;
-        this.offsetX[particleCount]      = offsetX;
-        this.offsetY[particleCount]      = offsetY;
-        this.color[particleCount]        = color;
-        this.layer[particleCount]        = layer;
-        this.sizeXCurve[particleCount]   = sizeXCurve;
-        this.sizeYCurve[particleCount]   = sizeYCurve;
-        this.opacityCurve[particleCount] = opacityCurve;
+        At(this.pos,          i) = pos;
+        At(this.vel,          i) = vel;
+        At(this.acc,          i) = acc;
+        At(this.rot,          i) = rot;
+        At(this.omega,        i) = omega;
+        At(this.sizeX0,       i) = sizeX0;
+        At(this.sizeY0,       i) = sizeY0;
+        At(this.sizeX1,       i) = sizeX1;
+        At(this.sizeY1,       i) = sizeY1;
+        At(this.opacity0,     i) = opacity0;
+        At(this.opacity1,     i) = opacity1;
+        At(this.duration,     i) = duration;
+        At(this.texture,      i) = texture;
+        At(this.offset,       i) = offset;
+        At(this.color,        i) = color;
+        At(this.layer,        i) = layer;
+        At(this.blend,        i) = blend;
+        At(this.sizeXCurve,   i) = sizeXCurve;
+        At(this.sizeYCurve,   i) = sizeYCurve;
+        At(this.opacityCurve, i) = opacityCurve;
 
-        time[particleCount] = 0;
+        time[i] = 0;
 
         particleCount++;
     }
 
-    public void Update()
+    public unsafe void Update()
     {
-        int i = 0;
-
-        while (i < particleCount)
+        fixed (Vector2* pPos = pos, pVel = vel, pAcc = acc)
+        fixed (float* pRot = rot, pOmega = omega)
+        fixed (int* pTime = time, pDuration = duration)
         {
-            time[i]++;
-            if (time[i] >= duration[i])
+            int count = particleCount;
+            int i = 0;
+
+            while (i < count)
             {
-                particleCount--;
-                if (i != particleCount)
-                    SwapCopy(particleCount, i);
-                continue;
+                pTime[i]++;
+
+                if (pTime[i] >= pDuration[i])
+                {
+                    count--;
+                    if (i != count)
+                        SwapCopy(count, i);
+                    continue;
+                }
+
+                Vector2* v = pVel + i;
+                Vector2* a = pAcc + i;
+                Vector2* p = pPos + i;
+
+                v->X += a->X;
+                v->Y += a->Y;
+                p->X += v->X;
+                p->Y += v->Y;
+
+                pRot[i] += pOmega[i];
+                i++;
             }
 
-            vx[i] += ax[i];
-            vy[i] += ay[i];
-
-            x[i] += vx[i];
-            y[i] += vy[i];
-
-            rot[i] += omega[i];
-
-            i++;
+            particleCount = count;
         }
     }
 
     private void SwapCopy(int src, int dst)
     {
-        x[dst]            = x[src];
-        y[dst]            = y[src];
-        vx[dst]           = vx[src];
-        vy[dst]           = vy[src];
-        ax[dst]           = ax[src];
-        ay[dst]           = ay[src];
+        pos[dst]          = pos[src];
+        vel[dst]          = vel[src];
+        acc[dst]          = acc[src];
         rot[dst]          = rot[src];
         omega[dst]        = omega[src];
         sizeX0[dst]       = sizeX0[src];
@@ -158,39 +165,62 @@ public sealed class ParticleManager
         time[dst]         = time[src];
         duration[dst]     = duration[src];
         texture[dst]      = texture[src];
-        offsetX[dst]      = offsetX[src];
-        offsetY[dst]      = offsetY[src];
+        offset[dst]       = offset[src];
         color[dst]        = color[src];
         layer[dst]        = layer[src];
+        blend[dst]        = blend[src];
         sizeXCurve[dst]   = sizeXCurve[src];
         sizeYCurve[dst]   = sizeYCurve[src];
         opacityCurve[dst] = opacityCurve[src];
     }
 
-    public void Draw(SuperBatch batch)
+    public unsafe void Draw(StgBatch batch)
     {
-        for (int i = 0; i < particleCount; i++)
+        if (particleCount == 0) return;
+
+        fixed (float* pCurves = curves)
+        fixed (float* pSizeX0 = sizeX0, pSizeY0 = sizeY0)
+        fixed (float* pSizeX1 = sizeX1, pSizeY1 = sizeY1)
+        fixed (float* pOpacity0 = opacity0, pOpacity1 = opacity1)
+        fixed (float* pRot = rot)
+        fixed (int* pTime = time, pDuration = duration)
+        fixed (Vector2* pPos = pos, pOffset = offset)
+        fixed (Color* pColor = color)
+        fixed (byte* pLayer = layer)
+        fixed (byte* pSizeXCurve = sizeXCurve, pSizeYCurve = sizeYCurve, pOpacityCurve = opacityCurve)
         {
-            int sampleIndex = time[i] * (SampleCount - 1) / duration[i];
-            float sizeX   = MathHelper.Lerp(sizeX0[i], sizeX1[i], curves[sizeXCurve[i] * SampleCount + sampleIndex]);
-            float sizeY   = MathHelper.Lerp(sizeY0[i], sizeY1[i], curves[sizeYCurve[i] * SampleCount + sampleIndex]);
-            float opacity = MathHelper.Lerp(opacity0[i], opacity1[i], curves[opacityCurve[i] * SampleCount + sampleIndex]);
+            int count = particleCount;
 
-            Color col = color[i];
-            float finalAlpha = (col.A / 255f) * opacity;
-            col.A = (byte)(finalAlpha * 255);
+            for (int i = 0; i < count; i++)
+            {
+                int t = pTime[i];
+                int d = pDuration[i];
+                int sampleIndex = t * (SampleCount - 1) / d;
 
-            batch.Draw(
-                texture[i],
-                new Vector2(x[i], y[i]),
-                null,
-                col,
-                rot[i],
-                new Vector2(offsetX[i], offsetY[i]),
-                new Vector2(sizeX, sizeY),
-                SpriteEffects.None,
-                layer[i]
-            );
+                float* curveX = pCurves + pSizeXCurve[i] * SampleCount + sampleIndex;
+                float* curveY = pCurves + pSizeYCurve[i] * SampleCount + sampleIndex;
+                float* curveO = pCurves + pOpacityCurve[i] * SampleCount + sampleIndex;
+
+                float sizeX   = pSizeX0[i]   + (pSizeX1[i]   - pSizeX0[i])   * (*curveX);
+                float sizeY   = pSizeY0[i]   + (pSizeY1[i]   - pSizeY0[i])   * (*curveY);
+                float opacity = pOpacity0[i] + (pOpacity1[i] - pOpacity0[i]) * (*curveO);
+
+                Color col = pColor[i];
+                col.A = (byte)(col.A * opacity);
+
+                batch.Draw(
+                    texture[i],
+                    pPos[i],
+                    null,
+                    col,
+                    pRot[i],
+                    pOffset[i],
+                    new Vector2(sizeX, sizeY),
+                    SpriteEffects.None,
+                    pLayer[i],
+                    blend[i]
+                );
+            }
         }
     }
 }

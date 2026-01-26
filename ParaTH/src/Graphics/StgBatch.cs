@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-public sealed unsafe class SuperBatch : IDisposable
+public sealed unsafe class StgBatch : IDisposable
 {
     #region Private Consts
     private const int MaxVertices = 65536;
@@ -13,11 +13,12 @@ public sealed unsafe class SuperBatch : IDisposable
     #endregion
 
     #region Private Containers
-    private struct DrawCommand(int textureIndex, int indexStart, int indexCount)
+    private struct DrawCommand(int textureIndex, int indexStart, int indexCount, StgBlendState blendState)
     {
         public readonly int TextureIndex = textureIndex;
         public int IndexStart = indexStart;
         public readonly int IndexCount = indexCount;
+        public readonly StgBlendState BlendState = blendState;
     }
 
     private class CommandBucket
@@ -60,7 +61,6 @@ public sealed unsafe class SuperBatch : IDisposable
     private int commandCount;
 
     private bool hasBegun;
-    private BlendState blendState = null!;
     private SamplerState samplerState = null!;
     private RasterizerState rasterizerState = null!;
     private Matrix transformMatrix;
@@ -76,7 +76,7 @@ public sealed unsafe class SuperBatch : IDisposable
     #endregion
 
     #region Public Constructor
-    public SuperBatch(GraphicsDevice graphicsDevice)
+    public StgBatch(GraphicsDevice graphicsDevice)
     {
         GraphicsDevice = graphicsDevice;
 
@@ -111,8 +111,8 @@ public sealed unsafe class SuperBatch : IDisposable
         sPtr = (short*)sHandle.AddrOfPinnedObject();
 
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-        using var stream = assembly.GetManifestResourceStream("ParaSpriteEffect") ??
-                           throw new InvalidOperationException("ParaSpriteEffect not found.");
+        using var stream = assembly.GetManifestResourceStream("StgSpriteEffect") ??
+                           throw new InvalidOperationException("StgSpriteEffect not found.");
         byte[] effectCode = new byte[stream.Length];
         stream.ReadExactly(effectCode, 0, effectCode.Length);
 
@@ -124,7 +124,7 @@ public sealed unsafe class SuperBatch : IDisposable
     #endregion
 
     #region Dispose Methods
-    ~SuperBatch()
+    ~StgBatch()
     {
         Dispose(false);
     }
@@ -158,7 +158,6 @@ public sealed unsafe class SuperBatch : IDisposable
     public void Begin(Matrix transformMatrix)
     {
         Begin(
-            BlendState.AlphaBlend,
             SamplerState.PointClamp,
             RasterizerState.CullCounterClockwise,
             null,
@@ -167,7 +166,6 @@ public sealed unsafe class SuperBatch : IDisposable
     }
 
     public void Begin(
-        BlendState blendState,
         SamplerState samplerState,
         RasterizerState rasterizerState,
         Effect? customEffect,
@@ -177,7 +175,6 @@ public sealed unsafe class SuperBatch : IDisposable
             throw new InvalidOperationException("Begin called before calling End.");
         hasBegun = true;
 
-        this.blendState = blendState;
         this.samplerState = samplerState;
         this.rasterizerState = rasterizerState;
 
@@ -209,7 +206,8 @@ public sealed unsafe class SuperBatch : IDisposable
         Vector2 origin,
         Vector2 scale,
         SpriteEffects spriteEffects,
-        byte layerDepth)
+        byte layerDepth,
+        StgBlendState blendState)
     {
         if (!hasBegun)
             throw new InvalidOperationException("Draw called before Begin.");
@@ -330,7 +328,7 @@ public sealed unsafe class SuperBatch : IDisposable
         vertexCount += 4;
         indexCount += 6;
 
-        buckets[layerDepth].Add(new DrawCommand(commandCount, startIndex, 6));
+        buckets[layerDepth].Add(new DrawCommand(commandCount, startIndex, 6, blendState));
         textureInfo[commandCount++] = texture;
     }
 
@@ -339,7 +337,8 @@ public sealed unsafe class SuperBatch : IDisposable
         Vector2[] vertices,
         Vector2[] textureCoords,
         Color color,
-        byte layerDepth)
+        byte layerDepth,
+        StgBlendState blendState)
     {
         if (!hasBegun)
             throw new InvalidOperationException("Draw called before Begin.");
@@ -384,7 +383,7 @@ public sealed unsafe class SuperBatch : IDisposable
         vertexCount += vCount;
         indexCount += iCount;
 
-        buckets[layerDepth].Add(new DrawCommand(commandCount, startIndex, iCount));
+        buckets[layerDepth].Add(new DrawCommand(commandCount, startIndex, iCount, blendState));
         textureInfo[commandCount++] = texture;
     }
     #endregion
@@ -449,7 +448,6 @@ public sealed unsafe class SuperBatch : IDisposable
 
     private void PrepRenderState()
     {
-        GraphicsDevice.BlendState = blendState;
         GraphicsDevice.SamplerStates[0] = samplerState;
         GraphicsDevice.RasterizerState = rasterizerState;
 
@@ -461,51 +459,75 @@ public sealed unsafe class SuperBatch : IDisposable
         effect.CurrentTechnique.Passes[0].Apply();
     }
 
+    private static BlendState GetBlendState(StgBlendState state)
+    {
+        return state switch
+        {
+            StgBlendState.Alpha => StgBlendStates.Alpha,
+            StgBlendState.Additive => StgBlendStates.Additive,
+            StgBlendState.Subtract => StgBlendStates.Subtract,
+            StgBlendState.ReverseSubtract => StgBlendStates.ReverseSubtract,
+            StgBlendState.Invert => StgBlendStates.Invert,
+            _ => throw new NotImplementedException()
+        };
+    }
+
     private void DrawAllBuckets()
     {
+        Texture2D? currentTexture = null;
+        StgBlendState currentBlendState = default;
+        int batchStartIndex = 0;
+        int batchIndexCount = 0;
+
         for (int i = 0; i < BucketCount; i++)
         {
             ref var bucket = ref buckets[i];
             if (bucket.Count == 0) continue;
 
-            ref var firstCmd = ref bucket.Commands[0];
-            Texture2D currentTexture = textureInfo[firstCmd.TextureIndex];
-            int batchStartIndex = firstCmd.IndexStart;
-            int batchIndexCount = firstCmd.IndexCount;
-
-            for (int j = 1; j < bucket.Count; j++)
+            for (int j = 0; j < bucket.Count; j++)
             {
                 ref var cmd = ref bucket.Commands[j];
                 Texture2D cmdTexture = textureInfo[cmd.TextureIndex];
 
-                if (cmdTexture == currentTexture)
+                if (currentTexture is null)
+                {
+                    currentTexture = cmdTexture;
+                    currentBlendState = cmd.BlendState;
+                    batchStartIndex = cmd.IndexStart;
+                    batchIndexCount = cmd.IndexCount;
+                }
+                else if (cmdTexture == currentTexture && cmd.BlendState == currentBlendState)
                 {
                     batchIndexCount += cmd.IndexCount;
                 }
                 else
                 {
-                    DrawPrimitives(currentTexture, batchStartIndex, batchIndexCount / 3);
+                    DrawPrimitives(currentTexture, batchStartIndex, batchIndexCount / 3, currentBlendState);
 
                     currentTexture = cmdTexture;
+                    currentBlendState = cmd.BlendState;
                     batchStartIndex = cmd.IndexStart;
                     batchIndexCount = cmd.IndexCount;
                 }
             }
-
-            DrawPrimitives(currentTexture, batchStartIndex, batchIndexCount / 3);
         }
+
+        if (batchIndexCount > 0)
+            DrawPrimitives(currentTexture!, batchStartIndex, batchIndexCount / 3, currentBlendState);
     }
 
-    private void DrawPrimitives(Texture2D texture, int startIndex, int primitiveCount)
+    private void DrawPrimitives(Texture2D texture, int startIndex, int primitiveCount, StgBlendState blendState)
     {
         if (primitiveCount <= 0) return;
+
+        GraphicsDevice.BlendState = GetBlendState(blendState);
+        GraphicsDevice.Textures[0] = texture;
 
         if (customEffect is not null)
         {
             foreach (var pass in customEffect.CurrentTechnique.Passes)
             {
                 pass.Apply();
-                GraphicsDevice.Textures[0] = texture;
                 GraphicsDevice.DrawIndexedPrimitives(
                     PrimitiveType.TriangleList,
                     0,
@@ -518,7 +540,6 @@ public sealed unsafe class SuperBatch : IDisposable
         }
         else
         {
-            GraphicsDevice.Textures[0] = texture;
             GraphicsDevice.DrawIndexedPrimitives(
                 PrimitiveType.TriangleList,
                 0,
