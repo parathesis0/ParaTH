@@ -1,6 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
@@ -61,10 +59,6 @@ public sealed class ParticleManager
         AddCurve(Easing.SmoothStep);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ref T At<T>(T[] array, int index) =>
-        ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index);
-
     private static int AddCurve(Func<float, float> curve)
     {
         if (curveCount == CurveCapacity) return -1;
@@ -85,28 +79,27 @@ public sealed class ParticleManager
         int i = particleCount;
         if (i >= Capacity) return;
 
-        At(this.pos,          i) = pos;
-        At(this.vel,          i) = vel;
-        At(this.acc,          i) = acc;
-        At(this.rot,          i) = rot;
-        At(this.omega,        i) = omega;
-        At(this.sizeX0,       i) = sizeX0;
-        At(this.sizeY0,       i) = sizeY0;
-        At(this.sizeX1,       i) = sizeX1;
-        At(this.sizeY1,       i) = sizeY1;
-        At(this.opacity0,     i) = opacity0;
-        At(this.opacity1,     i) = opacity1;
-        At(this.duration,     i) = duration;
-        At(this.texture,      i) = texture;
-        At(this.offset,       i) = offset;
-        At(this.color,        i) = color;
-        At(this.layer,        i) = layer;
-        At(this.blend,        i) = blend;
-        At(this.sizeXCurve,   i) = sizeXCurve;
-        At(this.sizeYCurve,   i) = sizeYCurve;
-        At(this.opacityCurve, i) = opacityCurve;
-
-        time[i] = 0;
+        this.pos.UnsafeAt(i)          = pos;
+        this.vel.UnsafeAt(i)          = vel;
+        this.acc.UnsafeAt(i)          = acc;
+        this.rot.UnsafeAt(i)          = rot;
+        this.omega.UnsafeAt(i)        = omega;
+        this.sizeX0.UnsafeAt(i)       = sizeX0;
+        this.sizeY0.UnsafeAt(i)       = sizeY0;
+        this.sizeX1.UnsafeAt(i)       = sizeX1;
+        this.sizeY1.UnsafeAt(i)       = sizeY1;
+        this.opacity0.UnsafeAt(i)     = opacity0;
+        this.opacity1.UnsafeAt(i)     = opacity1;
+        this.duration.UnsafeAt(i)     = duration;
+        this.texture.UnsafeAt(i)      = texture;
+        this.offset.UnsafeAt(i)       = offset;
+        this.color.UnsafeAt(i)        = color;
+        this.layer.UnsafeAt(i)        = layer;
+        this.blend.UnsafeAt(i)        = blend;
+        this.sizeXCurve.UnsafeAt(i)   = sizeXCurve;
+        this.sizeYCurve.UnsafeAt(i)   = sizeYCurve;
+        this.opacityCurve.UnsafeAt(i) = opacityCurve;
+        time.UnsafeAt(i)              = 0;
 
         particleCount++;
     }
@@ -151,27 +144,27 @@ public sealed class ParticleManager
 
     private void SwapCopy(int src, int dst)
     {
-        pos[dst]          = pos[src];
-        vel[dst]          = vel[src];
-        acc[dst]          = acc[src];
-        rot[dst]          = rot[src];
-        omega[dst]        = omega[src];
-        sizeX0[dst]       = sizeX0[src];
-        sizeY0[dst]       = sizeY0[src];
-        sizeX1[dst]       = sizeX1[src];
-        sizeY1[dst]       = sizeY1[src];
-        opacity0[dst]     = opacity0[src];
-        opacity1[dst]     = opacity1[src];
-        time[dst]         = time[src];
-        duration[dst]     = duration[src];
-        texture[dst]      = texture[src];
-        offset[dst]       = offset[src];
-        color[dst]        = color[src];
-        layer[dst]        = layer[src];
-        blend[dst]        = blend[src];
-        sizeXCurve[dst]   = sizeXCurve[src];
-        sizeYCurve[dst]   = sizeYCurve[src];
-        opacityCurve[dst] = opacityCurve[src];
+        pos.UnsafeAt(dst)          = pos.UnsafeAt(src);
+        vel.UnsafeAt(dst)          = vel.UnsafeAt(src);
+        acc.UnsafeAt(dst)          = acc.UnsafeAt(src);
+        rot.UnsafeAt(dst)          = rot.UnsafeAt(src);
+        omega.UnsafeAt(dst)        = omega.UnsafeAt(src);
+        sizeX0.UnsafeAt(dst)       = sizeX0.UnsafeAt(src);
+        sizeY0.UnsafeAt(dst)       = sizeY0.UnsafeAt(src);
+        sizeX1.UnsafeAt(dst)       = sizeX1.UnsafeAt(src);
+        sizeY1.UnsafeAt(dst)       = sizeY1.UnsafeAt(src);
+        opacity0.UnsafeAt(dst)     = opacity0.UnsafeAt(src);
+        opacity1.UnsafeAt(dst)     = opacity1.UnsafeAt(src);
+        time.UnsafeAt(dst)         = time.UnsafeAt(src);
+        duration.UnsafeAt(dst)     = duration.UnsafeAt(src);
+        texture.UnsafeAt(dst)      = texture.UnsafeAt(src);
+        offset.UnsafeAt(dst)       = offset.UnsafeAt(src);
+        color.UnsafeAt(dst)        = color.UnsafeAt(src);
+        layer.UnsafeAt(dst)        = layer.UnsafeAt(src);
+        blend.UnsafeAt(dst)        = blend.UnsafeAt(src);
+        sizeXCurve.UnsafeAt(dst)   = sizeXCurve.UnsafeAt(src);
+        sizeYCurve.UnsafeAt(dst)   = sizeYCurve.UnsafeAt(src);
+        opacityCurve.UnsafeAt(dst) = opacityCurve.UnsafeAt(src);
     }
 
     public unsafe void Draw(StgBatch batch)
