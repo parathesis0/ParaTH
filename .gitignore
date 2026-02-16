@@ -32,8 +32,8 @@ bld/
 *.tlog
 *.log
 
-!MonoHexagon/lib/
-!MonoHexagon/lib/**
+!ParaTH/lib/
+!ParaTH/lib/**
 
 # --- MonoGame Specific ---
 **/Content/bin/
