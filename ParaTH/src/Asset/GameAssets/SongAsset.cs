@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework.Media;
+using Microsoft.Xna.Framework.Media;
 
 namespace ParaTH;
 
@@ -8,14 +8,4 @@ public readonly record struct LoopRange(uint StartMs, uint EndMs)
     public TimeSpan End   => TimeSpan.FromMilliseconds(EndMs);
 }
 
-public sealed record SongAsset : Asset
-{
-    public readonly Song Song;
-    public readonly LoopRange LoopRange;
-
-    public SongAsset(uint id, Song song, LoopRange loopRange) : base(id)
-    {
-        Song = song;
-        LoopRange = loopRange;
-    }
-}
+public sealed record SongAsset(Song Song, LoopRange LoopRange) : Asset;

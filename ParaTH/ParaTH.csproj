@@ -40,12 +40,6 @@
     <ShaderSource Include="src\Graphics\Effects\HLSL\**\*.fx" />
   </ItemGroup>
 
-<!--  <ItemGroup>-->
-<!--    <Content Include="Content\Effects\**\*.fxb">-->
-<!--      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>-->
-<!--    </Content>-->
-<!--  </ItemGroup>-->
-
   <Target Name="CompileShaders" BeforeTargets="ResolveReferences;PrepareForBuild"
           Inputs="@(ShaderSource)"
           Outputs="@(ShaderSource->'Content\Effects\%(Filename).fxb')">

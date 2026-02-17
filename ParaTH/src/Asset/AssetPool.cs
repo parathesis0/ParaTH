@@ -7,16 +7,31 @@ public sealed class AssetPool
     public void Add(string name, Asset asset)
     {
         if (!assets.TryAdd(name, asset))
-            throw new InvalidOperationException($"Asset {name} already exists");
+            throw new InvalidOperationException($"Asset '{name}' already exists");
     }
 
-    public bool Remove(string name)
+    public T Get<T>(string name) where T : Asset
     {
-        return assets.Remove(name);
+        if (!assets.TryGetValue(name, out var asset))
+            throw new KeyNotFoundException($"Asset '{name}' not found");
+        return asset as T ?? throw new InvalidCastException(
+            $"Asset '{name}' is {asset.GetType().Name}, expected {typeof(T).Name}");
     }
 
-    public void Clear()
+    public bool TryGet<T>(string name, out T? asset) where T : Asset
     {
-         assets.Clear();
+        if (assets.TryGetValue(name, out var raw) && raw is T typed)
+        {
+            asset = typed;
+            return true;
+        }
+        asset = null;
+        return false;
     }
+
+    public bool Contains(string name) => assets.ContainsKey(name);
+
+    public bool Remove(string name) => assets.Remove(name);
+
+    public void Clear() => assets.Clear();
 }

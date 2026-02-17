@@ -1,12 +1,13 @@
-﻿namespace ParaTH;
+namespace ParaTH;
 
 public abstract record Asset
 {
+    private static uint globalId = 0;
     private readonly uint id = 0;
 
-    protected Asset(uint id)
+    protected Asset()
     {
-        this.id = id;
+        id = Interlocked.Increment(ref globalId);
     }
 
     public virtual bool Equals(Asset? other)

@@ -1,8 +1,9 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
+[Obsolete("PoC. Should not be used.")]
 public sealed class TextureAtlas(Texture2D fullTexture)
 {
     private readonly Dictionary<string, TextureRegion> regions = [];

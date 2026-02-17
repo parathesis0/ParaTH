@@ -1,23 +1,36 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-public enum PlayType
-{
-    None, Hold, Loop, PingPong
-}
-
+[Obsolete("PoC animation class. Should be used only for testing.")]
 public sealed class Animation
 {
-    private List<AnimationFrame> frames;
+    public enum PlayType { None, Hold, Loop, PingPong }
+    public readonly record struct Frame
+    {
+        public readonly Texture2D Texture;
+        public readonly Rectangle SourceRect;
+        public readonly Vector2 Offset;
+        public readonly int Duration;
+
+        public Frame(Texture2D texture, Rectangle sourceRect, Vector2 offset, int duration)
+        {
+            Texture = texture;
+            SourceRect = sourceRect;
+            Offset = offset;
+            Duration = duration;
+        }
+    }
+
+    private List<Frame> frames;
     private int frameIndex;
     private int tickCount;
     public bool IsPlaying { get; set; }
     public bool IsReverse { get; set; }
-    public PlayType PlayType { get; set; }
+    public PlayType Type { get; set; }
 
-    public AnimationFrame CurrentFrame
+    public Frame CurrentFrame
     {
         get
         {
@@ -27,12 +40,12 @@ public sealed class Animation
         }
     }
 
-    public Animation(List<AnimationFrame> frames)
+    public Animation(List<Frame> frames)
     {
         this.frames = frames;
     }
 
-    public void AddFrame(AnimationFrame frame)
+    public void AddFrame(Frame frame)
     {
         frames.Add(frame);
     }
@@ -68,7 +81,7 @@ public sealed class Animation
     {
         if (!IsPlaying) return;
 
-        switch (PlayType)
+        switch (Type)
         {
             case PlayType.None:
                 IsPlaying = false;
@@ -130,21 +143,5 @@ public sealed class Animation
 
         if (IsAtBoundary())
             HandleBoundary();
-    }
-}
-
-public readonly record struct AnimationFrame
-{
-    public readonly Texture2D Texture;
-    public readonly Rectangle SourceRect;
-    public readonly Vector2 Offset;
-    public readonly int Duration;
-
-    public AnimationFrame(Texture2D texture, Rectangle sourceRect, Vector2 offset, int duration)
-    {
-        Texture = texture;
-        SourceRect = sourceRect;
-        Offset = offset;
-        Duration = duration;
     }
 }
