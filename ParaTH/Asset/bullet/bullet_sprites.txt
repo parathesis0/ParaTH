@@ -1,0 +1,20 @@
+@sprites
+
+texture bullet/bullet.png
+
+heart_black	0	0	32	32	16	16
+heart_red	32	0	32	32	16	16
+heart_pink	64	0	32	32	16	16
+heart_blue	96	0	32	32	16	16
+heart_cyan	128	0	32	32	16	16
+heart_green	160	0	32	32	16	16
+heart_yellow	192	0	32	32	16	16
+heart_gray	224	0	32	32	16	16
+arrow_black	0	32	32	32	16	16
+arrow_red	32	32	32	32	16	16
+arrow_pink	64	32	32	32	16	16
+arrow_blue	96	32	32	32	16	16
+arrow_cyan	128	32	32	32	16	16
+arrow_green	160	32	32	32	16	16
+arrow_yellow	192	32	32	32	16	16
+arrow_gray	224	32	32	32	16	16

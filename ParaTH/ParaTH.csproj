@@ -31,7 +31,10 @@
   </Target>
 
   <ItemGroup>
-    <None Include="Content\*">
+    <None Include="Content\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Asset\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
