@@ -183,7 +183,7 @@ public sealed class AssetSystem : IDisposable
             if (animName is null || tex is null || frames is null || frames.Count == 0)
                 return;
             pool.Add(animName,
-                new AnimationAsset(tex, playType, frames.ToArray()));
+                new AnimationAsset(tex.Texture, playType, frames.ToArray()));
             animName = null;
             frames = null;
         }

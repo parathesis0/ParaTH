@@ -1,11 +1,21 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
 public sealed class SpriteAssetLoader(AssetManager assetManager) : IAssetLoader<SpriteAsset>
 {
-    public void ParseAndLoad(string fullPath, AssetPool pool)
+    private readonly HashSet<string> parsedFiles = [];
+
+    public Asset ParseAndLoad(string fullPath, string assetName, AssetPool pool)
     {
+        if (parsedFiles.Contains(fullPath))
+        {
+            throw new KeyNotFoundException(
+                $"Sprite '{assetName}' not found in already-parsed file '{fullPath}'");
+        }
+
+        parsedFiles.Add(fullPath);
         var lines = File.ReadAllLines(fullPath);
 
         if (lines.Length == 0 || lines[0].Trim() != "@sprites")
@@ -20,17 +30,11 @@ public sealed class SpriteAssetLoader(AssetManager assetManager) : IAssetLoader<
             if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
                 continue;
 
-            if (line.StartsWith("texture"))
+            if (line.StartsWith("texture "))
             {
-                var texturePath = line["texture ".Length..].Trim();
-
-                var texName = Path.GetFileNameWithoutExtension(texturePath);
-
-                if (!assetManager.TryGet(texName, out tex))
-                {
-                    assetManager.Load<TextureAsset>(texturePath);
-                    tex = assetManager.Get<TextureAsset>(texName);
-                }
+                var texPath = line["texture ".Length..].Trim();
+                var texName = Path.GetFileNameWithoutExtension(texPath);
+                tex = assetManager.Load<TextureAsset>(texPath, texName);
 
                 continue;
             }
@@ -66,5 +70,7 @@ public sealed class SpriteAssetLoader(AssetManager assetManager) : IAssetLoader<
 
             pool.Add(name, sprite);
         }
+
+        return pool.Get<SpriteAsset>(assetName);
     }
 }

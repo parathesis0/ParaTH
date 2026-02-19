@@ -1,5 +1,5 @@
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using System.Diagnostics;
 
 namespace ParaTH;
 
@@ -7,20 +7,25 @@ public sealed class TextureAssetLoader(GraphicsDevice graphicsDevice) : IAssetLo
 {
     private readonly GraphicsDevice graphicsDevice = graphicsDevice;
 
-    public void ParseAndLoad(string fullPath, AssetPool pool)
+    public Asset ParseAndLoad(string fullPath, string assetName, AssetPool pool)
     {
-        var name = Path.GetFileNameWithoutExtension(fullPath);
-        if (pool.Contains(name)) return;
-
-        if (!File.Exists(fullPath))
-            throw new FileNotFoundException($"File not found: '{fullPath}'");
-
         using var stream = File.OpenRead(fullPath);
         var tex = Texture2D.FromStream(graphicsDevice, stream);
+
+        var data = new Color[tex.Width * tex.Height];
+        tex.GetData(data);
+        for (int i = 0; i < data.Length; i++)
+        {
+            byte a = data[i].A;
+            data[i].R = (byte)(data[i].R * a / 255);
+            data[i].G = (byte)(data[i].G * a / 255);
+            data[i].B = (byte)(data[i].B * a / 255);
+        }
+        tex.SetData(data);
+
         var texAsset = new TextureAsset(tex);
 
-        Debug.Assert(texAsset is not null, "Texture is null!");
-
-        pool.Add(name, texAsset);
+        pool.Add(assetName, texAsset);
+        return texAsset;
     }
 }

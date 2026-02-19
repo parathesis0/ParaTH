@@ -3,58 +3,49 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-[Obsolete("PoC animation class. Should be used only for testing.")]
-public sealed class Animation
+using static AnimationAsset;
+
+public sealed class AnimationPlayer
 {
-    public enum PlayType { None, Hold, Loop, PingPong }
-    public readonly record struct Frame
-    {
-        public readonly Texture2D Texture;
-        public readonly Rectangle SourceRect;
-        public readonly Vector2 Offset;
-        public readonly int Duration;
-
-        public Frame(Texture2D texture, Rectangle sourceRect, Vector2 offset, int duration)
-        {
-            Texture = texture;
-            SourceRect = sourceRect;
-            Offset = offset;
-            Duration = duration;
-        }
-    }
-
-    private List<Frame> frames;
+    private AnimationAsset? asset;
     private int frameIndex;
     private int tickCount;
-    public bool IsPlaying { get; set; }
-    public bool IsReverse { get; set; }
-    public PlayType Type { get; set; }
+
+    public bool IsPlaying { get; private set; }
+    public bool IsReverse { get; private set; }
+
+    public AnimationAsset? CurrentAsset => asset;
 
     public Frame CurrentFrame
     {
         get
         {
-            if (frames.Count == 0) return default;
-            int index = Math.Clamp(frameIndex, 0, frames.Count - 1);
-            return frames[index];
+            if (asset is null || asset.Frames.Count == 0) return default;
+            int index = Math.Clamp(frameIndex, 0, asset.Frames.Count - 1);
+            return asset.Frames[index];
         }
     }
 
-    public Animation(List<Frame> frames)
+    public void Play(AnimationAsset animation, bool fromStart = true)
     {
-        this.frames = frames;
-    }
-
-    public void AddFrame(Frame frame)
-    {
-        frames.Add(frame);
-    }
-
-    public void Play(bool fromStart = true)
-    {
-        IsPlaying = true;
-        if (fromStart)
+        if (asset != animation)
+        {
+            asset = animation;
+            IsReverse = false;
             Reset();
+        }
+        else if (fromStart)
+        {
+            IsReverse = false;
+            Reset();
+        }
+
+        IsPlaying = true;
+    }
+
+    public void Stop()
+    {
+        IsPlaying = false;
     }
 
     private void Reset()
@@ -66,65 +57,60 @@ public sealed class Animation
         }
         else
         {
-            frameIndex = frames.Count - 1;
-            tickCount = frames[frameIndex].Duration;
+            frameIndex = asset!.Frames.Count - 1;
+            tickCount = (int)asset.Frames[frameIndex].FrameDuration;
         }
     }
 
     private bool IsAtBoundary()
     {
-        return !IsReverse ?
-            frameIndex == frames.Count : frameIndex == -1;
+        return !IsReverse
+            ? frameIndex >= asset!.Frames.Count
+            : frameIndex < 0;
     }
 
     private void HandleBoundary()
     {
-        if (!IsPlaying) return;
-
-        switch (Type)
+        switch (asset!.Type)
         {
-            case PlayType.None:
-                IsPlaying = false;
-                Reset();
-                break;
             case PlayType.Hold:
                 IsPlaying = false;
-                frameIndex = !IsReverse ? frames.Count - 1 : 0;
+                frameIndex = !IsReverse ? asset.Frames.Count - 1 : 0;
                 break;
+
             case PlayType.Loop:
                 Reset();
                 break;
+
             case PlayType.PingPong:
                 IsReverse = !IsReverse;
                 if (!IsReverse)
                 {
-                    frameIndex = 1;
+                    frameIndex = Math.Min(1, asset.Frames.Count - 1);
                     tickCount = 0;
                 }
                 else
                 {
-                    frameIndex = frames.Count - 2;
-                    tickCount = frames[frameIndex].Duration;
+                    frameIndex = Math.Max(asset.Frames.Count - 2, 0);
+                    tickCount = (int)asset.Frames[frameIndex].FrameDuration;
                 }
                 break;
-            default:
-                throw new NotImplementedException();
         }
     }
 
     public void Update()
     {
-        if (!IsPlaying) return;
+        if (!IsPlaying || asset is null || asset.Frames.Count == 0)
+            return;
 
         if (!IsReverse)
         {
             tickCount++;
-            while (tickCount >= frames[frameIndex].Duration)
+            while (tickCount >= (int)asset.Frames[frameIndex].FrameDuration)
             {
                 frameIndex++;
-                if (frameIndex == frames.Count)
+                if (frameIndex >= asset.Frames.Count)
                     break;
-
                 tickCount = 0;
             }
         }
@@ -134,10 +120,9 @@ public sealed class Animation
             while (tickCount <= 0)
             {
                 frameIndex--;
-                if (frameIndex == -1)
+                if (frameIndex < 0)
                     break;
-
-                tickCount = frames[frameIndex].Duration;
+                tickCount = (int)asset.Frames[frameIndex].FrameDuration;
             }
         }
 

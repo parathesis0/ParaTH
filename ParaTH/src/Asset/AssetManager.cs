@@ -1,18 +1,13 @@
+using System.Diagnostics;
+
 namespace ParaTH;
 
-public sealed class AssetManager
+public sealed class AssetManager(string assetRoot)
 {
-    private readonly string assetRoot;
+    private readonly string assetRoot = Path.GetFullPath(assetRoot);
 
     private readonly AssetPool pool = new();
     private readonly Dictionary<Type, IAssetLoader> loaderRegistry = [];
-
-    private string FullPath(string relativePath) => Path.Combine(assetRoot, relativePath);
-
-    public AssetManager(string assetRoot)
-    {
-        this.assetRoot = Path.GetFullPath(assetRoot);
-    }
 
     public void RegisterLoader(IAssetLoader loader)
     {
@@ -20,14 +15,18 @@ public sealed class AssetManager
             throw new InvalidOperationException($"Loader '{loader}' already exists");
     }
 
-    public void Load<T>(string path) where T : Asset
+    public T Load<T>(string path, string assetName) where T : Asset
     {
+        if (TryGet(assetName, out T? cached))
+            return cached!;
+
         if(!loaderRegistry.TryGetValue(typeof(T), out var loader))
             throw new KeyNotFoundException($"Loader for '{typeof(T)}' not registered");
 
-        var fullPath = FullPath(path);
+        var fullPath = Path.Combine(assetRoot, path);
+        var asset = loader.ParseAndLoad(fullPath, assetName, pool);
 
-        loader.ParseAndLoad(fullPath, pool);
+        return (T)asset;
     }
 
     public T Get<T>(string name) where T : Asset => pool.Get<T>(name);
