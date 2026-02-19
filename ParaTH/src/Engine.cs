@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
 
 namespace ParaTH;
 
@@ -15,10 +16,15 @@ public sealed class Engine : Game
     private AnimationAsset animation2 = null!;
     private AnimationPlayer animator1 = null!;
     private AnimationPlayer animator2 = null!;
+    private SoundAsset sound1 = null!;
+    private SoundAsset sound2 = null!;
+    private SongAsset song1 = null!;
+    private SongAsset song2 = null!;
 
     private int frameCount;
     private bool isPaused;
     private bool stepRequested;
+    private KeyboardState currKb;
     private KeyboardState prevKb;
 
     public Engine()
@@ -39,52 +45,79 @@ public sealed class Engine : Game
     protected override void LoadContent()
     {
         assetManager = new AssetManager("Asset");
-
         assetManager.RegisterLoader(new TextureAssetLoader(GraphicsDevice));
         assetManager.RegisterLoader(new SpriteAssetLoader(assetManager));
         assetManager.RegisterLoader(new AnimationAssetLoader(assetManager));
+        assetManager.RegisterLoader(new SoundAssetLoader());
+        assetManager.RegisterLoader(new SongAssetLoader(assetManager));
 
         stgBatch = new StgBatch(GraphicsDevice);
         projection = Matrix.CreateOrthographicOffCenter(0, 1280, 720, 0, 0, 1);
 
-        string path;
-        string name1;
-        string name2;
+        string path1; string path2;
+        string name1; string name2;
 
-        path = "bullet/bullet_sprites.txt";
+        path1 = "bullet/bullet_sprites.txt";
         name1 = "heart_pink";
+        path2 = "bullet/bullet_sprites.txt";
         name2 = "heart_black";
-        sprite1 = assetManager.Load<SpriteAsset>(path, name1);
-        sprite2 = assetManager.Load<SpriteAsset>(path, name2);
+        sprite1 = assetManager.Load<SpriteAsset>(path1, name1);
+        sprite2 = assetManager.Load<SpriteAsset>(path2, name2);
 
-        path = "bullet/fire_animations.txt";
+        path1 = "bullet/fire_animations.txt";
         name1 = "fireball_red";
-        name2 = "fireball_red";
-        animation1 = assetManager.Load<AnimationAsset>(path, name1);
-        animation2 = assetManager.Load<AnimationAsset>(path, name2);
-
+        path2 = "bullet/fire_animations.txt";
+        name2 = "fireball_purple";
+        animation1 = assetManager.Load<AnimationAsset>(path1, name1);
+        animation2 = assetManager.Load<AnimationAsset>(path2, name2);
         animator1 = new AnimationPlayer();
         animator2 = new AnimationPlayer();
-
         animator1.Play(animation1);
         animator2.Play(animation2);
+
+        path1 = "sfx/pichuun.wav";
+        name1 = "pichuun";
+        path2 = "sfx/boom.wav";
+        name2 = "boom";
+        sound1 = assetManager.Load<SoundAsset>(path1, name1);
+        sound2 = assetManager.Load<SoundAsset>(path2, name2);
+
+        path1 = "bgm/songs.txt";
+        name1 = "stage";
+        path2 = "bgm/songs.txt";
+        name2 = "boss";
+        song1 = assetManager.Load<SongAsset>(path1, name1);
+        song2 = assetManager.Load<SongAsset>(path2, name2);
     }
 
+    private bool IsKeyPressed(Keys key) => prevKb.IsKeyUp(key) && currKb.IsKeyDown(key);
 
     protected override void Update(GameTime gameTime)
     {
-        var kb = Keyboard.GetState();
+        currKb = Keyboard.GetState();
 
-        if (prevKb.IsKeyUp(Keys.P) && kb.IsKeyDown(Keys.P))
+        if (IsKeyPressed(Keys.P))
             isPaused = !isPaused;
 
-        if (prevKb.IsKeyUp(Keys.K) && kb.IsKeyDown(Keys.K))
+        if (IsKeyPressed(Keys.K))
         {
             if (!isPaused) isPaused = true;
             stepRequested = true;
         }
 
-        prevKb = kb;
+        if (IsKeyPressed(Keys.D1))
+            sound1.SoundEffect.Play();
+        if (IsKeyPressed(Keys.D2))
+            sound2.SoundEffect.Play();
+
+        if (IsKeyPressed(Keys.D3))
+            MediaPlayer.Play(song1.Song);
+        if (IsKeyPressed(Keys.D4))
+            MediaPlayer.Play(song2.Song);
+        if (IsKeyPressed(Keys.D5))
+            MediaPlayer.Stop();
+
+        prevKb = currKb;
 
         if (!isPaused || stepRequested)
         {

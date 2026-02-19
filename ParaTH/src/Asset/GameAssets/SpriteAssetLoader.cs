@@ -14,8 +14,8 @@ public sealed class SpriteAssetLoader(AssetManager assetManager) : IAssetLoader<
             throw new KeyNotFoundException(
                 $"Sprite '{assetName}' not found in already-parsed file '{fullPath}'");
         }
-
         parsedFiles.Add(fullPath);
+
         var lines = File.ReadAllLines(fullPath);
 
         if (lines.Length == 0 || lines[0].Trim() != "@sprites")
@@ -35,7 +35,6 @@ public sealed class SpriteAssetLoader(AssetManager assetManager) : IAssetLoader<
                 var texPath = line["texture ".Length..].Trim();
                 var texName = Path.GetFileNameWithoutExtension(texPath);
                 tex = assetManager.Load<TextureAsset>(texPath, texName);
-
                 continue;
             }
 
@@ -45,8 +44,8 @@ public sealed class SpriteAssetLoader(AssetManager assetManager) : IAssetLoader<
                     $"No texture declared before sprite definitions in '{fullPath}'");
             }
 
+            // name  x  y  w  h  ax  ay
             var p = line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
-
             if (p.Length != 7)
             {
                 throw new FormatException(
@@ -67,7 +66,6 @@ public sealed class SpriteAssetLoader(AssetManager assetManager) : IAssetLoader<
                 new Rectangle(x, y, w, h),
                 new Vector2(ax, ay)
             );
-
             pool.Add(name, sprite);
         }
 

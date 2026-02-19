@@ -1,5 +1,5 @@
 @songs
 
-# name	path			start	end
+# name	path    			startMs	endMs
 stage	bgm/badapple.ogg	1000	12000
 boss	bgm/spectra.ogg		2000	15000

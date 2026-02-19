@@ -9,6 +9,8 @@ public sealed class AssetManager(string assetRoot)
     private readonly AssetPool pool = new();
     private readonly Dictionary<Type, IAssetLoader> loaderRegistry = [];
 
+    public string FullPath(string path) => Path.Combine(assetRoot, path);
+
     public void RegisterLoader(IAssetLoader loader)
     {
         if (!loaderRegistry.TryAdd(loader.AssetType, loader))
@@ -23,7 +25,7 @@ public sealed class AssetManager(string assetRoot)
         if(!loaderRegistry.TryGetValue(typeof(T), out var loader))
             throw new KeyNotFoundException($"Loader for '{typeof(T)}' not registered");
 
-        var fullPath = Path.Combine(assetRoot, path);
+        var fullPath = FullPath(path);
         var asset = loader.ParseAndLoad(fullPath, assetName, pool);
 
         return (T)asset;

@@ -12,6 +12,7 @@ public sealed class TextureAssetLoader(GraphicsDevice graphicsDevice) : IAssetLo
         using var stream = File.OpenRead(fullPath);
         var tex = Texture2D.FromStream(graphicsDevice, stream);
 
+        // premultiply
         var data = new Color[tex.Width * tex.Height];
         tex.GetData(data);
         for (int i = 0; i < data.Length; i++)

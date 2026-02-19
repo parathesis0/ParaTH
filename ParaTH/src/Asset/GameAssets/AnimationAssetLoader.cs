@@ -10,7 +10,8 @@ public sealed class AnimationAssetLoader(AssetManager assetManager) : IAssetLoad
 {
     private readonly HashSet<string> parsedFiles = [];
 
-    private static void FlushIfNotNull(string? animName, PlayType? type, List<Frame>? frames, TextureAsset tex, AssetPool pool)
+    private static void FlushIfNotNull(string? animName, PlayType? type, List<Frame>? frames,
+        TextureAsset tex, AssetPool pool)
     {
         if (animName is null || type is null || frames is null || frames.Count == 0)
             return;
@@ -22,11 +23,12 @@ public sealed class AnimationAssetLoader(AssetManager assetManager) : IAssetLoad
 
     public Asset ParseAndLoad(string fullPath, string assetName, AssetPool pool)
     {
-        if (!parsedFiles.Add(fullPath))
+        if (parsedFiles.Contains(fullPath))
         {
             throw new KeyNotFoundException(
-                $"Sprite '{assetName}' not found in already-parsed file '{fullPath}'");
+                $"Animation '{assetName}' not found in already-parsed file '{fullPath}'");
         }
+        parsedFiles.Add(fullPath);
 
         var lines = File.ReadAllLines(fullPath);
 
@@ -64,6 +66,7 @@ public sealed class AnimationAssetLoader(AssetManager assetManager) : IAssetLoad
             {
                 FlushIfNotNull(animName, type, frames, tex, pool);
 
+                // animation  name  looptype
                 var p = line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
                 if (p.Length != 3)
                 {
@@ -84,6 +87,7 @@ public sealed class AnimationAssetLoader(AssetManager assetManager) : IAssetLoad
                     $"Frame data before 'animation' declaration in '{fullPath}'");
             }
 
+            // x  y  w  h  ax  ay  dur
             var f = line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
             if (f.Length != 7)
             {
@@ -105,7 +109,6 @@ public sealed class AnimationAssetLoader(AssetManager assetManager) : IAssetLoad
                 new Vector2(ax, ay),
                 dur
             );
-
             frames.Add(frame);
         }
 
