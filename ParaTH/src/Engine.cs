@@ -3,7 +3,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
-using System.Xml.Linq;
 
 namespace ParaTH;
 
@@ -16,14 +15,14 @@ public sealed class Engine : Game
     private SpriteAsset sprite2 = null!;
     private AnimationAsset animation1 = null!;
     private AnimationAsset animation2 = null!;
-    private AnimationPlayer animator1 = null!;
-    private AnimationPlayer animator2 = null!;
+    private TestAnimationPlayer animator1 = null!;
+    private TestAnimationPlayer animator2 = null!;
     private SoundAsset sound1 = null!;
     private SoundAsset sound2 = null!;
     private SongAsset song1 = null!;
     private SongAsset song2 = null!;
 
-    private SpriteBatch spriteBatch = null!;
+    private float rotation = 0f;
 
     private int frameCount;
     private bool isPaused;
@@ -75,8 +74,8 @@ public sealed class Engine : Game
         name2 = "fireball_purple";
         animation1 = assetManager.Load<AnimationAsset>(path1, name1);
         animation2 = assetManager.Load<AnimationAsset>(path2, name2);
-        animator1 = new AnimationPlayer();
-        animator2 = new AnimationPlayer();
+        animator1 = new TestAnimationPlayer();
+        animator2 = new TestAnimationPlayer();
         animator1.Play(animation1);
         animator2.Play(animation2);
 
@@ -93,9 +92,6 @@ public sealed class Engine : Game
         name2 = "boss";
         song1 = assetManager.Load<SongAsset>(path1, name1);
         song2 = assetManager.Load<SongAsset>(path2, name2);
-
-        spriteBatch = new SpriteBatch(GraphicsDevice);
-
 
     }
 
@@ -133,6 +129,8 @@ public sealed class Engine : Game
             stepRequested = false;
             frameCount++;
 
+            rotation += 0.1f;
+
             animator1.Update();
             animator2.Update();
         }
@@ -155,7 +153,7 @@ public sealed class Engine : Game
             new Vector2(32, 32),
             sprite1.SourceRect,
             Color.White,
-            0,
+            rotation,
             sprite1.Anchor,
             Vector2.One * 2,
             SpriteEffects.None,
@@ -168,7 +166,7 @@ public sealed class Engine : Game
             new Vector2(96, 32),
             sprite2.SourceRect,
             Color.White,
-            0,
+            rotation,
             sprite2.Anchor,
             Vector2.One * 2,
             SpriteEffects.None,
@@ -202,22 +200,28 @@ public sealed class Engine : Game
             StgBlendState.Additive
         );
 
+        const string fontPath1 = "fonts/bumpitup_modified.ttf";
+        const string fontName1 = "test_font";
+        const string fontPath2 = "fonts/mspgothic.ttf";
+        const string fontName2 = "touhou_font";
+
+        var font1 = assetManager.Load<FontAsset>(fontPath1, fontName1).GetFont(24);
+        var font2 = assetManager.Load<FontAsset>(fontPath2, fontName2).GetFont(24);
+
+        stgBatch.DrawString(font2, "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+            new Vector2(160, 320), Color.White, 128, StgBlendState.Alpha);
+
+        var str = "！！！哈利路大旋風！！！";
+        var anchor = font2.MeasureString(str) / 2;
+
+        Console.WriteLine(anchor);
+
+        stgBatch.DrawString(font2, str,
+            new Vector2(100, 100), Color.White, 128, StgBlendState.Alpha, rotation, anchor);
+        stgBatch.DrawString(font2, "StgBatch DrawString Test!",
+            new Vector2(160, 360), Color.Yellow, 128, StgBlendState.Alpha);
+
         stgBatch.End();
-
-        spriteBatch.Begin();
-
-        const string path1 = "fonts/bumpitup_modified.ttf";
-        const string name1 = "test_font";
-        const string path2 = "fonts/mspgothic.ttf";
-        const string name2 = "touhou_font";
-
-        var font1 = assetManager.Load<FontAsset>(path1, name1).GetFont(24);
-        var font2 = assetManager.Load<FontAsset>(path2, name2).GetFont(24);
-
-        spriteBatch.DrawString(font2, "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG", new Vector2(160, 320), Color.White);
-        spriteBatch.DrawString(font2, "中文字体测试", new Vector2(800, 500), Color.White);
-
-        spriteBatch.End();
 
         base.Draw(gameTime);
     }

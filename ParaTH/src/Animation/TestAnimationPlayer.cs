@@ -5,7 +5,7 @@ namespace ParaTH;
 
 using static AnimationAsset;
 
-public sealed class AnimationPlayer
+public sealed class TestAnimationPlayer
 {
     private AnimationAsset? asset;
     private int frameIndex;
