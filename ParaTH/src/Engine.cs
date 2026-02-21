@@ -1,7 +1,9 @@
+using FontStashSharp;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
+using System.Xml.Linq;
 
 namespace ParaTH;
 
@@ -20,6 +22,8 @@ public sealed class Engine : Game
     private SoundAsset sound2 = null!;
     private SongAsset song1 = null!;
     private SongAsset song2 = null!;
+
+    private SpriteBatch spriteBatch = null!;
 
     private int frameCount;
     private bool isPaused;
@@ -50,6 +54,7 @@ public sealed class Engine : Game
         assetManager.RegisterLoader(new AnimationAssetLoader(assetManager));
         assetManager.RegisterLoader(new SoundAssetLoader());
         assetManager.RegisterLoader(new SongAssetLoader(assetManager));
+        assetManager.RegisterLoader(new FontAssetLoader());
 
         stgBatch = new StgBatch(GraphicsDevice);
         projection = Matrix.CreateOrthographicOffCenter(0, 1280, 720, 0, 0, 1);
@@ -88,6 +93,10 @@ public sealed class Engine : Game
         name2 = "boss";
         song1 = assetManager.Load<SongAsset>(path1, name1);
         song2 = assetManager.Load<SongAsset>(path2, name2);
+
+        spriteBatch = new SpriteBatch(GraphicsDevice);
+
+
     }
 
     private bool IsKeyPressed(Keys key) => prevKb.IsKeyUp(key) && currKb.IsKeyDown(key);
@@ -194,6 +203,21 @@ public sealed class Engine : Game
         );
 
         stgBatch.End();
+
+        spriteBatch.Begin();
+
+        const string path1 = "fonts/bumpitup_modified.ttf";
+        const string name1 = "test_font";
+        const string path2 = "fonts/mspgothic.ttf";
+        const string name2 = "touhou_font";
+
+        var font1 = assetManager.Load<FontAsset>(path1, name1).GetFont(24);
+        var font2 = assetManager.Load<FontAsset>(path2, name2).GetFont(24);
+
+        spriteBatch.DrawString(font2, "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG", new Vector2(160, 320), Color.White);
+        spriteBatch.DrawString(font2, "中文字体测试", new Vector2(800, 500), Color.White);
+
+        spriteBatch.End();
 
         base.Draw(gameTime);
     }
