@@ -12,7 +12,7 @@ public static class ComponentRegistry
 
     public static IReadOnlyDictionary<Type, ComponentTypeInfo> TypeTocomponentInfo => typeToComponentTypeInfo;
 
-    public static ReadOnlySpan<Type> IdToType => idToType;
+    public static ReadOnlySpan<Type> IdToType => idToType.AsSpan(0, Size);
 
     public static ComponentTypeInfo Add<T>()
     {
