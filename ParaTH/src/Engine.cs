@@ -214,8 +214,6 @@ public sealed class Engine : Game
         var str = "！！！哈利路大旋風！！！";
         var anchor = font2.MeasureString(str) / 2;
 
-        Console.WriteLine(anchor);
-
         stgBatch.DrawString(font2, str,
             new Vector2(100, 100), Color.White, 128, StgBlendState.Alpha, rotation, anchor);
         stgBatch.DrawString(font2, "StgBatch DrawString Test!",

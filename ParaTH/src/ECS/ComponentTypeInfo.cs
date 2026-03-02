@@ -1,4 +1,4 @@
-﻿namespace ParaTH;
+namespace ParaTH;
 
 public readonly record struct ComponentTypeInfo
 {

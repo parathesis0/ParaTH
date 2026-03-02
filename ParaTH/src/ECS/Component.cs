@@ -1,6 +1,6 @@
-﻿namespace ParaTH;
+namespace ParaTH;
 
-public static class Component<T> where T : struct
+public static class Component<T>
 {
     public static readonly ComponentTypeInfo TypeInfo;
 
