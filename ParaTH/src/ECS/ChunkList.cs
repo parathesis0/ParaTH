@@ -17,7 +17,9 @@ public sealed class ChunkList
         Items = ArrayPool<Chunk>.Shared.Rent(capacity);
     }
 
-    public void Add(Chunk chunk)
+#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+    public void Add(in Chunk chunk)
+#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     {
         if (Count == Capacity)
             EnsureCapacity();

@@ -32,6 +32,7 @@ public partial struct Chunk
     public int Capacity { get; }
     public readonly bool IsFull => Count >= Capacity;
 
+    // variadic source gen wip
     // returns the index of the added entity
     public int Add<T>(Entity entity, in T component)
     {
@@ -42,8 +43,8 @@ public partial struct Chunk
         return index;
     }
 
-    // swap and pop with the last chunk's last entity
-    public readonly void Remove(int index, ref Chunk lastChunk)
+    // swap and pop with the last chunk's last entity, returns the moved entity's id
+    public readonly ushort Remove(int index, ref Chunk lastChunk)
     {
         int lastIndex = lastChunk.Count - 1;
         var lastEntity = lastChunk.Entities.UnsafeAt(lastIndex);
@@ -57,14 +58,24 @@ public partial struct Chunk
         }
 
         lastChunk.Count--;
+        return lastEntity.Id;
     }
 
+    // variadic source gen wip
+    public readonly void Set<T>(int index, in T component)
+    {
+        ref var arr = ref GetComponentArrayReference<T>();
+        Unsafe.Add(ref arr, index) = component; 
+    }
+
+    // variadic source gen wip
     public readonly ref T Get<T>(int index)
     {
         ref var arr = ref GetComponentArrayReference<T>();
         return ref Unsafe.Add(ref arr, index);
     }
 
+    // variadic source gen wip
     public readonly Span<T> GetAsSpan<T>()
     {
         return MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T>(), Count);
