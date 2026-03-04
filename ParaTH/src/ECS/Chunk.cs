@@ -81,6 +81,11 @@ public partial struct Chunk
         return MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T>(), Count);
     }
 
+    public void Clear()
+    {
+        Count = 0;
+    }
+
     private readonly ref T GetComponentArrayReference<T>()
     {
         return ref MemoryMarshal.GetArrayDataReference(GetComponentArray<T>());

@@ -1,11 +1,15 @@
-﻿namespace ParaTH;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
+namespace ParaTH;
+
+[StructLayout(LayoutKind.Sequential, Pack = 2)]
 public readonly struct Entity(ushort id, ushort version) : IEquatable<Entity>
 {
     public readonly ushort Id = id;
     public readonly ushort Version = version;
 
-    public bool Equals(Entity other) => ((Id ^ other.Id) | (Version ^ other.Version)) == 0;
+    public bool Equals(Entity other) => Unsafe.BitCast<Entity, uint>(this) == Unsafe.BitCast<Entity, uint>(other);
 
     public override bool Equals(object? obj) => obj is Entity other && Equals(other);
 

@@ -16,7 +16,7 @@ public sealed partial class Archetype
     private int EntitiesPerChunk { get; }
     private int CurrentChunkIndex { get; set; }
     private ref Chunk CurrentChunk => ref chunks[CurrentChunkIndex];
-    private Slot CurrentSlot => new(CurrentChunkIndex, CurrentChunk.Count - 1);
+    private Slot CurrentSlot => new(CurrentChunk.Count - 1, CurrentChunkIndex);
     private int EntityCount { get; set; }
 
     public Archetype(ComponentTypeInfo[] componentTypes)
@@ -57,30 +57,53 @@ public sealed partial class Archetype
     public ref Chunk AddChunk()
     {
         var chunk = new Chunk(EntitiesPerChunk, componentIdToArrayIndex, componentTypes);
-        var index = chunks.Count;
-        chunks.Add(chunk);
-        CurrentChunkIndex = chunks.Count - 1;
-        return ref chunks[index];
+        var chunkList = chunks;
+        var index = chunkList.Count;
+        chunkList.Add(chunk);
+        return ref chunkList[index];
     }
 
     // variadic source gen wip
-    public void Add<T>(Entity entity, in T component)
+    public void Add<T>(Entity entity, out Chunk chunk, out Slot slot, in T component)
     {
         EntityCount++;
 
-        // current chunk has space
-        ref var chunk = ref CurrentChunk;
+        // store stack variables for faster repeated access
+        var currentChunkIndex = CurrentChunkIndex;
+        ref var currentChunk = ref CurrentChunk;
 
-        if (!chunk.IsFull)
+        int index;
+
+        // current chunk has space
+        if (!currentChunk.IsFull)
         {
-            chunk.Add<T>(entity, component);
+            index = currentChunk.Add<T>(entity, component);
+            chunk = currentChunk;
+            slot = new Slot(index, currentChunkIndex);
             return;
         }
 
-        // current chunk full, allocate the next chunk and use that
-        AddChunk();
-        CurrentChunkIndex++;
-        CurrentChunk.Add<T>(entity, component);
+        // current chunk full, use the next allocated chunk
+        currentChunkIndex++;
+        var chunks = this.chunks;
+        if (currentChunkIndex < chunks.Count)
+        {
+            currentChunk = ref chunks[currentChunkIndex];
+            index = currentChunk.Add<T>(entity, component);
+            chunk = currentChunk;
+            slot = new Slot(index, currentChunkIndex);
+
+            CurrentChunkIndex = currentChunkIndex;
+            return;
+        }
+
+        // no more free allocated chunks, create new chunk
+        ref var newChunk = ref AddChunk();
+        index = newChunk.Add<T>(entity, component);
+        chunk = newChunk;
+        slot = new Slot(index, currentChunkIndex);
+
+        CurrentChunkIndex = currentChunkIndex;
     }
 
     // swap and pop with the last chunk's last entity
@@ -113,14 +136,18 @@ public sealed partial class Archetype
         return (Component<T>.TypeInfo.Mask & mask) != 0;
     }
 
-    public void Clear()
-    {
-        throw new NotImplementedException();
-    }
-
     public void TrimExcess()
     {
-        throw new NotImplementedException();
+        chunks.Count = CurrentChunkIndex + 1;
+        chunks.TrimExcess();
+    }
+
+    // doesn't dispose any resources
+    public void Clear()
+    {
+        CurrentChunkIndex = 0;
+        EntityCount = 0;
+        chunks.Clear();
     }
 
     private static unsafe int GetChunkSize(int typesByteSize)

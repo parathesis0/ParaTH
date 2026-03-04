@@ -7,7 +7,7 @@ namespace ParaTH;
 public sealed class ChunkList
 {
     private Chunk[] Items;
-    public int Count { get; private set; }
+    public int Count { get; set; }
     public int Capacity { get; private set; }
 
     public ChunkList(int capacity)
@@ -48,6 +48,15 @@ public sealed class ChunkList
 
         Items = newArr;
         Capacity = min;
+    }
+
+    public void Clear()
+    {
+        for (int i = 0; i < Count; i++)
+        {
+            ref var chunk = ref this[i];
+            chunk.Clear();
+        }
     }
 
     public ref Chunk this[int index]
