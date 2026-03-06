@@ -57,10 +57,11 @@ public sealed partial class Archetype
     public ref Chunk AddChunk()
     {
         var chunk = new Chunk(EntitiesPerChunk, componentIdToArrayIndex, componentTypes);
-        var chunkList = chunks;
-        var index = chunkList.Count;
-        chunkList.Add(chunk);
-        return ref chunkList[index];
+        var chunks = this.chunks;
+        var index = chunks.Count;
+        chunks.EnsureCapacity(index + 1);
+        chunks.Add(chunk);
+        return ref chunks[index];
     }
 
     // variadic source gen wip

@@ -25,9 +25,7 @@
       <NativeBinaryFiles Include="$(NativeLibPath)\*" />
     </ItemGroup>
 
-    <Copy SourceFiles="@(NativeBinaryFiles)"
-          DestinationFolder="$(OutDir)"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(NativeBinaryFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
 
   <ItemGroup>
@@ -43,9 +41,7 @@
     <ShaderSource Include="src\Graphics\Effects\HLSL\**\*.fx" />
   </ItemGroup>
 
-  <Target Name="CompileShaders" BeforeTargets="ResolveReferences;PrepareForBuild"
-          Inputs="@(ShaderSource)"
-          Outputs="@(ShaderSource->'Content\Effects\%(Filename).fxb')">
+  <Target Name="CompileShaders" BeforeTargets="ResolveReferences;PrepareForBuild" Inputs="@(ShaderSource)" Outputs="@(ShaderSource->'Content\Effects\%(Filename).fxb')">
 
     <Message Text="Compiling HLSL Shader: %(ShaderSource.Filename)" Importance="High" />
 

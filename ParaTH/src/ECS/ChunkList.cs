@@ -21,14 +21,13 @@ public sealed class ChunkList
     public void Add(in Chunk chunk)
 #pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     {
-        if (Count == Capacity)
-            EnsureCapacity();
         Items.UnsafeAt(Count++) = chunk;
     }
 
-    private void EnsureCapacity()
+    public void EnsureCapacity(int newCapacity)
     {
-        int newCapacity = Capacity * 2;
+        if (newCapacity <= Capacity)
+            return;
 
         var newArr = ArrayPool<Chunk>.Shared.Rent(newCapacity);
         Items.AsSpan(0, Count).CopyTo(newArr);
