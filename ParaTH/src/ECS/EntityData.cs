@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace ParaTH;
 
-public sealed record EntityData
+public record struct EntityData
 {
     public Archetype archetype;
     public Slot slot;

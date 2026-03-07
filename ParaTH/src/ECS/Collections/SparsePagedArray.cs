@@ -3,23 +3,31 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace ParaTH;
 
 [SkipLocalsInit]
-public sealed class PagedArray<T>
+public sealed class SparsePagedArray<T>
 {
     [SkipLocalsInit]
-    private struct Page
+    private struct SparsePage
     {
-        public readonly T[] Items;
-        public readonly ulong[] Occupied;
+        public T[] Items;
+        public ulong[] Occupied;
 
-        public Page(int capacity)
+        public SparsePage(int capacity)
         {
-            Items = new T[capacity];
-            Occupied = new ulong[(capacity + 63) >> 6];
+            Capacity = capacity;
+            Items = [];
+            Occupied = [];
+        }
+
+        public int Capacity
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set;
         }
 
         public int Count
@@ -28,6 +36,27 @@ public sealed class PagedArray<T>
             get;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnsureCapacity()
+        {
+            if (Items.Length != 0)
+                return;
+
+            var capacity = Capacity;
+            Items = new T[capacity];
+            Occupied = new ulong[(capacity + 63) >> 6];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void TrimExcess()
+        {
+            if (Count > 0)
+                return;
+
+            Items = [];
+            Occupied = [];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -73,22 +102,22 @@ public sealed class PagedArray<T>
     private readonly int pageSize;
     private readonly int pageSizeMinusOne;
     private readonly int pageSizeShift;
-    private Page[] pages;
+    private SparsePage[] pages;
 
     public int Capacity => pageSize * pages.Length;
     public int PageCount => pages.Length;
 
-    public PagedArray(int pageSize, int capacity = 64)
+    public SparsePagedArray(int pageSize, int capacity = 64)
     {
         pageSize = (int)BitOperations.RoundUpToPowerOf2((uint)pageSize);
         this.pageSize = pageSize;
         pageSizeMinusOne = pageSize - 1;
         pageSizeShift = BitOperations.Log2((uint)pageSize);
 
-        pages = new Page[(capacity / pageSize) + 1];
+        pages = new SparsePage[(capacity / pageSize) + 1];
 
         for (int i = 0; i < pages.Length; i++)
-            pages.UnsafeAt(i) = new Page(pageSize);
+            pages.UnsafeAt(i) = new SparsePage(pageSize);
     }
 
     // ensure capacity before you add
@@ -97,6 +126,8 @@ public sealed class PagedArray<T>
     {
         IndexToSlot(index, out var pageIndex, out var itemIndex);
         ref var page = ref pages.UnsafeAt(pageIndex);
+
+        page.EnsureCapacity();
 
         if (!page.IsSet(itemIndex))
             page.Count++;
@@ -116,7 +147,7 @@ public sealed class PagedArray<T>
         Array.Resize(ref pages, newpageCount);
 
         for (int i = oldpageCount; i < newpageCount; i++)
-            pages.UnsafeAt(i) = new Page(pageSize);
+            pages.UnsafeAt(i) = new SparsePage(pageSize);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -149,6 +180,12 @@ public sealed class PagedArray<T>
         IndexToSlot(index, out var pageIndex, out var itemIndex);
         ref var page = ref pages.UnsafeAt(pageIndex);
 
+        if (page.IsEmpty)
+        {
+            value = default!;
+            return false;
+        }
+
         if (!page.IsSet(itemIndex))
         {
             value = default!;
@@ -166,7 +203,12 @@ public sealed class PagedArray<T>
             return false;
 
         IndexToSlot(index, out var pageIndex, out var itemIndex);
-        return pages.UnsafeAt(pageIndex).IsSet(itemIndex);
+        ref var page = ref pages.UnsafeAt(pageIndex);
+
+        if (page.IsEmpty)
+            return false;
+
+        return page.IsSet(itemIndex);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -178,12 +220,17 @@ public sealed class PagedArray<T>
         IndexToSlot(index, out var pageIndex, out var itemIndex);
         ref var page = ref pages.UnsafeAt(pageIndex);
 
+        if (page.IsEmpty)
+            return;
+
         if (page.IsSet(itemIndex))
         {
             page.Unset(itemIndex);
             page.Count--;
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                 page[itemIndex] = default!;
+
+            page.TrimExcess();
         }
     }
 
