@@ -2,16 +2,15 @@ namespace ParaTH;
 
 public sealed partial class Archetype
 {
-    private const int BaseChunkByteSize = 1024 * 16;
-    private const int BaseChunkEntityCount = 100;
-    private const int InitChunksCapacity = 8;
-
     private readonly ComponentTypeInfo[] componentTypes;
     private readonly int[] componentIdToArrayIndex;
 
     private readonly ChunkList chunks;
 
     public ulong Mask { get; }
+    private int BaseChunkByteSize { get; }
+    private int BaseChunkEntityCount { get; }
+
     private int ChunkSize { get; }
     private int EntitiesPerChunk { get; }
     private int CurrentChunkIndex { get; set; }
@@ -19,7 +18,7 @@ public sealed partial class Archetype
     private Slot CurrentSlot => new(CurrentChunk.Count - 1, CurrentChunkIndex);
     private int EntityCount { get; set; }
 
-    public Archetype(ComponentTypeInfo[] componentTypes)
+    public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, int baseChunkEntityCount)
     {
         ulong mask = 0;
         int max = 0;
@@ -34,6 +33,8 @@ public sealed partial class Archetype
 
         Mask = mask;
         componentIdToArrayIndex = new int[max + 1];
+        BaseChunkByteSize = baseChunkByteSize;
+        BaseChunkEntityCount = baseChunkEntityCount;
 
         Array.Fill(componentIdToArrayIndex, -1);
         for (int i = 0; i < componentTypes.Length; i++)
@@ -50,7 +51,7 @@ public sealed partial class Archetype
         ChunkSize = GetChunkSize(typesByteSize);
         EntitiesPerChunk = GetEntitesPerChunk(ChunkSize, typesByteSize);
 
-        chunks = new ChunkList(InitChunksCapacity);
+        chunks = new ChunkList(1);
         AddChunk();
     }
 
@@ -151,13 +152,13 @@ public sealed partial class Archetype
         chunks.Clear();
     }
 
-    private static unsafe int GetChunkSize(int typesByteSize)
+    private unsafe int GetChunkSize(int typesByteSize)
     {
         var entityByteSize = BaseChunkEntityCount * (sizeof(Entity) + typesByteSize);
         return (entityByteSize + BaseChunkByteSize - 1) / BaseChunkByteSize * BaseChunkByteSize;
     }
 
-    private static unsafe int GetEntitesPerChunk(int chunkByteSize, int typesByteSize)
+    private unsafe int GetEntitesPerChunk(int chunkByteSize, int typesByteSize)
     {
         return chunkByteSize / (sizeof(Entity) + typesByteSize);
     }

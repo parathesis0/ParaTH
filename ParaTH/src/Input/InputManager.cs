@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
 namespace ParaTH;
@@ -60,17 +60,17 @@ public sealed class InputManager
     }
 
     #region Action detection
-    public bool IsActionPressed(GameAction action) =>
-        inputBindings.TryGetValue(action, out var bindings) &&
-        bindings.Any(binding => IsBindingPressed(binding));
+    public bool IsActionPressed(GameAction action)
+        => inputBindings.TryGetValue(action, out var bindings) &&
+           bindings.Any(binding => IsBindingPressed(binding));
 
-    public bool IsActionHeld(GameAction action) =>
-        inputBindings.TryGetValue(action, out var bindings) &&
-        bindings.Any(binding => IsBindingHeld(binding));
+    public bool IsActionHeld(GameAction action)
+        => inputBindings.TryGetValue(action, out var bindings) &&
+           bindings.Any(binding => IsBindingHeld(binding));
 
-    public bool IsActionReleased(GameAction action) =>
-        inputBindings.TryGetValue(action, out var bindings) &&
-        bindings.Any(binding => IsBindingReleased(binding));
+    public bool IsActionReleased(GameAction action)
+        => inputBindings.TryGetValue(action, out var bindings) &&
+           bindings.Any(binding => IsBindingReleased(binding));
     #endregion
 
     #region Binding detection
@@ -144,23 +144,23 @@ public sealed class InputManager
     #endregion
 
     #region Direct Input Detection
-    public bool IsKeyPressed(Keys key) =>
-        currentKeyboardState.IsKeyDown(key) && !previousKeyboardState.IsKeyDown(key);
+    public bool IsKeyPressed(Keys key)
+        => currentKeyboardState.IsKeyDown(key) && !previousKeyboardState.IsKeyDown(key);
 
-    public bool IsKeyHeld(Keys key) =>
-        currentKeyboardState.IsKeyDown(key);
+    public bool IsKeyHeld(Keys key)
+        => currentKeyboardState.IsKeyDown(key);
 
-    public bool IsKeyReleased(Keys key) =>
-        !currentKeyboardState.IsKeyDown(key) && previousKeyboardState.IsKeyDown(key);
+    public bool IsKeyReleased(Keys key)
+        => !currentKeyboardState.IsKeyDown(key) && previousKeyboardState.IsKeyDown(key);
 
-    public bool IsMouseButtonPressed(MouseButton button) =>
-        IsMouseButtonDown(button) && !WasMouseButtonDown(button);
+    public bool IsMouseButtonPressed(MouseButton button)
+        => IsMouseButtonDown(button) && !WasMouseButtonDown(button);
 
-    public bool IsMouseButtonHeld(MouseButton button) =>
-        IsMouseButtonDown(button);
+    public bool IsMouseButtonHeld(MouseButton button)
+        => IsMouseButtonDown(button);
 
-    public bool IsMouseButtonReleased(MouseButton button) =>
-        !IsMouseButtonDown(button) && WasMouseButtonDown(button);
+    public bool IsMouseButtonReleased(MouseButton button)
+        => !IsMouseButtonDown(button) && WasMouseButtonDown(button);
     #endregion
 
     #region Binding Management
@@ -198,14 +198,14 @@ public sealed class InputManager
 
     public void ClearAllBindings() => inputBindings.Clear();
 
-    public void SetBindings(IReadOnlyDictionary<GameAction, IReadOnlyList<InputBinding>> newBindings) =>
-        inputBindings = newBindings.ToDictionary(
+    public void SetBindings(IReadOnlyDictionary<GameAction, IReadOnlyList<InputBinding>> newBindings)
+        => inputBindings = newBindings.ToDictionary(
             kvp => kvp.Key,
             kvp => kvp.Value.ToList()
         );
 
-    public List<InputBinding> GetBindings(GameAction action) =>
-        inputBindings.TryGetValue(action, out var bindings)
+    public List<InputBinding> GetBindings(GameAction action)
+        => inputBindings.TryGetValue(action, out var bindings)
             ? [.. bindings]
             : [];
     #endregion

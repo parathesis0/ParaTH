@@ -16,6 +16,6 @@ public readonly struct Entity(ushort id, ushort version) : IEquatable<Entity>
     public static bool operator ==(Entity left, Entity right) => left.Equals(right);
 
     public static bool operator !=(Entity left, Entity right) => !(left == right);
-    
+
     public override int GetHashCode() => (Id << 16) | Version;
 }

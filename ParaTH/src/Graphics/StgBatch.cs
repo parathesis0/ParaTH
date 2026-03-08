@@ -23,10 +23,8 @@ public sealed unsafe class StgBatch : IDisposable
 
     private class CommandBucket
     {
-        public DrawCommand[] Commands = Empty;
+        public DrawCommand[] Commands = [];
         public int Count = 0;
-
-        private static readonly DrawCommand[] Empty = [];
 
         public void Add(DrawCommand command)
         {

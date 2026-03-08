@@ -5,14 +5,14 @@ namespace ParaTH;
 
 public record struct EntityData
 {
-    public Archetype archetype;
-    public Slot slot;
+    public Archetype Archetype;
+    public Slot Slot;
     public int Version;
 
     public EntityData(Archetype archetype, Slot slot, int version)
     {
-        this.archetype = archetype;
-        this.slot = slot;
-        this.Version = version;
+        Archetype = archetype;
+        Slot = slot;
+        Version = version;
     }
 }
