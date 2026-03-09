@@ -37,6 +37,9 @@ public sealed class EntityDataMap
     public bool Has(int entityId)
         => entityDatas.ContainsKey(entityId);
 
+    public void Move(int id, Slot slot)
+        => entityDatas[id].Slot = slot;
+
     public void EnsureCapacity(int capacity)
         => entityDatas.EnsureCapacity(capacity);
 

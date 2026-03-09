@@ -159,6 +159,22 @@ public sealed class PagedArray<T>
         return true;
     }
 
+    // nullref if value doesn't exist
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ref T TryGetRef(int index)
+    {
+        if ((uint)index >= (uint)Capacity)
+            return ref Unsafe.NullRef<T>();
+
+        IndexToSlot(index, out var pageIndex, out var itemIndex);
+        ref var page = ref pages.UnsafeAt(pageIndex);
+
+        if (!page.IsSet(itemIndex))
+            return ref Unsafe.NullRef<T>();
+
+        return ref page[itemIndex];
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool ContainsKey(int index)
     {

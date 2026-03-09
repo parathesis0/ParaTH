@@ -9,16 +9,16 @@ public sealed partial class Archetype
 
     public ulong Mask { get; }
     private int BaseChunkByteSize { get; }
-    private int BaseChunkEntityCount { get; }
+    private ushort BaseChunkEntityCount { get; }
 
     private int ChunkSize { get; }
-    private int EntitiesPerChunk { get; }
+    public ushort EntitiesPerChunk { get; }
     private int CurrentChunkIndex { get; set; }
     private ref Chunk CurrentChunk => ref chunks[CurrentChunkIndex];
     private Slot CurrentSlot => new(CurrentChunk.Count - 1, CurrentChunkIndex);
     private int EntityCount { get; set; }
 
-    public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, int baseChunkEntityCount)
+    public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, ushort baseChunkEntityCount)
     {
         ulong mask = 0;
         int max = 0;
@@ -65,8 +65,9 @@ public sealed partial class Archetype
         return ref chunks[index];
     }
 
-    // variadic source gen wip
-    public void Add<T>(Entity entity, out Chunk chunk, out Slot slot, in T component)
+    // returns the count of allocated entites
+    // todo: variadic source gen wip
+    public ushort Add<T0>(Entity entity, out Slot slot, in T0 component)
     {
         EntityCount++;
 
@@ -79,10 +80,9 @@ public sealed partial class Archetype
         // current chunk has space
         if (!currentChunk.IsFull)
         {
-            index = currentChunk.Add<T>(entity, component);
-            chunk = currentChunk;
+            index = currentChunk.Add<T0>(entity, component);
             slot = new Slot(index, currentChunkIndex);
-            return;
+            return 0;
         }
 
         // current chunk full, use the next allocated chunk
@@ -91,21 +91,20 @@ public sealed partial class Archetype
         if (currentChunkIndex < chunks.Count)
         {
             currentChunk = ref chunks[currentChunkIndex];
-            index = currentChunk.Add<T>(entity, component);
-            chunk = currentChunk;
+            index = currentChunk.Add<T0>(entity, component);
             slot = new Slot(index, currentChunkIndex);
 
             CurrentChunkIndex = currentChunkIndex;
-            return;
+            return 0;
         }
 
         // no more free allocated chunks, create new chunk
         ref var newChunk = ref AddChunk();
-        index = newChunk.Add<T>(entity, component);
-        chunk = newChunk;
+        index = newChunk.Add<T0>(entity, component);
         slot = new Slot(index, currentChunkIndex);
 
         CurrentChunkIndex = currentChunkIndex;
+        return EntitiesPerChunk;
     }
 
     // swap and pop with the last chunk's last entity
@@ -125,17 +124,17 @@ public sealed partial class Archetype
         return movedEntityId;
     }
 
-    // variadic source gen wip
-    public void Set<T>(Slot slot, in T component)
+    // todo: variadic source gen wip
+    public void Set<T0>(Slot slot, in T0 component)
     {
-        chunks[slot.ChunkIndex].Set<T>(slot.Index, component);
+        chunks[slot.ChunkIndex].Set<T0>(slot.Index, component);
     }
 
-    // variadic source gen wip
-    public bool Has<T>()
+    // todo: variadic source gen wip
+    public bool Has<T0>()
     {
         var mask = Mask;
-        return (Component<T>.TypeInfo.Mask & mask) != 0;
+        return (Component<T0>.GroupMask & mask) != 0;
     }
 
     public void TrimExcess()
@@ -158,8 +157,8 @@ public sealed partial class Archetype
         return (entityByteSize + BaseChunkByteSize - 1) / BaseChunkByteSize * BaseChunkByteSize;
     }
 
-    private unsafe int GetEntitesPerChunk(int chunkByteSize, int typesByteSize)
+    private unsafe ushort GetEntitesPerChunk(int chunkByteSize, int typesByteSize)
     {
-        return chunkByteSize / (sizeof(Entity) + typesByteSize);
+        return (ushort)(chunkByteSize / (sizeof(Entity) + typesByteSize));
     }
 }

@@ -24,6 +24,7 @@ public partial struct Chunk
         for (int i = 0; i < Components.Length; i++)
         {
             var type = types.UnsafeAt(i).Type;
+            // todo: reflection is slow, array registry maybe
             Components.UnsafeAt(i) = Array.CreateInstance(type, capacity);
         }
     }
@@ -32,13 +33,13 @@ public partial struct Chunk
     public int Capacity { get; }
     public readonly bool IsFull => Count >= Capacity;
 
-    // variadic source gen wip
+    // todo: variadic source gen wip
     // returns the index of the added entity
-    public int Add<T>(Entity entity, in T component)
+    public int Add<T0>(Entity entity, in T0 component)
     {
         var index = Count;
         Entities.UnsafeAt(index) = entity;
-        GetComponentArray<T>().UnsafeAt(index) = component;
+        GetComponentArray<T0>().UnsafeAt(index) = component;
         Count++;
         return index;
     }
@@ -61,24 +62,24 @@ public partial struct Chunk
         return lastEntity.Id;
     }
 
-    // variadic source gen wip
-    public readonly void Set<T>(int index, in T component)
+    // todo: variadic source gen wip
+    public readonly void Set<T0>(int index, in T0 component)
     {
-        ref var arr = ref GetComponentArrayReference<T>();
-        Unsafe.Add(ref arr, index) = component; 
+        ref var arr = ref GetComponentArrayReference<T0>();
+        Unsafe.Add(ref arr, index) = component;
     }
 
-    // variadic source gen wip
-    public readonly ref T Get<T>(int index)
+    // todo: variadic source gen wip
+    public readonly ref T0 Get<T0>(int index)
     {
-        ref var arr = ref GetComponentArrayReference<T>();
+        ref var arr = ref GetComponentArrayReference<T0>();
         return ref Unsafe.Add(ref arr, index);
     }
 
-    // variadic source gen wip
-    public readonly Span<T> GetAsSpan<T>()
+    // todo: variadic source gen wip
+    public readonly Span<T0> GetAsSpan<T0>()
     {
-        return MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T>(), Count);
+        return MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T0>(), Count);
     }
 
     public void Clear()
