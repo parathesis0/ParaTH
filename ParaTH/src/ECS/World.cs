@@ -135,7 +135,7 @@ public sealed partial class World : IDisposable
             return false;
         }
 
-        ref var chunk = ref archetype.GetChunk(arrayIndex);
+        ref var chunk = ref archetype.GetChunk(slot.ChunkIndex);
         var arr = Unsafe.As<T[]>(chunk.Components.UnsafeAt(arrayIndex));
         component = arr.UnsafeAt(slot.Index);
         return true;
@@ -152,7 +152,7 @@ public sealed partial class World : IDisposable
         if (!archetype.TryGetComponentArrayIndex<T>(out var arrayIndex))
             return ref Unsafe.NullRef<T>();
 
-        ref var chunk = ref archetype.GetChunk(arrayIndex);
+        ref var chunk = ref archetype.GetChunk(slot.ChunkIndex);
         var arr = Unsafe.As<T[]>(chunk.Components.UnsafeAt(arrayIndex));
         return ref arr.UnsafeAt(slot.Index);
     }
@@ -231,7 +231,7 @@ public sealed partial class World : IDisposable
             return archetype;
 
         // todo: find a way to do this without allocating new memory?
-        var types = Merge(oldArchetype.ComponentTypes, [type]);
+        var types = Remove(oldArchetype.ComponentTypes, [type]);
         var newArchetype = GetOrCreateArchetype(types);
         oldArchetype.AddRemoveEdge(index, newArchetype);
         newArchetype.AddAddEdge(index, oldArchetype);

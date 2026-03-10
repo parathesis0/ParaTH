@@ -103,14 +103,14 @@ public partial struct Chunk
     {
         var mapping = ComponentIdToArrayIndex;
 
-        if ((uint)ComponentId > (uint)mapping.Length)
+        if ((uint)ComponentId >= (uint)mapping.Length)
         {
             arrayIndex = Archetype.InvalidIndex;
             return false;
         }
 
         arrayIndex = mapping.UnsafeAt(ComponentId);
-        return ComponentId != Archetype.InvalidIndex;
+        return arrayIndex != Archetype.InvalidIndex;
     }
 
     private readonly ref T GetComponentArrayReference<T>()

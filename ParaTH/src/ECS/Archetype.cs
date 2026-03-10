@@ -195,7 +195,7 @@ public sealed partial class Archetype
     // todo: variadic source gen wip
     public ref T0 Get<T0>(Slot slot)
     {
-        ref var chunk = ref chunks[slot.Index];
+        ref var chunk = ref chunks[slot.ChunkIndex];
         return ref chunk.Get<T0>(slot.Index);
     }
 
@@ -227,14 +227,14 @@ public sealed partial class Archetype
 
         var mapping = componentIdToArrayIndex;
 
-        if ((uint)id > (uint)mapping.Length)
+        if ((uint)id >= (uint)mapping.Length)
         {
             arrayIndex = InvalidIndex;
             return false;
         }
 
         arrayIndex = mapping.UnsafeAt(id);
-        return id != InvalidIndex;
+        return arrayIndex != InvalidIndex;
     }
 
     private static unsafe int GetChunkSize(int typesByteSize, int baseChunkByteSize, int baseChunkEntityCount)
