@@ -1,17 +1,26 @@
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 namespace ParaTH;
 
-public readonly record struct ComponentTypeInfo
+[StructLayout(LayoutKind.Sequential, Pack = 4)]
+public readonly struct ComponentTypeInfo(int id, int byteSize) : IEquatable<ComponentTypeInfo>
 {
-    public readonly int Id;
-    public readonly int ByteSize;
-
-    public ComponentTypeInfo(int id, int byteSize)
-    {
-        Id = id;
-        ByteSize = byteSize;
-    }
+    public readonly int Id = id;
+    public readonly int ByteSize = byteSize;
 
     public ulong Mask => 1UL << Id;
 
     public Type Type => ComponentRegistry.IdToType[Id];
+
+    public bool Equals(ComponentTypeInfo other)
+        => Unsafe.BitCast<ComponentTypeInfo, ulong>(this) == Unsafe.BitCast<ComponentTypeInfo, ulong>(other);
+
+    public override bool Equals(object? obj) => obj is ComponentTypeInfo other && Equals(other);
+
+    public static bool operator ==(ComponentTypeInfo left, ComponentTypeInfo right) => left.Equals(right);
+
+    public static bool operator !=(ComponentTypeInfo left, ComponentTypeInfo right) => !(left == right);
+
+    public override int GetHashCode() => Id;
 }

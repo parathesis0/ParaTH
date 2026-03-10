@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -44,7 +45,18 @@ public partial struct Chunk
         return index;
     }
 
-    // swap and pop with the last chunk's last entity, returns the moved entity's id
+    // returns the index of the reserved spot
+    // blatant violation of the dry principle
+    // should only be called by Archetype.Reserve, fuck
+    public int Reserve()
+    {
+        var index = Count;
+        Count++;
+        return index;
+    }
+
+    // swap and pop with the last chunk's last entity
+    // returns the moved entity's id
     public readonly ushort Remove(int index, ref Chunk lastChunk)
     {
         int lastIndex = lastChunk.Count - 1;
@@ -87,6 +99,20 @@ public partial struct Chunk
         Count = 0;
     }
 
+    public bool TryGetComponentArrayIndex(int ComponentId, out int arrayIndex)
+    {
+        var mapping = ComponentIdToArrayIndex;
+
+        if ((uint)ComponentId > (uint)mapping.Length)
+        {
+            arrayIndex = Archetype.InvalidIndex;
+            return false;
+        }
+
+        arrayIndex = mapping.UnsafeAt(ComponentId);
+        return ComponentId != Archetype.InvalidIndex;
+    }
+
     private readonly ref T GetComponentArrayReference<T>()
     {
         return ref MemoryMarshal.GetArrayDataReference(GetComponentArray<T>());
@@ -97,5 +123,32 @@ public partial struct Chunk
         int typeId = Component<T>.TypeInfo.Id;
         int arrayId = ComponentIdToArrayIndex.UnsafeAt(typeId);
         return Unsafe.As<T[]>(Components.UnsafeAt(arrayId));
+    }
+
+    public static void CopyEntityComponents(
+        ref Chunk src, int srcIndex,
+        ref Chunk dst, int dstIndex,
+        ComponentTypeInfo[] srcTypes, int length)
+    {
+        var srcArrays = src.Components;
+        var dstArrays = dst.Components;
+
+        // copy entity
+        dst.Entities.UnsafeAt(dstIndex) = src.Entities.UnsafeAt(srcIndex);
+
+        // copy components, the component removing of World.Remove is done here
+        for (int i = 0; i < srcTypes.Length; i++)
+        {
+            var srcArray = srcArrays[i];
+            var typeId = srcTypes[i].Id;
+
+            // if source type not in dst type it will be removed
+            if (!dst.TryGetComponentArrayIndex(typeId, out int arrayId))
+                continue;
+
+            var dstArray = dstArrays[arrayId];
+
+            Array.Copy(srcArray, srcIndex, dstArray, dstIndex, length);
+        }
     }
 }

@@ -5,7 +5,7 @@ namespace ParaTH;
 
 public sealed partial class World
 {
-    public Components<T0, T1> GetComponents<T0, T1>(Entity entity)
+    public Components<T0, T1> GetComponent<T0, T1>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var slot = entityData.Slot;

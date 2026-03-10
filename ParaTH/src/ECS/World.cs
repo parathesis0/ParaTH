@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
@@ -35,6 +36,7 @@ public sealed partial class World : IDisposable
 
     #region Entity Creation and Destroy
     // todo: variadic source gen wip
+    [SkipLocalsInit]
     public Entity CreateEntity<T0>(in T0 component)
     {
         var types = Component<T0>.GroupTypeInfo;
@@ -42,7 +44,7 @@ public sealed partial class World : IDisposable
         var entity = RecycleOrCreateEntity();
 
         var archetype = GetOrCreateArchetype(types);
-        var allocatedEntities = archetype.Add<T0>(entity, out var slot, component);
+        var allocatedEntities = archetype.Add<T0>(entity, out var slot, in component);
 
         capacity += allocatedEntities;
         entityDatas.EnsureCapacity(capacity);
@@ -52,6 +54,7 @@ public sealed partial class World : IDisposable
         return entity;
     }
 
+    [SkipLocalsInit]
     public void DestroyEntity(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -61,20 +64,23 @@ public sealed partial class World : IDisposable
         DestroyAndRecycleEntity(entity);
     }
 
+    [SkipLocalsInit]
     public bool IsAlive(Entity entity)
     {
-        ref var entityData = ref entityDatas.TryGetEntityDataRef(entity.Id);
+        ref var entityData = ref entityDatas.TryGetEntityData(entity.Id);
 
         return !Unsafe.IsNullRef(ref entityData) &&
             entityData.Version == entity.Version;
     }
 
+    [SkipLocalsInit]
     private Entity RecycleOrCreateEntity()
     {
         var recycle = recycledEntities.TryDequeue(out Entity entity);
         return recycle ? entity : new Entity(entityCount++, 1);
     }
 
+    [SkipLocalsInit]
     private void DestroyAndRecycleEntity(Entity entity)
     {
         entityDatas.Remove(entity.Id);
@@ -83,6 +89,7 @@ public sealed partial class World : IDisposable
         entityCount--;
     }
 
+    [SkipLocalsInit]
     private Archetype GetOrCreateArchetype(ComponentTypeInfo[] types)
     {
         ulong mask = 0;
@@ -96,7 +103,7 @@ public sealed partial class World : IDisposable
         groupMaskToArchetype[mask] = newArchetype;
 
         // archetypes allocate one chunk upon creation
-        capacity += (ushort)newArchetype.EntitiesPerChunk;
+        capacity += newArchetype.EntitiesPerChunk;
         entityDatas.EnsureCapacity(capacity);
 
         return newArchetype;
@@ -105,7 +112,8 @@ public sealed partial class World : IDisposable
 
     #region Component Manipulation
     // todo: variadic source gen wip
-    public ref T0 GetComponents<T0>(Entity entity)
+    [SkipLocalsInit]
+    public ref T0 GetComponent<T0>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var slot = entityData.Slot;
@@ -114,6 +122,7 @@ public sealed partial class World : IDisposable
     }
 
     // todo: is this correct/optimal?
+    [SkipLocalsInit]
     public bool TryGetComponent<T>(Entity entity, out T component)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -128,11 +137,12 @@ public sealed partial class World : IDisposable
 
         ref var chunk = ref archetype.GetChunk(arrayIndex);
         var arr = Unsafe.As<T[]>(chunk.Components.UnsafeAt(arrayIndex));
-        component = arr[slot.Index];
+        component = arr.UnsafeAt(slot.Index);
         return true;
     }
 
     // todo: is this correct/optimal?
+    [SkipLocalsInit]
     public ref T TryGetComponentRef<T>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -144,7 +154,111 @@ public sealed partial class World : IDisposable
 
         ref var chunk = ref archetype.GetChunk(arrayIndex);
         var arr = Unsafe.As<T[]>(chunk.Components.UnsafeAt(arrayIndex));
-        return ref arr[slot.Index];
+        return ref arr.UnsafeAt(slot.Index);
+    }
+
+    // todo: variadic source gen wip
+    [SkipLocalsInit]
+    public bool HasComponent<T0>(Entity entity)
+    {
+        var archetype = entityDatas.GetArchetype(entity.Id);
+        return archetype.Has<T0>();
+    }
+
+    // todo: variadic source gen wip
+    [SkipLocalsInit]
+    public void SetComponentValue<T0>(Entity entity, in T0 component)
+    {
+        ref var entityData = ref entityDatas.GetEntityData(entity.Id);
+        var archetype = entityData.Archetype;
+        var slot = entityData.Slot;
+
+        archetype.Set<T0>(slot, component);
+    }
+
+    // todo: variadic source gen wip
+    [SkipLocalsInit]
+    public void AddComponent<T0>(Entity entity, in T0 component)
+    {
+        ref var entityData = ref entityDatas.GetEntityData(entity.Id);
+        var oldArchetype = entityData.Archetype;
+
+        var newArchetype = GetOrCreateArchetypeByAddEdge(Component<T0>.TypeInfo, oldArchetype);
+
+        // moving to a archetype with more component types allocates the space for the new component
+        Move(ref entityData, oldArchetype, newArchetype);
+
+        // new component is empty, give it value
+        SetComponentValue<T0>(entity, component);
+    }
+
+    // todo: variadic source gen wip
+    [SkipLocalsInit]
+    public void RemoveComponent<T0>(Entity entity)
+    {
+        ref var entityData = ref entityDatas.GetEntityData(entity.Id);
+        var oldArchetype = entityData.Archetype;
+
+        var newArchetype = GetOrCreateArchetypeByRemoveEdge(Component<T0>.TypeInfo, oldArchetype);
+
+        // moving to a archetype with less component types removes the component during chunk's copying
+        Move(ref entityData, oldArchetype, newArchetype);
+    }
+
+    [SkipLocalsInit]
+    private Archetype GetOrCreateArchetypeByAddEdge(in ComponentTypeInfo type, Archetype oldArchetype)
+    {
+        var index = type.Id;
+
+        if (oldArchetype.TryGetAddEdge(index, out var archetype))
+            return archetype;
+
+        // todo: find a way to do this without allocating new memory?
+        var types = Merge(oldArchetype.ComponentTypes, [type]);
+        var newArchetype = GetOrCreateArchetype(types);
+        oldArchetype.AddAddEdge(index, newArchetype);
+        newArchetype.AddRemoveEdge(index, oldArchetype);
+
+        return newArchetype;
+    }
+
+    [SkipLocalsInit]
+    private Archetype GetOrCreateArchetypeByRemoveEdge(in ComponentTypeInfo type, Archetype oldArchetype)
+    {
+        var index = type.Id;
+
+        if (oldArchetype.TryGetRemoveEdge(index, out var archetype))
+            return archetype;
+
+        // todo: find a way to do this without allocating new memory?
+        var types = Merge(oldArchetype.ComponentTypes, [type]);
+        var newArchetype = GetOrCreateArchetype(types);
+        oldArchetype.AddRemoveEdge(index, newArchetype);
+        newArchetype.AddAddEdge(index, oldArchetype);
+
+        return newArchetype;
+    }
+
+    [SkipLocalsInit]
+    private void Move(ref EntityData srcEntityData, Archetype srcArchetype, Archetype dstArchetype)
+    {
+        Debug.Assert(srcArchetype != dstArchetype,
+            "Source archetype cannot be the same as destination archetype.");
+
+        var oldSlot = srcEntityData.Slot;
+        var allocatedEntities = dstArchetype.Reserve(out var newSlot);
+
+        Archetype.CopyEntityComponents(srcArchetype, oldSlot, dstArchetype, newSlot);
+        var movedEntityId = srcArchetype.Remove(oldSlot);
+
+        var entityDatas = this.entityDatas;
+        entityDatas.Move(movedEntityId, oldSlot);
+
+        srcEntityData.Archetype = dstArchetype;
+        srcEntityData.Slot = newSlot;
+
+        capacity += allocatedEntities;
+        entityDatas.EnsureCapacity(capacity);
     }
 
     #endregion
