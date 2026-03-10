@@ -1,16 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.AccessControl;
+using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
 public sealed partial class World : IDisposable
 {
-    private EntityDataMap entityDatas;
-    private ArchetypeList archetypes;
-    private Dictionary<ulong, Archetype> groupMaskToArchetype;
-    private Queue<Entity> recycledEntities;
+    private readonly EntityDataMap entityDatas;
+    private readonly ArchetypeList archetypes;
+    private readonly Dictionary<ulong, Archetype> groupMaskToArchetype;
+    private readonly Queue<Entity> recycledEntities;
 
     private readonly int baseChunkByteSize;
     private readonly ushort baseChunkEntityCount;
@@ -34,8 +33,9 @@ public sealed partial class World : IDisposable
         this.baseChunkEntityCount = baseChunkEntityCount;
     }
 
+    #region Entity Creation and Destroy
     // todo: variadic source gen wip
-    public Entity Create<T0>(in T0 component)
+    public Entity CreateEntity<T0>(in T0 component)
     {
         var types = Component<T0>.GroupTypeInfo;
 
@@ -52,13 +52,21 @@ public sealed partial class World : IDisposable
         return entity;
     }
 
-    public void Destroy(Entity entity)
+    public void DestroyEntity(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var movedEntityId = entityData.Archetype.Remove(entityData.Slot);
         entityDatas.Move(movedEntityId, entityData.Slot);
 
         DestroyAndRecycleEntity(entity);
+    }
+
+    public bool IsAlive(Entity entity)
+    {
+        ref var entityData = ref entityDatas.TryGetEntityDataRef(entity.Id);
+
+        return !Unsafe.IsNullRef(ref entityData) &&
+            entityData.Version == entity.Version;
     }
 
     private Entity RecycleOrCreateEntity()
@@ -93,7 +101,53 @@ public sealed partial class World : IDisposable
 
         return newArchetype;
     }
+    #endregion
 
+    #region Component Manipulation
+    // todo: variadic source gen wip
+    public ref T0 GetComponents<T0>(Entity entity)
+    {
+        ref var entityData = ref entityDatas.GetEntityData(entity.Id);
+        var slot = entityData.Slot;
+        var archetype = entityData.Archetype;
+        return ref archetype.Get<T0>(slot);
+    }
+
+    // todo: is this correct/optimal?
+    public bool TryGetComponent<T>(Entity entity, out T component)
+    {
+        ref var entityData = ref entityDatas.GetEntityData(entity.Id);
+        var archetype = entityData.Archetype;
+        var slot = entityData.Slot;
+
+        if (!archetype.TryGetComponentArrayIndex<T>(out var arrayIndex))
+        {
+            component = default!;
+            return false;
+        }
+
+        ref var chunk = ref archetype.GetChunk(arrayIndex);
+        var arr = Unsafe.As<T[]>(chunk.Components.UnsafeAt(arrayIndex));
+        component = arr[slot.Index];
+        return true;
+    }
+
+    // todo: is this correct/optimal?
+    public ref T TryGetComponentRef<T>(Entity entity)
+    {
+        ref var entityData = ref entityDatas.GetEntityData(entity.Id);
+        var archetype = entityData.Archetype;
+        var slot = entityData.Slot;
+
+        if (!archetype.TryGetComponentArrayIndex<T>(out var arrayIndex))
+            return ref Unsafe.NullRef<T>();
+
+        ref var chunk = ref archetype.GetChunk(arrayIndex);
+        var arr = Unsafe.As<T[]>(chunk.Components.UnsafeAt(arrayIndex));
+        return ref arr[slot.Index];
+    }
+
+    #endregion
     public void Dispose()
     {
         throw new NotImplementedException();

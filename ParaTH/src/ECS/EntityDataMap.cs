@@ -31,6 +31,9 @@ public sealed class EntityDataMap
     public ref EntityData GetEntityData(int entityId)
         => ref entityDatas[entityId];
 
+    public ref EntityData TryGetEntityDataRef(int entityId)
+        => ref entityDatas.TryGetRef(entityId);
+
     public void Remove(int entityId)
         => entityDatas.Remove(entityId);
 

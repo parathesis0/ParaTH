@@ -2,6 +2,8 @@ namespace ParaTH;
 
 public sealed partial class Archetype
 {
+    public const int Invalid = -1;
+
     private readonly ComponentTypeInfo[] componentTypes;
     private readonly int[] componentIdToArrayIndex;
 
@@ -36,7 +38,7 @@ public sealed partial class Archetype
         BaseChunkByteSize = baseChunkByteSize;
         BaseChunkEntityCount = baseChunkEntityCount;
 
-        Array.Fill(componentIdToArrayIndex, -1);
+        Array.Fill(componentIdToArrayIndex, Invalid);
         for (int i = 0; i < componentTypes.Length; i++)
         {
             ref var type = ref componentTypes[i];
@@ -62,6 +64,11 @@ public sealed partial class Archetype
         var index = chunks.Count;
         chunks.EnsureCapacity(index + 1);
         chunks.Add(chunk);
+        return ref chunks[index];
+    }
+
+    public ref Chunk GetChunk(int index)
+    {
         return ref chunks[index];
     }
 
@@ -131,6 +138,13 @@ public sealed partial class Archetype
     }
 
     // todo: variadic source gen wip
+    public ref T0 Get<T0>(Slot slot)
+    {
+        ref var chunk = ref chunks[slot.Index];
+        return ref chunk.Get<T0>(slot.Index);
+    }
+
+    // todo: variadic source gen wip
     public bool Has<T0>()
     {
         var mask = Mask;
@@ -149,6 +163,22 @@ public sealed partial class Archetype
         CurrentChunkIndex = 0;
         EntityCount = 0;
         chunks.Clear();
+    }
+
+    public bool TryGetComponentArrayIndex<T>(out int arrayIndex)
+    {
+        var id = Component<T>.TypeInfo.Id;
+
+        var mapping = componentIdToArrayIndex;
+
+        if ((uint)id > (uint)mapping.Length)
+        {
+            arrayIndex = Invalid;
+            return false;
+        }
+
+        arrayIndex = mapping.UnsafeAt(id);
+        return id != Invalid;
     }
 
     private unsafe int GetChunkSize(int typesByteSize)
