@@ -1,15 +1,19 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+public delegate void ForEach(Entity entity);
+
 public sealed partial class World : IDisposable
 {
     private readonly EntityDataMap entityDatas;
     private readonly ArchetypeList archetypes;
     private readonly Dictionary<ulong, Archetype> groupMaskToArchetype;
+    private readonly Dictionary<QueryDescriptor, Query> queryCache;
     private readonly Queue<Entity> recycledEntities;
 
     private readonly int baseChunkByteSize;
@@ -17,6 +21,8 @@ public sealed partial class World : IDisposable
 
     private ushort entityCount;
     private ushort capacity;
+
+    private bool isDisposed;
 
     public World(
         int baseChunkByteSize,
@@ -27,8 +33,8 @@ public sealed partial class World : IDisposable
         entityDatas = new EntityDataMap(baseChunkByteSize, initialEntityCapacity);
         archetypes = new ArchetypeList(initialArchetypeCapacity);
         groupMaskToArchetype = new Dictionary<ulong, Archetype>(initialArchetypeCapacity);
-
-        recycledEntities = new Queue<Entity>();
+        queryCache = new Dictionary<QueryDescriptor, Query>(initialArchetypeCapacity);
+        recycledEntities = new Queue<Entity>(initialEntityCapacity);
 
         this.baseChunkByteSize = baseChunkByteSize;
         this.baseChunkEntityCount = baseChunkEntityCount;
@@ -101,6 +107,7 @@ public sealed partial class World : IDisposable
 
         var newArchetype = new Archetype(types, baseChunkByteSize, baseChunkEntityCount);
         groupMaskToArchetype[mask] = newArchetype;
+        archetypes.Add(newArchetype);
 
         // archetypes allocate one chunk upon creation
         capacity += newArchetype.EntitiesPerChunk;
@@ -185,7 +192,7 @@ public sealed partial class World : IDisposable
 
         var newArchetype = GetOrCreateArchetypeByAddEdge(Component<T0>.TypeInfo, oldArchetype);
 
-        // moving to a archetype with more component types allocates the space for the new component
+        // moving to a archetype with more component types reserves space for the new component
         Move(ref entityData, oldArchetype, newArchetype);
 
         // new component is empty, give it value
@@ -262,8 +269,64 @@ public sealed partial class World : IDisposable
     }
 
     #endregion
+
+    #region Query
+#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+    [SkipLocalsInit]
+    public Query GetOrCreateQuery(in QueryDescriptor descriptor)
+    {
+        var queryCache = this.queryCache;
+        if (queryCache.TryGetValue(descriptor, out var query))
+            return query;
+
+        var newQuery = new Query(archetypes, descriptor);
+        queryCache[descriptor] = newQuery;
+        return newQuery;
+
+    }
+
+    [SkipLocalsInit]
+    public void Query(in QueryDescriptor descriptor, ForEach forEntity)
+    {
+        var query = GetOrCreateQuery(in descriptor);
+
+        foreach (var archetype in query.GetMatchingArchetypes())
+        {
+            foreach (ref var chunk in archetype.Chunks.AsSpan())
+            {
+                var entities = chunk.Entities;
+                for (int i = 0; i < chunk.EntityCount; i++)
+                {
+                    var entity = entities.UnsafeAt(i);
+                    forEntity(entity);
+                }
+            }
+        }
+    }
+#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
+    #endregion
+
+    #region Dispose
     public void Dispose()
     {
-        throw new NotImplementedException();
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
+
+    private void Dispose(bool disposing)
+    {
+        if (isDisposed)
+            return;
+
+        isDisposed = true;
+
+        entityCount = 0;
+        capacity = 0;
+
+        entityDatas.Clear();
+        archetypes.Clear();
+        groupMaskToArchetype.Clear();
+        recycledEntities.Clear();
+    }
+    #endregion
 }

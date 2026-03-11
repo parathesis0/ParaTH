@@ -23,9 +23,11 @@ public sealed partial class Archetype
     public ushort EntitiesPerChunk { get; }
     private int CurrentChunkIndex { get; set; }
     private ref Chunk CurrentChunk => ref chunks[CurrentChunkIndex];
-    private Slot CurrentSlot => new(CurrentChunk.Count - 1, CurrentChunkIndex);
+    private Slot CurrentSlot => new(CurrentChunk.EntityCount - 1, CurrentChunkIndex);
     private int EntityCount { get; set; }
     public ComponentTypeInfo[] ComponentTypes => componentTypes;
+
+    public ChunkList Chunks => chunks;
 
     public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, ushort baseChunkEntityCount)
     {
@@ -179,7 +181,7 @@ public sealed partial class Archetype
 
         EntityCount--;
 
-        if (lastChunk.Count == 0 && CurrentChunkIndex > 0)
+        if (lastChunk.EntityCount == 0 && CurrentChunkIndex > 0)
             CurrentChunkIndex--;
 
         return movedEntityId;

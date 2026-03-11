@@ -13,8 +13,7 @@ public readonly struct ComponentTypeInfo(int id, int byteSize) : IEquatable<Comp
 
     public Type Type => ComponentRegistry.IdToType[Id];
 
-    public bool Equals(ComponentTypeInfo other)
-        => Unsafe.BitCast<ComponentTypeInfo, ulong>(this) == Unsafe.BitCast<ComponentTypeInfo, ulong>(other);
+    public bool Equals(ComponentTypeInfo other) => this.Id == other.Id;
 
     public override bool Equals(object? obj) => obj is ComponentTypeInfo other && Equals(other);
 

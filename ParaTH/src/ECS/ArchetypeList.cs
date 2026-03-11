@@ -9,8 +9,11 @@ public sealed class ArchetypeList : IDisposable
     private Archetype[] Archetypes;
     private readonly int initialCapacity;
     private int count;
+    private int version; // self increments when an structual change occurs
 
     public int Count => count;
+    public int Capacity => Archetypes.Length;
+    public int Version => version; // used to check if all archetype has changed
 
     public ArchetypeList(int initialCapacity)
     {
@@ -25,6 +28,7 @@ public sealed class ArchetypeList : IDisposable
             Array.Resize(ref Archetypes, count == 0 ? initialCapacity : count * 2);
 
         Archetypes[count++] = archetype;
+        version++;
     }
 
     // removes this item, returns true if success;
@@ -39,7 +43,7 @@ public sealed class ArchetypeList : IDisposable
             Array.Copy(Archetypes, index + 1, Archetypes, index, count - index);
 
         count--;
-
+        version++;
         return true;
     }
 
@@ -58,6 +62,7 @@ public sealed class ArchetypeList : IDisposable
     {
         Array.Clear(Archetypes);
         count = 0;
+        version++;
     }
 
     public void Dispose()

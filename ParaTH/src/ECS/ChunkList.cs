@@ -6,7 +6,7 @@ namespace ParaTH;
 [SkipLocalsInit]
 public sealed class ChunkList
 {
-    private Chunk[] Items;
+    private Chunk[] items;
     public int Count { get; set; }
     public int Capacity { get; private set; }
 
@@ -14,14 +14,14 @@ public sealed class ChunkList
     {
         Count = 0;
         Capacity = capacity;
-        Items = ArrayPool<Chunk>.Shared.Rent(capacity);
+        items = ArrayPool<Chunk>.Shared.Rent(capacity);
     }
 
 #pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
     public void Add(in Chunk chunk)
 #pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     {
-        Items.UnsafeAt(Count++) = chunk;
+        items.UnsafeAt(Count++) = chunk;
     }
 
     public void EnsureCapacity(int newCapacity)
@@ -30,10 +30,10 @@ public sealed class ChunkList
             return;
 
         var newArr = ArrayPool<Chunk>.Shared.Rent(newCapacity);
-        Items.AsSpan(0, Count).CopyTo(newArr);
-        ArrayPool<Chunk>.Shared.Return(Items, true);
+        items.AsSpan(0, Count).CopyTo(newArr);
+        ArrayPool<Chunk>.Shared.Return(items, true);
 
-        Items = newArr;
+        items = newArr;
         Capacity = newCapacity;
     }
 
@@ -42,10 +42,10 @@ public sealed class ChunkList
         int min = Count == 0 ? 1 : Count;
 
         var newArr = ArrayPool<Chunk>.Shared.Rent(min);
-        Items.AsSpan(0, Count).CopyTo(newArr);
-        ArrayPool<Chunk>.Shared.Return(Items, true);
+        items.AsSpan(0, Count).CopyTo(newArr);
+        ArrayPool<Chunk>.Shared.Return(items, true);
 
-        Items = newArr;
+        items = newArr;
         Capacity = min;
     }
 
@@ -58,9 +58,14 @@ public sealed class ChunkList
         }
     }
 
+    public Span<Chunk> AsSpan()
+    {
+        return items.AsSpan();
+    }
+
     public ref Chunk this[int index]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => ref Items.UnsafeAt(index);
+        get => ref items.UnsafeAt(index);
     }
 }

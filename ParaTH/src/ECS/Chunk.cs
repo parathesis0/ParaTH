@@ -16,7 +16,7 @@ public partial struct Chunk
     public Chunk(int capacity, int[] componentIdToArrayIndex, Span<ComponentTypeInfo> types)
     {
         Capacity = capacity;
-        Count = 0;
+        EntityCount = 0;
         ComponentIdToArrayIndex = componentIdToArrayIndex;
 
         Entities = new Entity[capacity];
@@ -30,18 +30,18 @@ public partial struct Chunk
         }
     }
 
-    public int Count { get; set; }
+    public int EntityCount { get; set; }
     public int Capacity { get; }
-    public readonly bool IsFull => Count >= Capacity;
+    public readonly bool IsFull => EntityCount >= Capacity;
 
     // todo: variadic source gen wip
     // returns the index of the added entity
     public int Add<T0>(Entity entity, in T0 component)
     {
-        var index = Count;
+        var index = EntityCount;
         Entities.UnsafeAt(index) = entity;
         GetComponentArray<T0>().UnsafeAt(index) = component;
-        Count++;
+        EntityCount++;
         return index;
     }
 
@@ -50,8 +50,8 @@ public partial struct Chunk
     // should only be called by Archetype.Reserve, fuck
     public int Reserve()
     {
-        var index = Count;
-        Count++;
+        var index = EntityCount;
+        EntityCount++;
         return index;
     }
 
@@ -59,7 +59,7 @@ public partial struct Chunk
     // returns the moved entity's id
     public readonly ushort Remove(int index, ref Chunk lastChunk)
     {
-        int lastIndex = lastChunk.Count - 1;
+        int lastIndex = lastChunk.EntityCount - 1;
         var lastEntity = lastChunk.Entities.UnsafeAt(lastIndex);
         Entities.UnsafeAt(index) = lastEntity;
 
@@ -70,7 +70,7 @@ public partial struct Chunk
             Array.Copy(srcArr, lastIndex, dstArr, index, 1);
         }
 
-        lastChunk.Count--;
+        lastChunk.EntityCount--;
         return lastEntity.Id;
     }
 
@@ -91,12 +91,12 @@ public partial struct Chunk
     // todo: variadic source gen wip
     public readonly Span<T0> GetAsSpan<T0>()
     {
-        return MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T0>(), Count);
+        return MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T0>(), EntityCount);
     }
 
     public void Clear()
     {
-        Count = 0;
+        EntityCount = 0;
     }
 
     public bool TryGetComponentArrayIndex(int ComponentId, out int arrayIndex)
