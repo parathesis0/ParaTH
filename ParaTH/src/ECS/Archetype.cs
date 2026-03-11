@@ -309,7 +309,7 @@ public sealed partial class Archetype
 
         var srcTypes = src.ComponentTypes;
 
-        Chunk.CopyEntityComponents(
+        Chunk.CopyEntityAndMatchingComponents(
             ref srcChunk, srcSlot.Index,
             ref dstChunk, dstSlot.Index,
             srcTypes, 1);

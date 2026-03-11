@@ -125,7 +125,7 @@ public partial struct Chunk
         return Unsafe.As<T[]>(Components.UnsafeAt(arrayId));
     }
 
-    public static void CopyEntityComponents(
+    public static void CopyEntityAndMatchingComponents(
         ref Chunk src, int srcIndex,
         ref Chunk dst, int dstIndex,
         ComponentTypeInfo[] srcTypes, int length)
