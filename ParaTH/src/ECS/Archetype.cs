@@ -17,10 +17,10 @@ public sealed partial class Archetype
 
     public ulong Mask { get; }
     private int BaseChunkByteSize { get; }
-    private ushort BaseChunkEntityCount { get; }
+    private int BaseChunkEntityCount { get; }
 
     private int ChunkSize { get; }
-    public ushort EntitiesPerChunk { get; }
+    public int EntitiesPerChunk { get; }
     private int CurrentChunkIndex { get; set; }
     private ref Chunk CurrentChunk => ref chunks[CurrentChunkIndex];
     private Slot CurrentSlot => new(CurrentChunk.EntityCount - 1, CurrentChunkIndex);
@@ -28,7 +28,7 @@ public sealed partial class Archetype
     public ComponentTypeInfo[] ComponentTypes => componentTypes;
     public ChunkList Chunks => chunks;
 
-    public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, ushort baseChunkEntityCount)
+    public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, int baseChunkEntityCount)
     {
         ulong mask = 0;
         int max = 0;
@@ -85,7 +85,7 @@ public sealed partial class Archetype
 
     // returns the count of allocated entites
     // todo: variadic source gen wip
-    public ushort Add<T0>(Entity entity, out Slot slot, in T0 component)
+    public int Add<T0>(Entity entity, out Slot slot, in T0 component)
     {
         EntityCount++;
 
@@ -129,7 +129,7 @@ public sealed partial class Archetype
     // blatant violation of the dry principle
     // should only be called by World.Move, i fucked up the architecture
     // and am now suffering the consequences of my stupidity
-    public ushort Reserve(out Slot slot)
+    public int Reserve(out Slot slot)
     {
         EntityCount++;
 
@@ -171,7 +171,7 @@ public sealed partial class Archetype
 
     // swap and pop with the last chunk's last entity
     // returns the moved entity's id
-    public ushort Remove(Slot slot)
+    public int Remove(Slot slot)
     {
         ref var chunk = ref chunks[slot.ChunkIndex];
         ref var lastChunk = ref CurrentChunk;
@@ -244,9 +244,9 @@ public sealed partial class Archetype
         return (entityByteSize + baseChunkByteSize - 1) / baseChunkByteSize * baseChunkByteSize;
     }
 
-    private static unsafe ushort GetEntitesPerChunk(int chunkByteSize, int typesByteSize)
+    private static unsafe int GetEntitesPerChunk(int chunkByteSize, int typesByteSize)
     {
-        return (ushort)(chunkByteSize / (sizeof(Entity) + typesByteSize));
+        return chunkByteSize / (sizeof(Entity) + typesByteSize);
     }
 
     public void AddAddEdge(int id, Archetype archetype)

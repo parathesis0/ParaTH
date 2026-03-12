@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace ParaTH;
 
+// todo: def wasted space here
 public record struct EntityData
 {
     public Archetype Archetype;

@@ -57,7 +57,7 @@ public partial struct Chunk
 
     // swap and pop with the last chunk's last entity
     // returns the moved entity's id
-    public readonly ushort Remove(int index, ref Chunk lastChunk)
+    public readonly int Remove(int index, ref Chunk lastChunk)
     {
         int lastIndex = lastChunk.EntityCount - 1;
         var lastEntity = lastChunk.Entities.UnsafeAt(lastIndex);

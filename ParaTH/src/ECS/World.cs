@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+public interface IForeach { void Update(Entity entity); }
+
 public delegate void ForEach(Entity entity);
 
 public sealed partial class World : IDisposable
@@ -17,16 +19,16 @@ public sealed partial class World : IDisposable
     private readonly Queue<Entity> recycledEntities;
 
     private readonly int baseChunkByteSize;
-    private readonly ushort baseChunkEntityCount;
+    private readonly int baseChunkEntityCount;
 
-    private ushort entityCount;
-    private ushort capacity;
+    private int entityCount;
+    private int capacity;
 
     private bool isDisposed;
 
     public World(
         int baseChunkByteSize,
-        ushort baseChunkEntityCount,
+        int baseChunkEntityCount,
         int initialArchetypeCapacity,
         int initialEntityCapacity)
     {
@@ -92,7 +94,7 @@ public sealed partial class World : IDisposable
     private void DestroyAndRecycleEntity(Entity entity)
     {
         entityDatas.Remove(entity.Id);
-        var recycledEntity = new Entity(entity.Id, (ushort)unchecked(entity.Version + 1));
+        var recycledEntity = entity.BumpVersion();
         recycledEntities.Enqueue(recycledEntity);
         entityCount--;
     }
@@ -301,6 +303,25 @@ public sealed partial class World : IDisposable
                 {
                     var entity = entities.UnsafeAt(i);
                     forEntity(entity);
+                }
+            }
+        }
+    }
+
+    [SkipLocalsInit]
+    public void Query<T>(in QueryDescriptor descriptor, ref T iForEach) where T : struct, IForeach
+    {
+        var query = GetOrCreateQuery(in descriptor);
+
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+        {
+            foreach (ref var chunk in archetype.Chunks.AsSpan())
+            {
+                var entities = chunk.Entities;
+                for (int i = 0; i < chunk.EntityCount; i++)
+                {
+                    var entity = entities.UnsafeAt(i);
+                    iForEach.Update(entity);
                 }
             }
         }

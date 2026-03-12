@@ -5,7 +5,7 @@ namespace ParaTH;
 
 public sealed partial class Archetype
 {
-    public ushort Add<T0, T1>(Entity entity, out Slot slot, in T0 c0, in T1 c1)
+    public int Add<T0, T1>(Entity entity, out Slot slot, in T0 c0, in T1 c1)
     {
         EntityCount++;
 
