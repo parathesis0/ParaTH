@@ -1,4 +1,5 @@
 using FontStashSharp;
+using FontStashSharp.RichText;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -10,7 +11,11 @@ namespace ParaTH;
 public struct Position { public float X; public float Y; }
 public struct Velocity { public float DX; public float DY; }
 public struct Spin { public float Angle; public float Speed; }
-
+public struct Lifetime { public int Ticks; }
+public struct Gravity { public float G; }
+public struct Orbit { public float CenterX; public float CenterY; public float Radius; public float Angle; public float Speed; }
+public struct Mutator { public int Threshold; } // 当寿命到达阈值时，触发组件增删
+public struct Renderable { public byte SpriteType; public byte ColorIndex; public float Scale; }
 public sealed class Engine : Game
 {
     private AssetManager assetManager = null!;
@@ -18,8 +23,11 @@ public sealed class Engine : Game
     private Matrix projection;
 
     private World world = null!;
-    private SpriteAsset bullet = null!;
-    private readonly List<Entity> tracked = new();
+
+    private SpriteAsset[] hearts = new SpriteAsset[8];
+    private SpriteAsset[] arrows = new SpriteAsset[8];
+    private readonly string[] colorNames = { "black", "red", "pink", "blue", "cyan", "green", "yellow", "gray" };
+
     private readonly Random rng = new(12345);
 
     private int frameCount;
@@ -31,6 +39,9 @@ public sealed class Engine : Game
     private double fpsTimer;
     private int fpsCounter;
     private int currentFps;
+
+    private readonly List<Entity> entitiesToDestroy = new(10000);
+    private readonly List<Entity> entitiesToMutate = new(10000);
 
     public Engine()
     {
@@ -55,52 +66,68 @@ public sealed class Engine : Game
         stgBatch = new StgBatch(GraphicsDevice);
         projection = Matrix.CreateOrthographicOffCenter(0, 1280, 720, 0, 0, 1);
 
-        bullet = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "heart_pink");
+        for (int i = 0; i < 8; i++)
+        {
+            hearts[i] = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", $"heart_{colorNames[i]}");
+            arrows[i] = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", $"arrow_{colorNames[i]}");
+        }
 
         world = new World(
             baseChunkByteSize: 16384,
-            baseChunkEntityCount: 128,
-            initialArchetypeCapacity: 8,
-            initialEntityCapacity: 512);
+            baseChunkEntityCount: 256,
+            initialArchetypeCapacity: 32,
+            initialEntityCapacity: 200000);
 
-        for (int i = 0; i < 15; i++) SpawnStatic();
-        for (int i = 0; i < 45; i++) SpawnMoving();
+        SpawnWave(10000);
     }
 
-    private void SpawnStatic()
+    private void SpawnWave(int count)
     {
-        var e = world.CreateEntity(new Position
+        for (int i = 0; i < count; i++)
         {
-            X = 100f + (float)(rng.NextDouble() * 1080),
-            Y = 100f + (float)(rng.NextDouble() * 520)
-        });
-        tracked.Add(e);
+            var e = world.CreateEntity(new Position { X = 640, Y = 360 });
+
+            float angle = (float)(rng.NextDouble() * Math.PI * 2);
+            float speed = (float)(rng.NextDouble() * 3f + 1f);
+
+            world.AddComponent(e, new Velocity { DX = MathF.Cos(angle) * speed, DY = MathF.Sin(angle) * speed });
+            world.AddComponent(e, new Lifetime { Ticks = rng.Next(300, 600) });
+            world.AddComponent(e, new Renderable { SpriteType = (byte)rng.Next(2), ColorIndex = (byte)rng.Next(8), Scale = 1.0f });
+
+            if (rng.Next(2) == 0)
+                world.AddComponent(e, new Spin { Speed = (float)(rng.NextDouble() * 0.2 - 0.1) });
+
+            if (rng.Next(5) == 0)
+                world.AddComponent(e, new Gravity { G = 0.05f });
+        }
     }
 
-    private void SpawnMoving()
+    private void SpawnMutators(int count)
     {
-        var e = world.CreateEntity(new Position
+        for (int i = 0; i < count; i++)
         {
-            X = 100f + (float)(rng.NextDouble() * 1080),
-            Y = 100f + (float)(rng.NextDouble() * 520)
-        });
-        world.AddComponent(e, new Velocity
-        {
-            DX = (float)(rng.NextDouble() * 3 - 1.5),
-            DY = (float)(rng.NextDouble() * 3 - 1.5)
-        });
-        if (rng.Next(3) == 0)
-            world.AddComponent(e, new Spin { Speed = (float)(rng.NextDouble() * 0.15 - 0.075) });
-        tracked.Add(e);
+            var e = world.CreateEntity(new Position { X = (float)(rng.NextDouble() * 1280), Y = 720 });
+            world.AddComponent(e, new Velocity { DX = (float)(rng.NextDouble() * 4 - 2), DY = -(float)(rng.NextDouble() * 5 + 2) });
+            world.AddComponent(e, new Lifetime { Ticks = 400 });
+            world.AddComponent(e, new Mutator { Threshold = rng.Next(150, 250) });
+            world.AddComponent(e, new Renderable { SpriteType = 1, ColorIndex = 1, Scale = 1.5f });
+        }
     }
 
-    private void DestroyRandom()
+    private void ClearRandomHalf()
     {
-        if (tracked.Count == 0) return;
-        int idx = rng.Next(tracked.Count);
-        if (world.IsAlive(tracked[idx]))
-            world.DestroyEntity(tracked[idx]);
-        tracked.RemoveAt(idx);
+        var query = world.GetOrCreateQuery(in QueryDescriptor.MatchAll);
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+        {
+            foreach (ref var chunk in archetype.Chunks.AsSpan())
+            {
+                var entities = chunk.Entities;
+                for (int i = 0; i < chunk.EntityCount; i++)
+                {
+                    if (rng.Next(2) == 0) entitiesToDestroy.Add(entities.UnsafeAt(i));
+                }
+            }
+        }
     }
 
     private bool IsKeyPressed(Keys k) => prevKb.IsKeyUp(k) && currKb.IsKeyDown(k);
@@ -112,39 +139,28 @@ public sealed class Engine : Game
         if (IsKeyPressed(Keys.P)) isPaused = !isPaused;
         if (IsKeyPressed(Keys.K)) { if (!isPaused) isPaused = true; stepRequested = true; }
 
-        if (IsKeyPressed(Keys.D1)) SpawnStatic();
-        if (IsKeyPressed(Keys.D2)) SpawnMoving();
-        if (IsKeyPressed(Keys.D3)) for (int i = 0; i < 3000; i++) SpawnMoving();
-        if (IsKeyPressed(Keys.D4)) DestroyRandom();
-        if (IsKeyPressed(Keys.D5)) for (int i = 0; i < 3000; i++) DestroyRandom();
-
-        // toggle spin on a random entity
-        if (IsKeyPressed(Keys.D6) && tracked.Count > 0)
+        if (IsKeyPressed(Keys.D1)) SpawnWave(10000);
+        if (IsKeyPressed(Keys.D2)) SpawnWave(50000);
+        if (IsKeyPressed(Keys.D3)) SpawnMutators(10000);
+        if (IsKeyPressed(Keys.D4)) ClearRandomHalf();
+        if (IsKeyPressed(Keys.D5))
         {
-            var e = tracked[rng.Next(tracked.Count)];
-            if (world.IsAlive(e))
+            var query = world.GetOrCreateQuery(in QueryDescriptor.MatchAll);
+            foreach (var archetype in query.GetMatchingArchetypesSpan())
             {
-                if (world.HasComponent<Spin>(e))
-                    world.RemoveComponent<Spin>(e);
-                else
-                    world.AddComponent(e, new Spin { Speed = 0.1f });
+                if (!archetype.Has<Spin>())
+                {
+                    foreach (ref var chunk in archetype.Chunks.AsSpan())
+                    {
+                        var entities = chunk.Entities;
+                        for (int i = 0; i < chunk.EntityCount; i++)
+                        {
+                            if (rng.Next(10) == 0)
+                                world.AddComponent(entities.UnsafeAt(i), new Spin { Speed = 0.05f });
+                        }
+                    }
+                }
             }
-        }
-
-        // add velocity to a random static entity
-        if (IsKeyPressed(Keys.D7) && tracked.Count > 0)
-        {
-            var e = tracked[rng.Next(tracked.Count)];
-            if (world.IsAlive(e) && !world.HasComponent<Velocity>(e))
-                world.AddComponent(e, new Velocity { DX = 2f, DY = -1.5f });
-        }
-
-        // remove velocity from a random moving entity
-        if (IsKeyPressed(Keys.D8) && tracked.Count > 0)
-        {
-            var e = tracked[rng.Next(tracked.Count)];
-            if (world.IsAlive(e) && world.HasComponent<Velocity>(e))
-                world.RemoveComponent<Velocity>(e);
         }
 
         prevKb = currKb;
@@ -162,34 +178,138 @@ public sealed class Engine : Game
             stepRequested = false;
             frameCount++;
 
-            // movement system
-            var velDesc = new QueryDescriptor();
-            velDesc.WithAll<Velocity>();
-            world.Query(velDesc, e =>
+            // [系统 1] 生命周期系统
+            var lifeDesc = new QueryDescriptor().WithAll<Lifetime>();
+            var lifeQuery = world.GetOrCreateQuery(in lifeDesc);
+            foreach (var arch in lifeQuery.GetMatchingArchetypesSpan())
             {
+                foreach (ref var chunk in arch.Chunks.AsSpan())
+                {
+                    chunk.GetComponentSpan<Lifetime>(out var lSpan);
+                    var entities = chunk.Entities;
+                    for (int i = 0; i < chunk.EntityCount; i++)
+                    {
+                        ref var l = ref lSpan[i];
+                        l.Ticks--;
+                        if (l.Ticks <= 0) entitiesToDestroy.Add(entities.UnsafeAt(i));
+                    }
+                }
+            }
+
+            // [系统 2] 突变系统
+            var mutateDesc = new QueryDescriptor().WithAll<Lifetime, Mutator>();
+            var mutateQuery = world.GetOrCreateQuery(in mutateDesc);
+            foreach (var arch in mutateQuery.GetMatchingArchetypesSpan())
+            {
+                foreach (ref var chunk in arch.Chunks.AsSpan())
+                {
+                    chunk.GetComponentSpan<Lifetime, Mutator>(out var lSpan, out var mSpan);
+                    var entities = chunk.Entities;
+                    for (int i = 0; i < chunk.EntityCount; i++)
+                    {
+                        if (lSpan[i].Ticks == mSpan[i].Threshold)
+                            entitiesToMutate.Add(entities.UnsafeAt(i));
+                    }
+                }
+            }
+
+            // [系统 3] 重力系统
+            var gravDesc = new QueryDescriptor().WithAll<Velocity, Gravity>();
+            var gravQuery = world.GetOrCreateQuery(in gravDesc);
+            foreach (var arch in gravQuery.GetMatchingArchetypesSpan())
+            {
+                foreach (ref var chunk in arch.Chunks.AsSpan())
+                {
+                    chunk.GetComponentSpan<Velocity, Gravity>(out var vSpan, out var gSpan);
+                    for (int i = 0; i < chunk.EntityCount; i++)
+                    {
+                        vSpan[i].DY += gSpan[i].G;
+                    }
+                }
+            }
+
+            // [系统 4] 运动系统 (核心性能点：双数组纯内存相加，0 查询)
+            var velDesc = new QueryDescriptor().WithAll<Position, Velocity>();
+            var velQuery = world.GetOrCreateQuery(in velDesc);
+            foreach (var arch in velQuery.GetMatchingArchetypesSpan())
+            {
+                foreach (ref var chunk in arch.Chunks.AsSpan())
+                {
+                    chunk.GetComponentSpan<Position, Velocity>(out var pSpan, out var vSpan);
+                    for (int i = 0; i < chunk.EntityCount; i++)
+                    {
+                        ref var p = ref pSpan[i];
+                        ref var v = ref vSpan[i];
+                        p.X += v.DX;
+                        p.Y += v.DY;
+
+                        if (p.X < 0 || p.X > 1280) v.DX = -v.DX;
+                        if (p.Y < 0 || p.Y > 720) v.DY = -v.DY;
+                    }
+                }
+            }
+
+            // [系统 5] 环绕轨道系统
+            var orbitDesc = new QueryDescriptor().WithAll<Position, Orbit>();
+            var orbitQuery = world.GetOrCreateQuery(in orbitDesc);
+            foreach (var arch in orbitQuery.GetMatchingArchetypesSpan())
+            {
+                foreach (ref var chunk in arch.Chunks.AsSpan())
+                {
+                    chunk.GetComponentSpan<Position, Orbit>(out var pSpan, out var oSpan);
+                    for (int i = 0; i < chunk.EntityCount; i++)
+                    {
+                        ref var p = ref pSpan[i];
+                        ref var o = ref oSpan[i];
+                        o.Angle += o.Speed;
+                        p.X = o.CenterX + MathF.Cos(o.Angle) * o.Radius;
+                        p.Y = o.CenterY + MathF.Sin(o.Angle) * o.Radius;
+                        o.Radius += 0.5f;
+                    }
+                }
+            }
+
+            // [系统 6] 自旋系统
+            var spinDesc = new QueryDescriptor().WithAll<Spin>();
+            var spinQuery = world.GetOrCreateQuery(in spinDesc);
+            foreach (var arch in spinQuery.GetMatchingArchetypesSpan())
+            {
+                foreach (ref var chunk in arch.Chunks.AsSpan())
+                {
+                    chunk.GetComponentSpan<Spin>(out var sSpan);
+                    for (int i = 0; i < chunk.EntityCount; i++)
+                    {
+                        sSpan[i].Angle += sSpan[i].Speed;
+                    }
+                }
+            }
+
+            foreach (var e in entitiesToMutate)
+            {
+                if (!world.IsAlive(e)) continue;
+
                 ref var p = ref world.GetComponent<Position>(e);
-                ref var v = ref world.GetComponent<Velocity>(e);
-                p.X += v.DX;
-                p.Y += v.DY;
-                if (p.X < 0 || p.X > 1280) v.DX = -v.DX;
-                if (p.Y < 0 || p.Y > 720) v.DY = -v.DY;
-            });
 
-            // spin system
-            var spinDesc = new QueryDescriptor();
-            spinDesc.WithAll<Spin>();
-            world.Query(spinDesc, e =>
+                if (world.HasComponent<Velocity>(e)) world.RemoveComponent<Velocity>(e);
+                if (world.HasComponent<Gravity>(e)) world.RemoveComponent<Gravity>(e);
+
+                world.AddComponent(e, new Orbit { CenterX = p.X, CenterY = p.Y, Radius = 10f, Angle = (float)rng.NextDouble() * 10f, Speed = 0.1f });
+
+                if (world.HasComponent<Renderable>(e))
+                {
+                    ref var r = ref world.GetComponent<Renderable>(e);
+                    r.SpriteType = 0;
+                    r.ColorIndex = 3;
+                }
+            }
+            entitiesToMutate.Clear();
+
+            foreach (var e in entitiesToDestroy)
             {
-                ref var s = ref world.GetComponent<Spin>(e);
-                s.Angle += s.Speed;
-            });
+                if (world.IsAlive(e)) world.DestroyEntity(e);
+            }
+            entitiesToDestroy.Clear();
         }
-
-        tracked.RemoveAll(e => !world.IsAlive(e));
-
-        Window.Title = isPaused
-            ? $"F{frameCount} | alive:{tracked.Count} [PAUSED — K:step P:resume]"
-            : $"F{frameCount} | alive:{tracked.Count}";
 
         base.Update(gameTime);
     }
@@ -201,28 +321,49 @@ public sealed class Engine : Game
         GraphicsDevice.Clear(new Color(15, 10, 30));
         stgBatch.Begin(SamplerState.PointClamp, RasterizerState.CullCounterClockwise, null, projection);
 
-        var posDesc = new QueryDescriptor();
-        posDesc.WithAll<Position>();
-        world.Query(posDesc, e =>
+        var renderDesc = new QueryDescriptor().WithAll<Position, Renderable>();
+        var renderQuery = world.GetOrCreateQuery(in renderDesc);
+
+        foreach (var archetype in renderQuery.GetMatchingArchetypesSpan())
         {
-            ref var p = ref world.GetComponent<Position>(e);
+            bool hasSpin = archetype.Has<Spin>();
+            bool hasVelocity = archetype.Has<Velocity>();
+            bool hasOrbit = archetype.Has<Orbit>();
 
-            float rot = 0f;
-            if (world.HasComponent<Spin>(e))
-                rot = world.GetComponent<Spin>(e).Angle;
+            var blend = hasOrbit ? StgBlendState.Additive : StgBlendState.Alpha;
 
-            bool moving = world.HasComponent<Velocity>(e);
-            var color = moving ? Color.Cyan : Color.Yellow;
-            var blend = moving ? StgBlendState.Additive : StgBlendState.Alpha;
+            foreach (ref var chunk in archetype.Chunks.AsSpan())
+            {
+                chunk.GetComponentSpan<Position, Renderable>(out var pSpan, out var rSpan);
 
-            stgBatch.Draw(
-                bullet.Texture,
-                new Vector2(p.X, p.Y),
-                bullet.SourceRect,
-                color, rot, bullet.Anchor,
-                Vector2.One * 1.5f,
-                SpriteEffects.None, 0, blend);
-        });
+                Span<Spin> sSpan = default;
+                Span<Velocity> vSpan = default;
+                if (hasSpin) chunk.GetComponentSpan<Spin>(out sSpan);
+                if (hasVelocity) chunk.GetComponentSpan<Velocity>(out vSpan);
+
+                for (int i = 0; i < chunk.EntityCount; i++)
+                {
+                    ref var p = ref pSpan[i];
+                    ref var r = ref rSpan[i];
+
+                    float rot = 0f;
+                    if (hasSpin)
+                        rot = sSpan[i].Angle;
+                    else if (hasVelocity)
+                        rot = MathF.Atan2(vSpan[i].DY, vSpan[i].DX) + MathF.PI / 2f;
+
+                    SpriteAsset sprite = r.SpriteType == 0 ? hearts[r.ColorIndex] : arrows[r.ColorIndex];
+
+                    stgBatch.Draw(
+                        sprite.Texture,
+                        new Vector2(p.X, p.Y),
+                        sprite.SourceRect,
+                        Color.White, rot, sprite.Anchor,
+                        Vector2.One * r.Scale,
+                        SpriteEffects.None, 0, blend);
+                }
+            }
+        }
 
         var font = assetManager.Load<FontAsset>("fonts/mspgothic.ttf", "touhou_font").GetFont(18);
 
@@ -233,12 +374,12 @@ public sealed class Engine : Game
         Color fpsColor = currentFps < 58 ? Color.Red : Color.LimeGreen;
 
         stgBatch.DrawString(font,
-            $"entities: {tracked.Count} | frame: {frameCount} | counted entities: {countedEntities} | counted archetypes: {countedArchetypes} | counted chunks {counterChunks}",
-            new Vector2(8, 4), Color.White, 200, StgBlendState.Alpha);
-        stgBatch.DrawString(font, $"[ FPS: {currentFps} ]", new Vector2(1100, 4), fpsColor, 200, StgBlendState.Alpha);
+            $"Entities: {countedEntities} | Archetypes: {countedArchetypes} | Chunks: {counterChunks} | Frame: {frameCount}",
+            new Vector2(8, 4), Color.Blue, 200, StgBlendState.Alpha);
+        stgBatch.DrawString(font, $"[ FPS: {currentFps} ]", new Vector2(1150, 4), fpsColor, 200, StgBlendState.Alpha);
         stgBatch.DrawString(font,
-            "1:静止弾  2:移動弾  3:+3000  4:削除  5:-3000  6:spin切替  7:加速  8:停止  P:pause  K:step",
-            new Vector2(8, 26), Color.Gray, 200, StgBlendState.Alpha);
+            "1:+10K弾幕  2:+50K弾幕  3:+10K突変弾  4:随機刪半  5:随機加自旋  P:暫停  K:単歩",
+            new Vector2(8, 26), Color.Yellow, 200, StgBlendState.Alpha);
 
         stgBatch.End();
         base.Draw(gameTime);

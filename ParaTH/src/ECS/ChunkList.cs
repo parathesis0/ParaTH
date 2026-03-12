@@ -60,7 +60,7 @@ public sealed class ChunkList
 
     public Span<Chunk> AsSpan()
     {
-        return items.AsSpan();
+        return items.AsSpan(0, Count);
     }
 
     public ref Chunk this[int index]

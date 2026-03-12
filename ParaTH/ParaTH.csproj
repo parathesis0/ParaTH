@@ -81,6 +81,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Chunk.Get.cs</LastGenOutput>
     </None>
+    <None Update="src\ECS\Variadic\Chunk.GetComponentSpan.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Chunk.GetComponentSpan.cs</LastGenOutput>
+    </None>
     <None Update="src\ECS\Variadic\Chunk.Set.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Chunk.Set.cs</LastGenOutput>
@@ -169,6 +173,11 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Chunk.Get.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Chunk.GetComponentSpan.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Chunk.GetComponentSpan.tt</DependentUpon>
     </Compile>
     <Compile Update="src\ECS\Variadic\Chunk.Set.cs">
       <DesignTime>True</DesignTime>

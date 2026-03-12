@@ -82,9 +82,9 @@ public partial struct Chunk
         return ref Unsafe.Add(ref arr, index);
     }
 
-    public readonly Span<T0> GetAsSpan<T0>()
+    public readonly void GetComponentSpan<T0>(out Span<T0> s0)
     {
-        return MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T0>(), EntityCount);
+        s0 = MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T0>(), EntityCount);
     }
 
     public void Clear()

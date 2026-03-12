@@ -1,0 +1,33 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+using System.Runtime.InteropServices;
+
+namespace ParaTH;
+
+public partial struct Chunk
+{
+<#
+    for (int n = 2; n <= 16; n++)
+    {
+        var range = Enumerable.Range(0, n);
+        var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
+        var pArgs = string.Join(", ", range.Select(i => $"out Span<T{i}> s{i}"));
+#>
+    public readonly void GetComponentSpan<<#= tArgs #>>(<#= pArgs #>)
+    {
+        var count = EntityCount;
+<#
+        foreach (int i in range )
+        {
+#>
+        s<#= i #> = MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T<#= i #>>(), count);
+<#
+        }
+#>
+    }
+<# } #>
+}
