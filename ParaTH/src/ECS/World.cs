@@ -43,7 +43,6 @@ public sealed partial class World : IDisposable
     }
 
     #region Entity Creation and Destroy
-    // todo: variadic source gen wip
     [SkipLocalsInit]
     public Entity CreateEntity<T0>(in T0 component)
     {
@@ -122,7 +121,6 @@ public sealed partial class World : IDisposable
     #endregion
 
     #region Component Manipulation
-    // todo: variadic source gen wip
     [SkipLocalsInit]
     public ref T0 GetComponent<T0>(Entity entity)
     {
@@ -132,7 +130,6 @@ public sealed partial class World : IDisposable
         return ref archetype.Get<T0>(slot);
     }
 
-    // todo: is this correct/optimal?
     [SkipLocalsInit]
     public bool TryGetComponent<T>(Entity entity, out T component)
     {
@@ -152,7 +149,6 @@ public sealed partial class World : IDisposable
         return true;
     }
 
-    // todo: is this correct/optimal?
     [SkipLocalsInit]
     public ref T TryGetComponentRef<T>(Entity entity)
     {
@@ -168,7 +164,6 @@ public sealed partial class World : IDisposable
         return ref arr.UnsafeAt(slot.Index);
     }
 
-    // todo: variadic source gen wip
     [SkipLocalsInit]
     public bool HasComponent<T0>(Entity entity)
     {
@@ -176,7 +171,6 @@ public sealed partial class World : IDisposable
         return archetype.Has<T0>();
     }
 
-    // todo: variadic source gen wip
     [SkipLocalsInit]
     public void SetComponentValue<T0>(Entity entity, in T0 component)
     {
@@ -187,7 +181,6 @@ public sealed partial class World : IDisposable
         archetype.Set<T0>(slot, component);
     }
 
-    // todo: variadic source gen wip
     [SkipLocalsInit]
     public void AddComponent<T0>(Entity entity, in T0 component)
     {
@@ -203,7 +196,6 @@ public sealed partial class World : IDisposable
         SetComponentValue<T0>(entity, component);
     }
 
-    // todo: variadic source gen wip
     [SkipLocalsInit]
     public void RemoveComponent<T0>(Entity entity)
     {
@@ -272,6 +264,33 @@ public sealed partial class World : IDisposable
         entityDatas.EnsureCapacity(capacity);
     }
 
+    // todo: idk make theses util?
+    [SkipLocalsInit]
+    private static T[] Merge<T>(T[] a, T[] b)
+    {
+        if (a.Length == 0) return b;
+        if (b.Length == 0) return a;
+
+        var result = GC.AllocateUninitializedArray<T>(a.Length + b.Length);
+        a.AsSpan().CopyTo(result);
+        b.AsSpan().CopyTo(result.AsSpan(a.Length));
+        return result;
+    }
+
+    [SkipLocalsInit]
+    private static T[] Remove<T>(T[] a, T[] b) where T : IEquatable<T>
+    {
+        var result = GC.AllocateUninitializedArray<T>(a.Length - b.Length);
+        int ri = 0;
+        ReadOnlySpan<T> bSpan = b;
+
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (!bSpan.Contains(a.UnsafeAt(i)))
+                result.UnsafeAt(ri++) = a.UnsafeAt(i);
+        }
+        return result;
+    }
     #endregion
 
     #region Query

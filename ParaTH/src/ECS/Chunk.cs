@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -34,7 +31,6 @@ public partial struct Chunk
     public int Capacity { get; }
     public readonly bool IsFull => EntityCount >= Capacity;
 
-    // todo: variadic source gen wip
     // returns the index of the added entity
     public int Add<T0>(Entity entity, in T0 component)
     {
@@ -74,21 +70,18 @@ public partial struct Chunk
         return lastEntity.Id;
     }
 
-    // todo: variadic source gen wip
     public readonly void Set<T0>(int index, in T0 component)
     {
         ref var arr = ref GetComponentArrayReference<T0>();
         Unsafe.Add(ref arr, index) = component;
     }
 
-    // todo: variadic source gen wip
     public readonly ref T0 Get<T0>(int index)
     {
         ref var arr = ref GetComponentArrayReference<T0>();
         return ref Unsafe.Add(ref arr, index);
     }
 
-    // todo: variadic source gen wip
     public readonly Span<T0> GetAsSpan<T0>()
     {
         return MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T0>(), EntityCount);

@@ -1,0 +1,55 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+namespace ParaTH;
+
+public sealed partial class Archetype
+{
+<#
+    for (int n = 2; n <= 16; n++)
+    {
+        var range = Enumerable.Range(0, n);
+        var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
+        var pArgs = string.Join(", ", range.Select(i => $"in T{i} c{i}"));
+        var vArgs = string.Join(", ", range.Select(i => $"c{i}"));
+#>
+    public int Add<<#= tArgs #>>(Entity entity, out Slot slot, <#= pArgs #>)
+    {
+        EntityCount++;
+
+        var currentChunkIndex = CurrentChunkIndex;
+        ref var currentChunk = ref CurrentChunk;
+
+        int index;
+
+        if (!currentChunk.IsFull)
+        {
+            index = currentChunk.Add<<#= tArgs #>>(entity, <#= vArgs #>);
+            slot = new Slot(index, currentChunkIndex);
+            return 0;
+        }
+
+        currentChunkIndex++;
+        var chunks = this.chunks;
+        if (currentChunkIndex < chunks.Count)
+        {
+            currentChunk = ref chunks[currentChunkIndex];
+            index = currentChunk.Add<<#= tArgs #>>(entity, <#= vArgs #>);
+            slot = new Slot(index, currentChunkIndex);
+
+            CurrentChunkIndex = currentChunkIndex;
+            return 0;
+        }
+
+        ref var newChunk = ref AddChunk();
+        index = newChunk.Add<<#= tArgs #>>(entity, <#= vArgs #>);
+        slot = new Slot(index, currentChunkIndex);
+
+        CurrentChunkIndex = currentChunkIndex;
+        return EntitiesPerChunk;
+    }
+<# } #>
+}

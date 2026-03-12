@@ -55,4 +55,185 @@
       <LogicalName>%(Filename)</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="src\ECS\Variadic\Archetype.Add.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Archetype.Add.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Archetype.Get.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Archetype.Get.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Archetype.Has.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Archetype.Has.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Archetype.Set.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Archetype.Set.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Chunk.Add.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Chunk.Add.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Chunk.Get.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Chunk.Get.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Chunk.Set.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Chunk.Set.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Component.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Component.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Components.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Components.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\QueryDescriptor.WithAll.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>QueryDescriptor.WithAll.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\QueryDescriptor.WithAny.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>QueryDescriptor.WithAny.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\QueryDescriptor.WithExclusive.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>QueryDescriptor.WithExclusive.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\QueryDescriptor.WithNone.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>QueryDescriptor.WithNone.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\World.AddComponent.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.AddComponent.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\World.CreateEntity.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.CreateEntity.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\World.GetComponent.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.GetComponent.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\World.HasComponent.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.HasComponent.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\World.RemoveComponent.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.RemoveComponent.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\World.SetComponentValue.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.SetComponentValue.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="src\ECS\Variadic\Archetype.Add.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Archetype.Add.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Archetype.Get.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Archetype.Get.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Archetype.Has.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Archetype.Has.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Archetype.Set.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Archetype.Set.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Chunk.Add.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Chunk.Add.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Chunk.Get.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Chunk.Get.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Chunk.Set.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Chunk.Set.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Component.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Component.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Components.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Components.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\QueryDescriptor.WithAll.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>QueryDescriptor.WithAll.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\QueryDescriptor.WithAny.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>QueryDescriptor.WithAny.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\QueryDescriptor.WithExclusive.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>QueryDescriptor.WithExclusive.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\QueryDescriptor.WithNone.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>QueryDescriptor.WithNone.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.AddComponent.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.AddComponent.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.CreateEntity.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.CreateEntity.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.GetComponent.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.GetComponent.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.HasComponent.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.HasComponent.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.RemoveComponent.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.RemoveComponent.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.SetComponentValue.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.SetComponentValue.tt</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

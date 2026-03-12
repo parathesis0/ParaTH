@@ -1,0 +1,36 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+using System.Runtime.CompilerServices;
+
+namespace ParaTH;
+
+public sealed partial class World
+{
+<#
+    for (int n = 2; n <= 16; n++)
+    {
+        var range = Enumerable.Range(0, n);
+        var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
+        var pArgs = string.Join(", ", range.Select(i => $"in T{i} c{i}"));
+        var vArgs = string.Join(", ", range.Select(i => $"c{i}"));
+#>
+    [SkipLocalsInit]
+    public void AddComponent<<#= tArgs #>>(Entity entity, <#= pArgs #>)
+    {
+        ref var entityData = ref entityDatas.GetEntityData(entity.Id);
+        var oldArchetype = entityData.Archetype;
+
+        // add/remove edge lookup supports only one component, for adding/removing 2 or more we'll have to do this
+        var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<<#= tArgs #>>.GroupTypeInfo);
+        var newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+
+        Move(ref entityData, oldArchetype, newArchetype);
+
+        SetComponentValue<<#= tArgs #>>(entity, <#= vArgs #>);
+    }
+<# } #>
+}

@@ -84,7 +84,6 @@ public sealed partial class Archetype
     }
 
     // returns the count of allocated entites
-    // todo: variadic source gen wip
     public int Add<T0>(Entity entity, out Slot slot, in T0 component)
     {
         EntityCount++;
@@ -186,21 +185,18 @@ public sealed partial class Archetype
         return movedEntityId;
     }
 
-    // todo: variadic source gen wip
     public void Set<T0>(Slot slot, in T0 component)
     {
         ref var chunk = ref chunks[slot.ChunkIndex];
         chunk.Set<T0>(slot.Index, component);
     }
 
-    // todo: variadic source gen wip
     public ref T0 Get<T0>(Slot slot)
     {
         ref var chunk = ref chunks[slot.ChunkIndex];
         return ref chunk.Get<T0>(slot.Index);
     }
 
-    // todo: variadic source gen wip
     public bool Has<T0>()
     {
         var archetypeMask = Mask;
