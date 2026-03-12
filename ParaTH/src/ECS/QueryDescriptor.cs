@@ -5,8 +5,18 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+[SkipLocalsInit]
 public partial struct QueryDescriptor
 {
+    public static readonly QueryDescriptor MatchAll = new QueryDescriptor()
+    {
+        hashCode = -1,
+        All = 0,
+        Any = UInt64.MaxValue,
+        None = 0,
+        Exclusive = 0
+    };
+
     private int hashCode;
 
     public ulong All;
@@ -17,6 +27,11 @@ public partial struct QueryDescriptor
     public QueryDescriptor()
     {
         hashCode = -1;
+
+        All = 0;
+        Any = UInt64.MaxValue;
+        None = 0;
+        Exclusive = 0;
     }
 
     [UnscopedRef]

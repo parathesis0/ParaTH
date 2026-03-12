@@ -10,12 +10,12 @@ public sealed class Query
 
     private int lastVersion = -1;
 
-    private ulong allMask;
-    private ulong anyMask;
-    private ulong noneMask;
-    private ulong exclusiveMask;
+    private readonly ulong allMask;
+    private readonly ulong anyMask;
+    private readonly ulong noneMask;
+    private readonly ulong exclusiveMask;
 
-    private bool isExclusive;
+    private readonly bool isExclusive;
 
 #pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
     public Query(ArchetypeList allArchetypes, in QueryDescriptor descriptor)
@@ -37,8 +37,8 @@ public sealed class Query
     {
         return isExclusive
             ? archetypeMask == exclusiveMask
-            : (archetypeMask & allMask ) == allMask &&
-              (anyMask == 0 || (archetypeMask & anyMask) != 0) &&
+            : (archetypeMask & allMask) == allMask &&
+              (archetypeMask & anyMask) != 0 &&
               (archetypeMask & noneMask) == 0;
     }
 

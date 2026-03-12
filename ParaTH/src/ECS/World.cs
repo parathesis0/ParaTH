@@ -83,7 +83,9 @@ public sealed partial class World : IDisposable
     private Entity RecycleOrCreateEntity()
     {
         var recycle = recycledEntities.TryDequeue(out Entity entity);
-        return recycle ? entity : new Entity(entityCount++, 1);
+        var result = recycle ? entity : new Entity(entityCount, 1);
+        entityCount++;
+        return result;
     }
 
     [SkipLocalsInit]
@@ -255,7 +257,7 @@ public sealed partial class World : IDisposable
         var oldSlot = srcEntityData.Slot;
         var allocatedEntities = dstArchetype.Reserve(out var newSlot);
 
-        Archetype.CopyEntityComponents(srcArchetype, oldSlot, dstArchetype, newSlot);
+        Archetype.CopyEntityAndMatchingComponents(srcArchetype, oldSlot, dstArchetype, newSlot);
         var movedEntityId = srcArchetype.Remove(oldSlot);
 
         var entityDatas = this.entityDatas;
@@ -302,6 +304,18 @@ public sealed partial class World : IDisposable
                 }
             }
         }
+    }
+
+    [SkipLocalsInit]
+    public int CountEntities(in QueryDescriptor descriptor)
+    {
+        var count = 0;
+        var query = GetOrCreateQuery(in descriptor);
+
+        foreach (var archetype in query.GetMatchingArchetypes())
+            count += archetype.EntityCount;
+
+        return count;
     }
 #pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     #endregion

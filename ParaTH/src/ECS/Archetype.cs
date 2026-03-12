@@ -24,7 +24,7 @@ public sealed partial class Archetype
     private int CurrentChunkIndex { get; set; }
     private ref Chunk CurrentChunk => ref chunks[CurrentChunkIndex];
     private Slot CurrentSlot => new(CurrentChunk.EntityCount - 1, CurrentChunkIndex);
-    private int EntityCount { get; set; }
+    public int EntityCount { get; private set; }
     public ComponentTypeInfo[] ComponentTypes => componentTypes;
 
     public ChunkList Chunks => chunks;
@@ -302,7 +302,7 @@ public sealed partial class Archetype
         removeEdges.Remove(id);
     }
 
-    public static void CopyEntityComponents(Archetype src, Slot srcSlot, Archetype dst, Slot dstSlot)
+    public static void CopyEntityAndMatchingComponents(Archetype src, Slot srcSlot, Archetype dst, Slot dstSlot)
     {
         ref var srcChunk = ref src.GetChunk(srcSlot.ChunkIndex);
         ref var dstChunk = ref dst.GetChunk(dstSlot.ChunkIndex);

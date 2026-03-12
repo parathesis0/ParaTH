@@ -212,8 +212,10 @@ public sealed class Engine : Game
 
         var font = assetManager.Load<FontAsset>("fonts/mspgothic.ttf", "touhou_font").GetFont(18);
 
+        var counted = world.CountEntities(QueryDescriptor.MatchAll);
+
         stgBatch.DrawString(font,
-            $"entities: {tracked.Count}   frame: {frameCount}",
+            $"entities: {tracked.Count}   frame: {frameCount}   counted entities: {counted}",
             new Vector2(8, 4), Color.White, 200, StgBlendState.Alpha);
         stgBatch.DrawString(font,
             "1:静止弾  2:移動弾  3:+30  4:削除  5:-30  6:spin切替  7:加速  8:停止  P:pause  K:step",
