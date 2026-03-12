@@ -292,7 +292,7 @@ public sealed partial class World : IDisposable
     {
         var query = GetOrCreateQuery(in descriptor);
 
-        foreach (var archetype in query.GetMatchingArchetypes())
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
             foreach (ref var chunk in archetype.Chunks.AsSpan())
             {
@@ -307,15 +307,73 @@ public sealed partial class World : IDisposable
     }
 
     [SkipLocalsInit]
+    public int CountArchetypes(in QueryDescriptor descriptor)
+    {
+        var query = GetOrCreateQuery(in descriptor);
+        return query.GetMatchingArchetypesSpan().Length;
+    }
+
+    [SkipLocalsInit]
+    public int CountChunks(in QueryDescriptor descriptor)
+    {
+        var count = 0;
+        var query = GetOrCreateQuery(in descriptor);
+
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+            count += archetype.Chunks.Count;
+
+        return count;
+    }
+
+    [SkipLocalsInit]
     public int CountEntities(in QueryDescriptor descriptor)
     {
         var count = 0;
         var query = GetOrCreateQuery(in descriptor);
 
-        foreach (var archetype in query.GetMatchingArchetypes())
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
             count += archetype.EntityCount;
 
         return count;
+    }
+
+    // BYOM get methods
+    [SkipLocalsInit]
+    public void GetArchetypes(in QueryDescriptor descriptor, Span<Archetype> buffer)
+    {
+        var query = GetOrCreateQuery(in descriptor);
+        var matchingArchetypes = query.GetMatchingArchetypesSpan();
+        matchingArchetypes.CopyTo(buffer);
+    }
+
+    [SkipLocalsInit]
+    public void GetChunks(in QueryDescriptor descriptor, Span<Chunk> buffer)
+    {
+        var query = GetOrCreateQuery(in descriptor);
+        var index = 0;
+
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+        {
+            foreach (ref var chunk in archetype.Chunks.AsSpan())
+                buffer.UnsafeAt(index++) = chunk;
+        }
+    }
+
+    [SkipLocalsInit]
+    public void GetEntities(in QueryDescriptor descriptor, Span<Entity> buffer)
+    {
+        var query = GetOrCreateQuery(in descriptor);
+        var index = 0;
+
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+        {
+            foreach (ref var chunk in archetype.Chunks.AsSpan())
+            {
+                var entities = chunk.Entities;
+                for (int i = 0; i < chunk.EntityCount; i++)
+                    buffer.UnsafeAt(index++) = entities.UnsafeAt(i);
+            }
+        }
     }
 #pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     #endregion

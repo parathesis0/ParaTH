@@ -26,7 +26,6 @@ public sealed partial class Archetype
     private Slot CurrentSlot => new(CurrentChunk.EntityCount - 1, CurrentChunkIndex);
     public int EntityCount { get; private set; }
     public ComponentTypeInfo[] ComponentTypes => componentTypes;
-
     public ChunkList Chunks => chunks;
 
     public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, ushort baseChunkEntityCount)

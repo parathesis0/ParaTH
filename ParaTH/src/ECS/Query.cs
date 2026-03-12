@@ -1,14 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+[SkipLocalsInit]
 public sealed class Query
 {
     private readonly ArchetypeList allArchetypes;
     private readonly ArchetypeList matchingArchetypes;
 
-    private int lastVersion = -1;
+    private int lastVersion;
 
     private readonly ulong allMask;
     private readonly ulong anyMask;
@@ -23,6 +25,8 @@ public sealed class Query
     {
         this.allArchetypes = allArchetypes;
         matchingArchetypes = new ArchetypeList(8); // todo find a way to pass this in
+
+        lastVersion = -1;
 
         allMask = descriptor.All;
         anyMask = descriptor.Any;
@@ -42,7 +46,7 @@ public sealed class Query
               (archetypeMask & noneMask) == 0;
     }
 
-    public Span<Archetype> GetMatchingArchetypes()
+    public Span<Archetype> GetMatchingArchetypesSpan()
     {
         var currentVersion = allArchetypes.Version;
 

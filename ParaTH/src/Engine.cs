@@ -28,6 +28,10 @@ public sealed class Engine : Game
     private KeyboardState currKb;
     private KeyboardState prevKb;
 
+    private double fpsTimer;
+    private int fpsCounter;
+    private int currentFps;
+
     public Engine()
     {
         var gdm = new GraphicsDeviceManager(this);
@@ -110,9 +114,9 @@ public sealed class Engine : Game
 
         if (IsKeyPressed(Keys.D1)) SpawnStatic();
         if (IsKeyPressed(Keys.D2)) SpawnMoving();
-        if (IsKeyPressed(Keys.D3)) for (int i = 0; i < 30; i++) SpawnMoving();
+        if (IsKeyPressed(Keys.D3)) for (int i = 0; i < 3000; i++) SpawnMoving();
         if (IsKeyPressed(Keys.D4)) DestroyRandom();
-        if (IsKeyPressed(Keys.D5)) for (int i = 0; i < 30; i++) DestroyRandom();
+        if (IsKeyPressed(Keys.D5)) for (int i = 0; i < 3000; i++) DestroyRandom();
 
         // toggle spin on a random entity
         if (IsKeyPressed(Keys.D6) && tracked.Count > 0)
@@ -144,6 +148,14 @@ public sealed class Engine : Game
         }
 
         prevKb = currKb;
+
+        fpsTimer += gameTime.ElapsedGameTime.TotalSeconds;
+        if (fpsTimer >= 1.0)
+        {
+            currentFps = fpsCounter;
+            fpsCounter = 0;
+            fpsTimer--;
+        }
 
         if (!isPaused || stepRequested)
         {
@@ -184,6 +196,8 @@ public sealed class Engine : Game
 
     protected override void Draw(GameTime gameTime)
     {
+        fpsCounter++;
+
         GraphicsDevice.Clear(new Color(15, 10, 30));
         stgBatch.Begin(SamplerState.PointClamp, RasterizerState.CullCounterClockwise, null, projection);
 
@@ -212,13 +226,18 @@ public sealed class Engine : Game
 
         var font = assetManager.Load<FontAsset>("fonts/mspgothic.ttf", "touhou_font").GetFont(18);
 
-        var counted = world.CountEntities(QueryDescriptor.MatchAll);
+        var countedEntities = world.CountEntities(QueryDescriptor.MatchAll);
+        var countedArchetypes = world.CountArchetypes(QueryDescriptor.MatchAll);
+        var counterChunks = world.CountChunks(QueryDescriptor.MatchAll);
+
+        Color fpsColor = currentFps < 58 ? Color.Red : Color.LimeGreen;
 
         stgBatch.DrawString(font,
-            $"entities: {tracked.Count}   frame: {frameCount}   counted entities: {counted}",
+            $"entities: {tracked.Count} | frame: {frameCount} | counted entities: {countedEntities} | counted archetypes: {countedArchetypes} | counted chunks {counterChunks}",
             new Vector2(8, 4), Color.White, 200, StgBlendState.Alpha);
+        stgBatch.DrawString(font, $"[ FPS: {currentFps} ]", new Vector2(1100, 4), fpsColor, 200, StgBlendState.Alpha);
         stgBatch.DrawString(font,
-            "1:静止弾  2:移動弾  3:+30  4:削除  5:-30  6:spin切替  7:加速  8:停止  P:pause  K:step",
+            "1:静止弾  2:移動弾  3:+3000  4:削除  5:-3000  6:spin切替  7:加速  8:停止  P:pause  K:step",
             new Vector2(8, 26), Color.Gray, 200, StgBlendState.Alpha);
 
         stgBatch.End();
