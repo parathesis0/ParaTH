@@ -4,16 +4,17 @@ namespace ParaTH;
 
 public readonly struct Entity : IEquatable<Entity>
 {
-    private const int VersionBits  = 12;
-    private const int IdBits       = 32 - VersionBits;
+    private const int VersionBits = 12;
+    private const int IdBits = 32 - VersionBits;
     private const uint VersionMask = (1u << VersionBits) - 1;
-    private const uint IdMask      = (1u << IdBits) - 1;
+    private const uint IdMask = (1u << IdBits) - 1;
+    private const uint VersionIncrement = 1u << IdBits;
 
     public readonly uint PackedValue;
 
     public Entity(int id, int version)
     {
-        PackedValue = (((uint)id & IdMask) << VersionBits) | ((uint)version & VersionMask); ;
+        PackedValue = ((uint)id & IdMask) | (((uint)version & VersionMask) << IdBits);
     }
 
     private Entity(uint packedValue)
@@ -24,20 +25,24 @@ public readonly struct Entity : IEquatable<Entity>
     public int Id
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => (int)(PackedValue >> VersionBits);
+        get => (int)(PackedValue & IdMask);
     }
 
     public int Version
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => (int)(PackedValue & VersionMask);
+        get => (int)(PackedValue >> IdBits);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Entity BumpVersion()
     {
-        return new Entity((PackedValue & ~VersionMask) | ((PackedValue + 1) & VersionMask));
+        unchecked
+        {
+            return new Entity(PackedValue + VersionIncrement);
+        }
     }
+
     public bool Equals(Entity other) => this.PackedValue == other.PackedValue;
 
     public override bool Equals(object? obj) => obj is Entity other && Equals(other);
