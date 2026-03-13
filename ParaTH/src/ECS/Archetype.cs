@@ -164,7 +164,6 @@ public sealed partial class Archetype
     {
         var totalAmount = entities.Length;
         var created = 0;
-        var chunkIndexIncrement = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
         {
@@ -188,17 +187,16 @@ public sealed partial class Archetype
             chunkEntityCount += fillAmount;
             created += fillAmount;
 
-            if (chunkEntityCount == chunkCapacity)
-                chunkIndexIncrement++;
-
             chunk.EntityCount = chunkEntityCount;
 
             if (created >= totalAmount)
+            {
+                this.CurrentChunkIndex = i;
                 break;
+            }
         }
 
         this.EntityCount += totalAmount;
-        this.CurrentChunkIndex += chunkIndexIncrement;
     }
 
     // returns the count of allocated spots
