@@ -1,5 +1,3 @@
-using System.ComponentModel;
-
 namespace ParaTH;
 
 public sealed partial class Archetype
@@ -19,7 +17,7 @@ public sealed partial class Archetype
     private int BaseChunkByteSize { get; }
     private int BaseChunkEntityCount { get; }
 
-    private int ChunkSize { get; }
+    private int ChunkByteSize { get; }
     public int EntitiesPerChunk { get; }
     private int CurrentChunkIndex { get; set; }
     private ref Chunk CurrentChunk => ref chunks[CurrentChunkIndex];
@@ -27,6 +25,7 @@ public sealed partial class Archetype
     public int EntityCount { get; private set; }
     public ComponentTypeInfo[] ComponentTypes => componentTypes;
     public ChunkList Chunks => chunks;
+    public int EntityCapacity => chunks.Capacity * EntitiesPerChunk;
 
     public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, int baseChunkEntityCount)
     {
@@ -49,7 +48,7 @@ public sealed partial class Archetype
         Array.Fill(componentIdToArrayIndex, InvalidIndex);
         for (int i = 0; i < componentTypes.Length; i++)
         {
-            ref var type = ref componentTypes[i];
+            ref var type = ref componentTypes.UnsafeAt(i);
             var id = type.Id;
             componentIdToArrayIndex[id] = i;
         }
@@ -58,8 +57,8 @@ public sealed partial class Archetype
         var typesByteSize = 0;
         foreach (var type in componentTypes)
             typesByteSize += type.ByteSize;
-        ChunkSize = GetChunkSize(typesByteSize, baseChunkByteSize, baseChunkEntityCount);
-        EntitiesPerChunk = GetEntitesPerChunk(ChunkSize, typesByteSize);
+        ChunkByteSize = GetChunkByteSize(typesByteSize, baseChunkByteSize, baseChunkEntityCount);
+        EntitiesPerChunk = GetEntitesPerChunk(ChunkByteSize, typesByteSize);
 
         chunks = new ChunkList(1);
         AddChunk();
@@ -81,6 +80,42 @@ public sealed partial class Archetype
     public ref Chunk GetChunk(int index)
     {
         return ref chunks[index];
+    }
+
+    public void GetNextSlots(Span<Slot> slotBuffer, int amount)
+    {
+        var bufferIndex = 0;
+        for (int chunkIndex = CurrentChunkIndex; chunkIndex < chunks.Count; chunkIndex++)
+        {
+            ref var chunk = ref chunks[chunkIndex];
+            var chunkCount = chunk.EntityCount;
+            var fillLimit = Math.Min(chunk.Capacity - chunkCount, amount);
+
+            for (int index = chunkCount; index < chunkCount + fillLimit; index++)
+                slotBuffer.UnsafeAt(bufferIndex++) = new Slot(index, chunkIndex);
+
+            amount -= fillLimit;
+            if (amount <= 0)
+                break;
+        }
+    }
+
+    public void EnsureEntityCapacity(int newEntityCapacity)
+    {
+        if (newEntityCapacity <= EntityCapacity)
+            return;
+
+        var oldChunkCapacity = Chunks.Capacity;
+        // newEntityCapacity / EntitiesPerChunk rounded up
+        var newChunkCapacity = (newEntityCapacity + EntitiesPerChunk - 1) / EntitiesPerChunk;
+        Chunks.EnsureCapacity(newChunkCapacity);
+
+        var entitiesPerChunk = EntitiesPerChunk;
+        var componentIdToArrayIndex = this.componentIdToArrayIndex;
+        var componentTypes = this.componentTypes;
+
+        for (int i = oldChunkCapacity; i < newChunkCapacity; i++)
+            Chunks.Add(new Chunk(entitiesPerChunk, componentIdToArrayIndex, componentTypes));
     }
 
     // returns the count of allocated entites
@@ -122,6 +157,46 @@ public sealed partial class Archetype
 
         CurrentChunkIndex = currentChunkIndex;
         return EntitiesPerChunk;
+    }
+
+    // ensure capacity before this
+    public void AddBulk<T0>(Span<Entity> entities, in T0 component)
+    {
+        var totalAmount = entities.Length;
+        var created = 0;
+        var chunkIndexIncrement = 0;
+
+        for (int i = CurrentChunkIndex; i < chunks.Count; i++)
+        {
+            ref var chunk = ref chunks[i];
+            var chunkEntityCount = chunk.EntityCount;
+            var chunkCapacity = chunk.Capacity;
+
+            var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
+
+            // copy entities
+            var src = entities.Slice(created, fillAmount);
+            var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
+            src.CopyTo(dst);
+
+            // fill components
+            chunk.GetComponentSpanFull<T0>(out var span);
+            span.Slice(chunkEntityCount, fillAmount).Fill(component);
+
+            chunkEntityCount += fillAmount;
+            created += fillAmount;
+
+            if (chunkEntityCount == chunkCapacity)
+                chunkIndexIncrement++;
+
+            chunk.EntityCount = chunkEntityCount;
+
+            if (created >= totalAmount)
+                break;
+        }
+
+        this.EntityCount += totalAmount;
+        this.CurrentChunkIndex += chunkIndexIncrement;
     }
 
     // returns the count of allocated spots
@@ -234,9 +309,10 @@ public sealed partial class Archetype
         return arrayIndex != InvalidIndex;
     }
 
-    private static unsafe int GetChunkSize(int typesByteSize, int baseChunkByteSize, int baseChunkEntityCount)
+    private static unsafe int GetChunkByteSize(int typesByteSize, int baseChunkByteSize, int baseChunkEntityCount)
     {
         var entityByteSize = baseChunkEntityCount * (sizeof(Entity) + typesByteSize);
+        // (entityByteSize / baseChunkByteSize rounded up) * baseChunkByteSize
         return (entityByteSize + baseChunkByteSize - 1) / baseChunkByteSize * baseChunkByteSize;
     }
 

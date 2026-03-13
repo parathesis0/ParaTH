@@ -1,0 +1,62 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+namespace ParaTH;
+
+public sealed partial class Archetype
+{
+<#
+    for (int n = 2; n <= 16; n++)
+    {
+        var range = Enumerable.Range(0, n);
+        var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
+        var pArgs = string.Join(", ", range.Select(i => $"in T{i} c{i}"));
+#>
+    public void AddBulk<<#= tArgs #>>(Span<Entity> entities, <#= pArgs #>)
+    {
+        var totalAmount = entities.Length;
+        var created = 0;
+        var chunkIndexIncrement = 0;
+
+        for (int i = CurrentChunkIndex; i < chunks.Count; i++)
+        {
+            ref var chunk = ref chunks[i];
+            var chunkEntityCount = chunk.EntityCount;
+            var chunkCapacity = chunk.Capacity;
+
+            var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
+
+            var src = entities.Slice(created, fillAmount);
+            var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
+            src.CopyTo(dst);
+
+<#
+            foreach (int i in range)
+            {
+#>
+            chunk.GetComponentSpanFull<T<#= i #>>(out var s<#= i #>);
+            s<#= i #>.Slice(chunkEntityCount, fillAmount).Fill(c<#= i #>);
+<#
+            }
+#>
+
+            chunkEntityCount += fillAmount;
+            created += fillAmount;
+
+            if (chunkEntityCount == chunkCapacity)
+                chunkIndexIncrement++;
+
+            chunk.EntityCount = chunkEntityCount;
+
+            if (created >= totalAmount)
+                break;
+        }
+
+        this.EntityCount += totalAmount;
+        this.CurrentChunkIndex += chunkIndexIncrement;
+    }
+<# } #>
+}

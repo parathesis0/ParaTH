@@ -19,13 +19,20 @@ public sealed partial class World
         var vArgs = string.Join(", ", range.Select(i => $"c{i}"));
 #>
     [SkipLocalsInit]
-    public void SetComponentValue<<#= tArgs #>>(Entity entity, <#= pArgs #>)
+    public void CreateEntityBulk<<#= tArgs #>>(Span<Entity> entityBuffer, <#= pArgs #>)
     {
-        ref var entityData = ref entityDatas.GetEntityData(entity.Id);
-        var archetype = entityData.Archetype;
-        var slot = entityData.Slot;
+        var amount = entityBuffer.Length;
+        var types = Component<<#= tArgs #>>.GroupTypeInfo;
 
-        archetype.Set<<#= tArgs #>>(slot, <#= vArgs #>);
+        var archetype = GetOrCreateArchetypeWithCapacity(types, amount);
+
+        using var entityDataBuffer = ScopedPooledArray<EntityData>.Rent(amount);
+        var entityDataBufferSpan = entityDataBuffer.AsSpan();
+
+        RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
+        archetype.AddBulk<<#= tArgs #>>(entityBuffer, <#= vArgs #>);
+
+        AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
 <# } #>
 }

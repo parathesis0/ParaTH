@@ -61,6 +61,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Archetype.Add.cs</LastGenOutput>
     </None>
+    <None Update="src\ECS\Variadic\Archetype.AddBulk.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Archetype.AddBulk.cs</LastGenOutput>
+    </None>
     <None Update="src\ECS\Variadic\Archetype.Get.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Archetype.Get.cs</LastGenOutput>
@@ -121,6 +125,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>World.CreateEntity.cs</LastGenOutput>
     </None>
+    <None Update="src\ECS\Variadic\World.CreateEntityBulk.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.CreateEntityBulk.cs</LastGenOutput>
+    </None>
     <None Update="src\ECS\Variadic\World.GetComponent.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>World.GetComponent.cs</LastGenOutput>
@@ -152,6 +160,11 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Archetype.Add.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Archetype.AddBulk.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Archetype.AddBulk.tt</DependentUpon>
     </Compile>
     <Compile Update="src\ECS\Variadic\Archetype.Get.cs">
       <DesignTime>True</DesignTime>
@@ -227,6 +240,11 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>World.CreateEntity.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.CreateEntityBulk.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.CreateEntityBulk.tt</DependentUpon>
     </Compile>
     <Compile Update="src\ECS\Variadic\World.GetComponent.cs">
       <DesignTime>True</DesignTime>

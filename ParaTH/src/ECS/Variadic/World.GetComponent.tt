@@ -4,6 +4,8 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".cs" #>
+using System.Runtime.CompilerServices;
+
 namespace ParaTH;
 
 public sealed partial class World
@@ -14,6 +16,7 @@ public sealed partial class World
         var range = Enumerable.Range(0, n);
         var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
 #>
+    [SkipLocalsInit]
     public Components<<#= tArgs #>> GetComponent<<#= tArgs #>>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);

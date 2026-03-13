@@ -6,49 +6,49 @@ namespace ParaTH;
 
 public sealed class EntityDataMap
 {
-    private readonly PagedArray<EntityData> entityDatas;
+    public readonly PagedArray<EntityData> EntityDatas;
 
     public EntityDataMap(int baseChunkByteSize, int capacity)
     {
-        entityDatas = new PagedArray<EntityData>(
+        EntityDatas = new PagedArray<EntityData>(
             baseChunkByteSize / Unsafe.SizeOf<EntityData>(),
             capacity
         );
     }
 
     public void Add(int entityId, Archetype archetype, Slot slot, int version)
-        => entityDatas.Add(entityId, new EntityData(archetype, slot, version));
+        => EntityDatas.Add(entityId, new EntityData(archetype, slot, version));
 
     public Archetype GetArchetype(int entityId)
-        =>  entityDatas[entityId].Archetype;
+        =>  EntityDatas[entityId].Archetype;
 
     public Slot GetSlot(int entityId)
-        => entityDatas[entityId].Slot;
+        => EntityDatas[entityId].Slot;
 
     public int GetVersion(int entityId)
-        => entityDatas[entityId].Version;
+        => EntityDatas[entityId].Version;
 
     public ref EntityData GetEntityData(int entityId)
-        => ref entityDatas[entityId];
+        => ref EntityDatas[entityId];
 
     public ref EntityData TryGetEntityData(int entityId)
-        => ref entityDatas.TryGetRef(entityId);
+        => ref EntityDatas.TryGetRef(entityId);
 
     public void Remove(int entityId)
-        => entityDatas.Remove(entityId);
+        => EntityDatas.Remove(entityId);
 
     public bool Has(int entityId)
-        => entityDatas.ContainsKey(entityId);
+        => EntityDatas.ContainsKey(entityId);
 
     public void Move(int id, Slot slot)
-        => entityDatas[id].Slot = slot;
+        => EntityDatas[id].Slot = slot;
 
     public void EnsureCapacity(int capacity)
-        => entityDatas.EnsureCapacity(capacity);
+        => EntityDatas.EnsureCapacity(capacity);
 
     public void TrimExcess()
-        => entityDatas.TrimExcess();
+        => EntityDatas.TrimExcess();
 
     public void Clear()
-        => entityDatas.Clear();
+        => EntityDatas.Clear();
 }

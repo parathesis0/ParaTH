@@ -4,6 +4,8 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".cs" #>
+using System.Runtime.CompilerServices;
+
 namespace ParaTH;
 
 public sealed partial class World
@@ -17,6 +19,7 @@ public sealed partial class World
         var iArgs = string.Join(", ", range.Select(i => $"in T{i} c{i}"));
         var oArgs = string.Join(", ", range.Select(i => $"out Span<T{i}> s{i}"));
 #>
+    [SkipLocalsInit]
     public void QuerySetComponentValue<<#= tArgs #>>(in QueryDescriptor descriptor, <#= iArgs #>)
     {
         var query = GetOrCreateQuery(in descriptor);

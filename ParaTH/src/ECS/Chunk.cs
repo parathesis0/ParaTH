@@ -118,6 +118,12 @@ public partial struct Chunk
         return Unsafe.As<T[]>(Components.UnsafeAt(arrayId));
     }
 
+    // not providing a variadic version because its only used internally
+    public readonly void GetComponentSpanFull<T>(out Span<T> s0)
+    {
+        s0 = MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T>(), Capacity);
+    }
+
     public static void CopyEntityAndMatchingComponents(
         ref Chunk src, int srcIndex,
         ref Chunk dst, int dstIndex,

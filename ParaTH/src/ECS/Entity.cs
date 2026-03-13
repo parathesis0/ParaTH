@@ -1,9 +1,7 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace ParaTH;
 
-[StructLayout(LayoutKind.Sequential, Pack = 2)]
 public readonly struct Entity : IEquatable<Entity>
 {
     private const int VersionBits  = 12;

@@ -1,7 +1,10 @@
+using System.Runtime.CompilerServices;
+
 namespace ParaTH;
 
 public sealed partial class World
 {
+    [SkipLocalsInit]
     public Components<T0, T1> GetComponent<T0, T1>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -9,6 +12,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2> GetComponent<T0, T1, T2>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -16,6 +20,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3> GetComponent<T0, T1, T2, T3>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -23,6 +28,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4> GetComponent<T0, T1, T2, T3, T4>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -30,6 +36,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5> GetComponent<T0, T1, T2, T3, T4, T5>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -37,6 +44,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6> GetComponent<T0, T1, T2, T3, T4, T5, T6>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -44,6 +52,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5, T6>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6, T7> GetComponent<T0, T1, T2, T3, T4, T5, T6, T7>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -51,6 +60,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5, T6, T7>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8> GetComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -58,6 +68,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5, T6, T7, T8>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -65,6 +76,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -72,6 +84,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -79,6 +92,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> GetComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -86,6 +100,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> GetComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -93,6 +108,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> GetComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
@@ -100,6 +116,7 @@ public sealed partial class World
         var archetype = entityData.Archetype;
         return archetype.Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(slot);
     }
+    [SkipLocalsInit]
     public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> GetComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(Entity entity)
     {
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);

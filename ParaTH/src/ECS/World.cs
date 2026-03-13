@@ -1,9 +1,5 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Collections.Frozen;
 
 namespace ParaTH;
 
@@ -43,7 +39,7 @@ public sealed partial class World : IDisposable
         this.baseChunkEntityCount = baseChunkEntityCount;
     }
 
-    #region Entity Creation and Destroy
+    #region Entity Management
     [SkipLocalsInit]
     public Entity CreateEntity<T0>(in T0 component)
     {
@@ -60,6 +56,23 @@ public sealed partial class World : IDisposable
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
         return entity;
+    }
+
+    [SkipLocalsInit]
+    public void CreateEntityBulk<T0>(Span<Entity> entityBuffer, in T0 component)
+    {
+        var amount = entityBuffer.Length;
+        var types = Component<T0>.GroupTypeInfo;
+
+        var archetype = GetOrCreateArchetypeWithCapacity(types, amount);
+
+        using var entityDataBuffer = ScopedPooledArray<EntityData>.Rent(amount);
+        var entityDataBufferSpan = entityDataBuffer.AsSpan();
+
+        RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
+        archetype.AddBulk<T0>(entityBuffer, component);
+
+        AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
 
     [SkipLocalsInit]
@@ -84,10 +97,28 @@ public sealed partial class World : IDisposable
     [SkipLocalsInit]
     private Entity RecycleOrCreateEntity()
     {
-        var recycle = recycledEntities.TryDequeue(out Entity entity);
-        var result = recycle ? entity : new Entity(entityCount, 1);
+        var shouldRecycle = recycledEntities.TryDequeue(out Entity entity);
+        var result = shouldRecycle ? entity : new Entity(entityCount, 1);
         entityCount++;
         return result;
+    }
+
+    [SkipLocalsInit]
+    private void RecycleOrCreateEntityBulk(
+        Archetype archetype, Span<Entity> entityBuffer, Span<EntityData> entityDataBuffer)
+    {
+        int amount = entityBuffer.Length;
+
+        using var slotBuffer = ScopedPooledArray<Slot>.Rent(amount);
+        var slots = slotBuffer.AsSpan();
+
+        archetype.GetNextSlots(slots, amount);
+        for (int i = 0; i < amount; i++)
+        {
+            var entity = RecycleOrCreateEntity();
+            entityBuffer.UnsafeAt(i) = entity;
+            entityDataBuffer.UnsafeAt(i) = new EntityData(archetype, slots.UnsafeAt(i), entity.Version);
+        }
     }
 
     [SkipLocalsInit]
@@ -118,6 +149,33 @@ public sealed partial class World : IDisposable
         entityDatas.EnsureCapacity(capacity);
 
         return newArchetype;
+    }
+
+    [SkipLocalsInit]
+    private Archetype GetOrCreateArchetypeWithCapacity(ComponentTypeInfo[] types, int amount)
+    {
+        var archetype = GetOrCreateArchetype(types);
+        capacity -= archetype.EntityCapacity; // no idea why i need to do this but Arch does it too
+        archetype.EnsureEntityCapacity(archetype.EntityCount + amount);
+
+        var requiredCapacity = capacity + archetype.EntityCapacity;
+        entityDatas.EnsureCapacity(requiredCapacity);
+        capacity = requiredCapacity;
+
+        return archetype;
+    }
+
+    [SkipLocalsInit]
+    private void AddEntityDataBulk(Span<Entity> entities, Span<EntityData> entityData)
+    {
+        int amount = entities.Length;
+        var entityDataArrInternal = entityDatas.EntityDatas;
+        for (int i = 0; i < amount; i++)
+        {
+            var entity = entities.UnsafeAt(i);
+            ref var data = ref entityData.UnsafeAt(i);
+            entityDataArrInternal.Add(entity.Id, data);
+        }
     }
     #endregion
 
@@ -457,6 +515,16 @@ public sealed partial class World : IDisposable
                 }
             }
         }
+    }
+
+    public void QueryAddComponent<T0>(in QueryDescriptor descriptor, in T0 component)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void QueryRemoveComponent<T0>(in QueryDescriptor descriptor)
+    {
+        throw new NotImplementedException();
     }
 #pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     #endregion

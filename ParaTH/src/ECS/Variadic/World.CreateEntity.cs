@@ -1,7 +1,10 @@
+using System.Runtime.CompilerServices;
+
 namespace ParaTH;
 
 public sealed partial class World
 {
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1>(in T0 c0, in T1 c1)
     {
         var types = Component<T0, T1>.GroupTypeInfo;
@@ -18,6 +21,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2>(in T0 c0, in T1 c1, in T2 c2)
     {
         var types = Component<T0, T1, T2>.GroupTypeInfo;
@@ -34,6 +38,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3>(in T0 c0, in T1 c1, in T2 c2, in T3 c3)
     {
         var types = Component<T0, T1, T2, T3>.GroupTypeInfo;
@@ -50,6 +55,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4)
     {
         var types = Component<T0, T1, T2, T3, T4>.GroupTypeInfo;
@@ -66,6 +72,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5)
     {
         var types = Component<T0, T1, T2, T3, T4, T5>.GroupTypeInfo;
@@ -82,6 +89,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6>.GroupTypeInfo;
@@ -98,6 +106,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6, T7>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupTypeInfo;
@@ -114,6 +123,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6, T7, T8>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupTypeInfo;
@@ -130,6 +140,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupTypeInfo;
@@ -146,6 +157,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupTypeInfo;
@@ -162,6 +174,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupTypeInfo;
@@ -178,6 +191,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupTypeInfo;
@@ -194,6 +208,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12, in T13 c13)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupTypeInfo;
@@ -210,6 +225,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12, in T13 c13, in T14 c14)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupTypeInfo;
@@ -226,6 +242,7 @@ public sealed partial class World
 
         return entity;
     }
+    [SkipLocalsInit]
     public Entity CreateEntity<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12, in T13 c13, in T14 c14, in T15 c15)
     {
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupTypeInfo;
