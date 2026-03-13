@@ -13,7 +13,7 @@ public sealed partial class Archetype
     {
         var range = Enumerable.Range(0, n);
         var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
-        var pArgs = string.Join(", ", range.Select(i => $"in T{i} c{i}"));
+        var pArgs = string.Join(", ", range.Select(i => $"Span<T{i}> c{i}"));
 #>
     public void AddBulk<<#= tArgs #>>(Span<Entity> entities, <#= pArgs #>)
     {
@@ -38,7 +38,9 @@ public sealed partial class Archetype
             {
 #>
             chunk.GetComponentSpanFull<T<#= i #>>(out var s<#= i #>);
-            s<#= i #>.Slice(chunkEntityCount, fillAmount).Fill(c<#= i #>);
+            var srcC<#= i #> = c<#= i #>.Slice(created, fillAmount);
+            var dstC<#= i #> = s<#= i #>.Slice(chunkEntityCount, fillAmount);
+            srcC<#= i #>.CopyTo(dstC<#= i #>);
 <#
             }
 #>

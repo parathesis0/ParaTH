@@ -59,7 +59,7 @@ public sealed partial class World : IDisposable
     }
 
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0>(Span<Entity> entityBuffer, in T0 component)
+    public void CreateEntityBulk<T0>(Span<Entity> entityBuffer, Span<T0> components)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0>.GroupTypeInfo;
@@ -70,7 +70,7 @@ public sealed partial class World : IDisposable
         var entityDataBufferSpan = entityDataBuffer.AsSpan();
 
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
-        archetype.AddBulk<T0>(entityBuffer, component);
+        archetype.AddBulk<T0>(entityBuffer, components);
 
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }

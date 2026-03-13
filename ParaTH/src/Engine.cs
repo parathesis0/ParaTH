@@ -5,6 +5,9 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace ParaTH;
 
@@ -16,6 +19,7 @@ public struct Gravity { public float G; }
 public struct Orbit { public float CenterX; public float CenterY; public float Radius; public float Angle; public float Speed; }
 public struct Mutator { public int Threshold; }
 public struct Renderable { public byte SpriteType; public byte ColorIndex; public float Scale; }
+
 public sealed class Engine : Game
 {
     private AssetManager assetManager = null!;
@@ -42,6 +46,36 @@ public sealed class Engine : Game
 
     private readonly List<Entity> entitiesToDestroy = new(10000);
     private readonly List<Entity> entitiesToMutate = new(10000);
+
+    // ── 计时器 ──
+    private readonly Stopwatch sw = new();
+    private readonly StringBuilder profileSb = new(512);
+
+    // 各阶段耗时（微秒），保留最近一帧的值
+    private double tSpawn;
+    private double tLifetime;
+    private double tMutateQuery;
+    private double tGravity;
+    private double tMovement;
+    private double tOrbit;
+    private double tSpin;
+    private double tMutateApply;
+    private double tDestroy;
+    private double tUpdateTotal;
+    private double tDraw;
+
+    // Stopwatch 频率转微秒的乘数，只算一次
+    private static readonly double TicksToUs = 1_000_000.0 / Stopwatch.Frequency;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private long Stamp() { sw.Restart(); return 0; }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private double Elapsed()
+    {
+        sw.Stop();
+        return sw.ElapsedTicks * TicksToUs;
+    }
 
     public Engine()
     {
@@ -81,16 +115,26 @@ public sealed class Engine : Game
 
     private void SpawnWave(int count)
     {
+        using var allVel = ScopedPooledArray<Velocity>.Rent(count);
+        using var allLife = ScopedPooledArray<Lifetime>.Rent(count);
+        using var allRend = ScopedPooledArray<Renderable>.Rent(count);
+        using var allSpin = ScopedPooledArray<float>.Rent(count);
+        using var cats = ScopedPooledArray<byte>.Rent(count);
+
+        int n0 = 0, n1 = 0, n2 = 0, n3 = 0;
+
         for (int i = 0; i < count; i++)
         {
-            var pos = new Position { X = 640, Y = 360 };
-
             float angle = (float)(rng.NextDouble() * Math.PI * 2);
             float speed = (float)(rng.NextDouble() * 3f + 1f);
-            var vel = new Velocity { DX = MathF.Cos(angle) * speed, DY = MathF.Sin(angle) * speed };
+            allVel[i] = new Velocity
+            {
+                DX = MathF.Cos(angle) * speed,
+                DY = MathF.Sin(angle) * speed
+            };
 
-            var life = new Lifetime { Ticks = rng.Next(300, 600) };
-            var rend = new Renderable
+            allLife[i] = new Lifetime { Ticks = rng.Next(300, 600) };
+            allRend[i] = new Renderable
             {
                 SpriteType = (byte)rng.Next(2),
                 ColorIndex = (byte)rng.Next(8),
@@ -100,41 +144,142 @@ public sealed class Engine : Game
             bool hasSpin = rng.Next(2) == 0;
             bool hasGrav = rng.Next(5) == 0;
 
-            if (hasSpin && hasGrav)
+            if (hasSpin)
+                allSpin[i] = (float)(rng.NextDouble() * 0.2 - 0.1);
+
+            byte cat = (byte)((hasSpin ? 1 : 0) | (hasGrav ? 2 : 0));
+            cats[i] = cat;
+
+            switch (cat)
             {
-                world.CreateEntity(pos, vel, life, rend,
-                    new Spin { Speed = (float)(rng.NextDouble() * 0.2 - 0.1) },
-                    new Gravity { G = 0.05f });
+                case 0: n0++; break;
+                case 1: n1++; break;
+                case 2: n2++; break;
+                case 3: n3++; break;
             }
-            else if (hasSpin)
+        }
+
+        if (n0 > 0)
+        {
+            using var ents = ScopedPooledArray<Entity>.Rent(n0);
+            using var pos = ScopedPooledArray<Position>.Rent(n0);
+            using var vel = ScopedPooledArray<Velocity>.Rent(n0);
+            using var life = ScopedPooledArray<Lifetime>.Rent(n0);
+            using var rend = ScopedPooledArray<Renderable>.Rent(n0);
+
+            for (int i = 0, j = 0; i < count; i++)
             {
-                world.CreateEntity(pos, vel, life, rend,
-                    new Spin { Speed = (float)(rng.NextDouble() * 0.2 - 0.1) });
+                if (cats[i] != 0) continue;
+                pos[j] = new Position { X = 640, Y = 360 };
+                vel[j] = allVel[i];
+                life[j] = allLife[i];
+                rend[j] = allRend[i];
+                j++;
             }
-            else if (hasGrav)
+
+            world.CreateEntityBulk(ents.AsSpan(), pos.AsSpan(), vel.AsSpan(),
+                                   life.AsSpan(), rend.AsSpan());
+        }
+
+        if (n1 > 0)
+        {
+            using var ents = ScopedPooledArray<Entity>.Rent(n1);
+            using var pos = ScopedPooledArray<Position>.Rent(n1);
+            using var vel = ScopedPooledArray<Velocity>.Rent(n1);
+            using var life = ScopedPooledArray<Lifetime>.Rent(n1);
+            using var rend = ScopedPooledArray<Renderable>.Rent(n1);
+            using var spin = ScopedPooledArray<Spin>.Rent(n1);
+
+            for (int i = 0, j = 0; i < count; i++)
             {
-                world.CreateEntity(pos, vel, life, rend,
-                    new Gravity { G = 0.05f });
+                if (cats[i] != 1) continue;
+                pos[j] = new Position { X = 640, Y = 360 };
+                vel[j] = allVel[i];
+                life[j] = allLife[i];
+                rend[j] = allRend[i];
+                spin[j] = new Spin { Speed = allSpin[i] };
+                j++;
             }
-            else
+
+            world.CreateEntityBulk(ents.AsSpan(), pos.AsSpan(), vel.AsSpan(),
+                                   life.AsSpan(), rend.AsSpan(), spin.AsSpan());
+        }
+
+        if (n2 > 0)
+        {
+            using var ents = ScopedPooledArray<Entity>.Rent(n2);
+            using var pos = ScopedPooledArray<Position>.Rent(n2);
+            using var vel = ScopedPooledArray<Velocity>.Rent(n2);
+            using var life = ScopedPooledArray<Lifetime>.Rent(n2);
+            using var rend = ScopedPooledArray<Renderable>.Rent(n2);
+            using var grav = ScopedPooledArray<Gravity>.Rent(n2);
+
+            for (int i = 0, j = 0; i < count; i++)
             {
-                world.CreateEntity(pos, vel, life, rend);
+                if (cats[i] != 2) continue;
+                pos[j] = new Position { X = 640, Y = 360 };
+                vel[j] = allVel[i];
+                life[j] = allLife[i];
+                rend[j] = allRend[i];
+                grav[j] = new Gravity { G = 0.05f };
+                j++;
             }
+
+            world.CreateEntityBulk(ents.AsSpan(), pos.AsSpan(), vel.AsSpan(),
+                                   life.AsSpan(), rend.AsSpan(), grav.AsSpan());
+        }
+
+        if (n3 > 0)
+        {
+            using var ents = ScopedPooledArray<Entity>.Rent(n3);
+            using var pos = ScopedPooledArray<Position>.Rent(n3);
+            using var vel = ScopedPooledArray<Velocity>.Rent(n3);
+            using var life = ScopedPooledArray<Lifetime>.Rent(n3);
+            using var rend = ScopedPooledArray<Renderable>.Rent(n3);
+            using var spin = ScopedPooledArray<Spin>.Rent(n3);
+            using var grav = ScopedPooledArray<Gravity>.Rent(n3);
+
+            for (int i = 0, j = 0; i < count; i++)
+            {
+                if (cats[i] != 3) continue;
+                pos[j] = new Position { X = 640, Y = 360 };
+                vel[j] = allVel[i];
+                life[j] = allLife[i];
+                rend[j] = allRend[i];
+                spin[j] = new Spin { Speed = allSpin[i] };
+                grav[j] = new Gravity { G = 0.05f };
+                j++;
+            }
+
+            world.CreateEntityBulk(ents.AsSpan(), pos.AsSpan(), vel.AsSpan(),
+                                   life.AsSpan(), rend.AsSpan(), spin.AsSpan(), grav.AsSpan());
         }
     }
 
     private void SpawnMutators(int count)
     {
+        using var ents = ScopedPooledArray<Entity>.Rent(count);
+        using var pos = ScopedPooledArray<Position>.Rent(count);
+        using var vel = ScopedPooledArray<Velocity>.Rent(count);
+        using var life = ScopedPooledArray<Lifetime>.Rent(count);
+        using var mut = ScopedPooledArray<Mutator>.Rent(count);
+        using var rend = ScopedPooledArray<Renderable>.Rent(count);
+
         for (int i = 0; i < count; i++)
         {
-            world.CreateEntity(
-                new Position { X = (float)(rng.NextDouble() * 1280), Y = 720 },
-                new Velocity { DX = (float)(rng.NextDouble() * 4 - 2), DY = -(float)(rng.NextDouble() * 5 + 2) },
-                new Lifetime { Ticks = 400 },
-                new Mutator { Threshold = rng.Next(150, 250) },
-                new Renderable { SpriteType = 1, ColorIndex = 1, Scale = 1.5f }
-            );
+            pos[i] = new Position { X = (float)(rng.NextDouble() * 1280), Y = 720 };
+            vel[i] = new Velocity
+            {
+                DX = (float)(rng.NextDouble() * 4 - 2),
+                DY = -(float)(rng.NextDouble() * 5 + 2)
+            };
+            life[i] = new Lifetime { Ticks = 400 };
+            mut[i] = new Mutator { Threshold = rng.Next(150, 250) };
+            rend[i] = new Renderable { SpriteType = 1, ColorIndex = 1, Scale = 1.5f };
         }
+
+        world.CreateEntityBulk(ents.AsSpan(), pos.AsSpan(), vel.AsSpan(),
+                               life.AsSpan(), mut.AsSpan(), rend.AsSpan());
     }
 
     private void ClearRandomHalf()
@@ -157,14 +302,20 @@ public sealed class Engine : Game
 
     protected override void Update(GameTime gameTime)
     {
+        long updateStart = Stopwatch.GetTimestamp();
+
         currKb = Keyboard.GetState();
 
         if (IsKeyPressed(Keys.P)) isPaused = !isPaused;
         if (IsKeyPressed(Keys.K)) { if (!isPaused) isPaused = true; stepRequested = true; }
 
-        if (IsKeyPressed(Keys.D1)) SpawnWave(10000);
-        if (IsKeyPressed(Keys.D2)) SpawnWave(50000);
-        if (IsKeyPressed(Keys.D3)) SpawnMutators(10000);
+        // ── Spawn (计时) ──
+        double spawnUs = 0;
+        if (IsKeyPressed(Keys.D1)) { Stamp(); SpawnWave(10000); spawnUs += Elapsed(); }
+        if (IsKeyPressed(Keys.D2)) { Stamp(); SpawnWave(50000); spawnUs += Elapsed(); }
+        if (IsKeyPressed(Keys.D3)) { Stamp(); SpawnMutators(10000); spawnUs += Elapsed(); }
+        if (spawnUs > 0) tSpawn = spawnUs;
+
         if (IsKeyPressed(Keys.D4)) ClearRandomHalf();
         if (IsKeyPressed(Keys.D5))
         {
@@ -201,108 +352,133 @@ public sealed class Engine : Game
             stepRequested = false;
             frameCount++;
 
-            // [系统 1] 生命周期系统
-            var lifeDesc = new QueryDescriptor().WithAll<Lifetime>();
-            var lifeQuery = world.GetOrCreateQuery(in lifeDesc);
-            foreach (var arch in lifeQuery.GetMatchingArchetypesSpan())
+            // ── [系统 1] 生命周期 ──
+            Stamp();
             {
-                foreach (ref var chunk in arch.Chunks.AsSpan())
+                var lifeDesc = new QueryDescriptor().WithAll<Lifetime>();
+                var lifeQuery = world.GetOrCreateQuery(in lifeDesc);
+                foreach (var arch in lifeQuery.GetMatchingArchetypesSpan())
                 {
-                    chunk.GetComponentSpan<Lifetime>(out var lSpan);
-                    var entities = chunk.Entities;
-                    for (int i = 0; i < chunk.EntityCount; i++)
+                    foreach (ref var chunk in arch.Chunks.AsSpan())
                     {
-                        ref var l = ref lSpan[i];
-                        l.Ticks--;
-                        if (l.Ticks <= 0) entitiesToDestroy.Add(entities.UnsafeAt(i));
+                        chunk.GetComponentSpan<Lifetime>(out var lSpan);
+                        var entities = chunk.Entities;
+                        for (int i = 0; i < chunk.EntityCount; i++)
+                        {
+                            ref var l = ref lSpan[i];
+                            l.Ticks--;
+                            if (l.Ticks <= 0) entitiesToDestroy.Add(entities.UnsafeAt(i));
+                        }
                     }
                 }
             }
+            tLifetime = Elapsed();
 
-            // [系统 2] 突变系统
-            var mutateDesc = new QueryDescriptor().WithAll<Lifetime, Mutator>();
-            var mutateQuery = world.GetOrCreateQuery(in mutateDesc);
-            foreach (var arch in mutateQuery.GetMatchingArchetypesSpan())
+            // ── [系统 2] 突变查询 ──
+            Stamp();
             {
-                foreach (ref var chunk in arch.Chunks.AsSpan())
+                var mutateDesc = new QueryDescriptor().WithAll<Lifetime, Mutator>();
+                var mutateQuery = world.GetOrCreateQuery(in mutateDesc);
+                foreach (var arch in mutateQuery.GetMatchingArchetypesSpan())
                 {
-                    chunk.GetComponentSpan<Lifetime, Mutator>(out var lSpan, out var mSpan);
-                    var entities = chunk.Entities;
-                    for (int i = 0; i < chunk.EntityCount; i++)
+                    foreach (ref var chunk in arch.Chunks.AsSpan())
                     {
-                        if (lSpan[i].Ticks == mSpan[i].Threshold)
-                            entitiesToMutate.Add(entities.UnsafeAt(i));
+                        chunk.GetComponentSpan<Lifetime, Mutator>(out var lSpan, out var mSpan);
+                        var entities = chunk.Entities;
+                        for (int i = 0; i < chunk.EntityCount; i++)
+                        {
+                            if (lSpan[i].Ticks == mSpan[i].Threshold)
+                                entitiesToMutate.Add(entities.UnsafeAt(i));
+                        }
                     }
                 }
             }
+            tMutateQuery = Elapsed();
 
-            // [系统 3] 重力系统
-            var gravDesc = new QueryDescriptor().WithAll<Velocity, Gravity>();
-            var gravQuery = world.GetOrCreateQuery(in gravDesc);
-            foreach (var arch in gravQuery.GetMatchingArchetypesSpan())
+            // ── [系統 3] 重力 ──
+            Stamp();
             {
-                foreach (ref var chunk in arch.Chunks.AsSpan())
+                var gravDesc = new QueryDescriptor().WithAll<Velocity, Gravity>();
+                var gravQuery = world.GetOrCreateQuery(in gravDesc);
+                foreach (var arch in gravQuery.GetMatchingArchetypesSpan())
                 {
-                    chunk.GetComponentSpan<Velocity, Gravity>(out var vSpan, out var gSpan);
-                    for (int i = 0; i < chunk.EntityCount; i++)
-                        vSpan[i].DY += gSpan[i].G;
-                }
-            }
-
-            // [系统 4] 运动系统
-            var velDesc = new QueryDescriptor().WithAll<Position, Velocity>();
-            var velQuery = world.GetOrCreateQuery(in velDesc);
-            foreach (var arch in velQuery.GetMatchingArchetypesSpan())
-            {
-                foreach (ref var chunk in arch.Chunks.AsSpan())
-                {
-                    chunk.GetComponentSpan<Position, Velocity>(out var pSpan, out var vSpan);
-                    for (int i = 0; i < chunk.EntityCount; i++)
+                    foreach (ref var chunk in arch.Chunks.AsSpan())
                     {
-                        ref var p = ref pSpan[i];
-                        ref var v = ref vSpan[i];
-                        p.X += v.DX;
-                        p.Y += v.DY;
-
-                        if (p.X < 0 || p.X > 1280) v.DX = -v.DX;
-                        if (p.Y < 0 || p.Y > 720) v.DY = -v.DY;
+                        chunk.GetComponentSpan<Velocity, Gravity>(out var vSpan, out var gSpan);
+                        for (int i = 0; i < chunk.EntityCount; i++)
+                            vSpan[i].DY += gSpan[i].G;
                     }
                 }
             }
+            tGravity = Elapsed();
 
-            // [系统 5] 环绕轨道系统
-            var orbitDesc = new QueryDescriptor().WithAll<Position, Orbit>();
-            var orbitQuery = world.GetOrCreateQuery(in orbitDesc);
-            foreach (var arch in orbitQuery.GetMatchingArchetypesSpan())
+            // ── [系統 4] 运动 ──
+            Stamp();
             {
-                foreach (ref var chunk in arch.Chunks.AsSpan())
+                var velDesc = new QueryDescriptor().WithAll<Position, Velocity>();
+                var velQuery = world.GetOrCreateQuery(in velDesc);
+                foreach (var arch in velQuery.GetMatchingArchetypesSpan())
                 {
-                    chunk.GetComponentSpan<Position, Orbit>(out var pSpan, out var oSpan);
-                    for (int i = 0; i < chunk.EntityCount; i++)
+                    foreach (ref var chunk in arch.Chunks.AsSpan())
                     {
-                        ref var p = ref pSpan[i];
-                        ref var o = ref oSpan[i];
-                        o.Angle += o.Speed;
-                        p.X = o.CenterX + MathF.Cos(o.Angle) * o.Radius;
-                        p.Y = o.CenterY + MathF.Sin(o.Angle) * o.Radius;
-                        o.Radius += 0.5f;
+                        chunk.GetComponentSpan<Position, Velocity>(out var pSpan, out var vSpan);
+                        for (int i = 0; i < chunk.EntityCount; i++)
+                        {
+                            ref var p = ref pSpan[i];
+                            ref var v = ref vSpan[i];
+                            p.X += v.DX;
+                            p.Y += v.DY;
+                            if (p.X < 0 || p.X > 1280) v.DX = -v.DX;
+                            if (p.Y < 0 || p.Y > 720) v.DY = -v.DY;
+                        }
                     }
                 }
             }
+            tMovement = Elapsed();
 
-            // [系统 6] 自旋系统
-            var spinDesc = new QueryDescriptor().WithAll<Spin>();
-            var spinQuery = world.GetOrCreateQuery(in spinDesc);
-            foreach (var arch in spinQuery.GetMatchingArchetypesSpan())
+            // ── [系统 5] 轨道 ──
+            Stamp();
             {
-                foreach (ref var chunk in arch.Chunks.AsSpan())
+                var orbitDesc = new QueryDescriptor().WithAll<Position, Orbit>();
+                var orbitQuery = world.GetOrCreateQuery(in orbitDesc);
+                foreach (var arch in orbitQuery.GetMatchingArchetypesSpan())
                 {
-                    chunk.GetComponentSpan<Spin>(out var sSpan);
-                    for (int i = 0; i < chunk.EntityCount; i++)
-                        sSpan[i].Angle += sSpan[i].Speed;
+                    foreach (ref var chunk in arch.Chunks.AsSpan())
+                    {
+                        chunk.GetComponentSpan<Position, Orbit>(out var pSpan, out var oSpan);
+                        for (int i = 0; i < chunk.EntityCount; i++)
+                        {
+                            ref var p = ref pSpan[i];
+                            ref var o = ref oSpan[i];
+                            o.Angle += o.Speed;
+                            p.X = o.CenterX + MathF.Cos(o.Angle) * o.Radius;
+                            p.Y = o.CenterY + MathF.Sin(o.Angle) * o.Radius;
+                            o.Radius += 0.5f;
+                        }
+                    }
                 }
             }
+            tOrbit = Elapsed();
 
+            // ── [系统 6] 自旋 ──
+            Stamp();
+            {
+                var spinDesc = new QueryDescriptor().WithAll<Spin>();
+                var spinQuery = world.GetOrCreateQuery(in spinDesc);
+                foreach (var arch in spinQuery.GetMatchingArchetypesSpan())
+                {
+                    foreach (ref var chunk in arch.Chunks.AsSpan())
+                    {
+                        chunk.GetComponentSpan<Spin>(out var sSpan);
+                        for (int i = 0; i < chunk.EntityCount; i++)
+                            sSpan[i].Angle += sSpan[i].Speed;
+                    }
+                }
+            }
+            tSpin = Elapsed();
+
+            // ── 突变执行 ──
+            Stamp();
             foreach (var e in entitiesToMutate)
             {
                 if (!world.IsAlive(e)) continue;
@@ -312,7 +488,14 @@ public sealed class Engine : Game
                 if (world.HasComponent<Velocity>(e)) world.RemoveComponent<Velocity>(e);
                 if (world.HasComponent<Gravity>(e)) world.RemoveComponent<Gravity>(e);
 
-                world.AddComponent(e, new Orbit { CenterX = p.X, CenterY = p.Y, Radius = 10f, Angle = (float)rng.NextDouble() * 10f, Speed = 0.1f });
+                world.AddComponent(e, new Orbit
+                {
+                    CenterX = p.X,
+                    CenterY = p.Y,
+                    Radius = 10f,
+                    Angle = (float)rng.NextDouble() * 10f,
+                    Speed = 0.1f
+                });
 
                 if (world.HasComponent<Renderable>(e))
                 {
@@ -322,18 +505,25 @@ public sealed class Engine : Game
                 }
             }
             entitiesToMutate.Clear();
+            tMutateApply = Elapsed();
 
+            // ── 销毁 ──
+            Stamp();
             foreach (var e in entitiesToDestroy)
                 if (world.IsAlive(e)) world.DestroyEntity(e);
-
             entitiesToDestroy.Clear();
+            tDestroy = Elapsed();
         }
+
+        tUpdateTotal = (Stopwatch.GetTimestamp() - updateStart) * TicksToUs;
 
         base.Update(gameTime);
     }
 
     protected override void Draw(GameTime gameTime)
     {
+        long drawStart = Stopwatch.GetTimestamp();
+
         fpsCounter++;
 
         GraphicsDevice.Clear(new Color(15, 10, 30));
@@ -370,7 +560,9 @@ public sealed class Engine : Game
                     else if (hasVelocity)
                         rot = MathF.Atan2(vSpan[i].DY, vSpan[i].DX) + MathF.PI / 2f;
 
-                    SpriteAsset sprite = r.SpriteType == 0 ? hearts[r.ColorIndex] : arrows[r.ColorIndex];
+                    SpriteAsset sprite = r.SpriteType == 0
+                        ? hearts[r.ColorIndex]
+                        : arrows[r.ColorIndex];
 
                     stgBatch.Draw(
                         sprite.Texture,
@@ -383,6 +575,7 @@ public sealed class Engine : Game
             }
         }
 
+        // ── HUD ──
         var font = assetManager.Load<FontAsset>("fonts/mspgothic.ttf", "touhou_font").GetFont(18);
 
         var countedEntities = world.CountEntities(QueryDescriptor.MatchAll);
@@ -394,10 +587,31 @@ public sealed class Engine : Game
         stgBatch.DrawString(font,
             $"Entities: {countedEntities} | Archetypes: {countedArchetypes} | Chunks: {counterChunks} | Frame: {frameCount}",
             new Vector2(8, 4), Color.Blue, 200, StgBlendState.Alpha);
-        stgBatch.DrawString(font, $"[ FPS: {currentFps} ]", new Vector2(1150, 4), fpsColor, 200, StgBlendState.Alpha);
+        stgBatch.DrawString(font, $"[ FPS: {currentFps} ]",
+            new Vector2(1150, 4), fpsColor, 200, StgBlendState.Alpha);
         stgBatch.DrawString(font,
             "1:+10K弾幕  2:+50K弾幕  3:+10K突変弾  4:随機刪半  5:随機加自旋  P:暫停  K:単歩",
             new Vector2(8, 26), Color.Yellow, 200, StgBlendState.Alpha);
+
+        // ── Profile 面板 ──
+        tDraw = (Stopwatch.GetTimestamp() - drawStart) * TicksToUs;
+
+        profileSb.Clear();
+        profileSb.AppendLine($"── Profile (us) ──");
+        profileSb.AppendLine($"Spawn:     {tSpawn,9:F1}");
+        profileSb.AppendLine($"Lifetime:  {tLifetime,9:F1}");
+        profileSb.AppendLine($"MutQuery:  {tMutateQuery,9:F1}");
+        profileSb.AppendLine($"Gravity:   {tGravity,9:F1}");
+        profileSb.AppendLine($"Movement:  {tMovement,9:F1}");
+        profileSb.AppendLine($"Orbit:     {tOrbit,9:F1}");
+        profileSb.AppendLine($"Spin:      {tSpin,9:F1}");
+        profileSb.AppendLine($"MutApply:  {tMutateApply,9:F1}");
+        profileSb.AppendLine($"Destroy:   {tDestroy,9:F1}");
+        profileSb.AppendLine($"Update:    {tUpdateTotal,9:F1}");
+        profileSb.Append($"Draw:      {tDraw,9:F1}");
+
+        stgBatch.DrawString(font, profileSb.ToString(),
+            new Vector2(1060, 50), Color.White, 200, StgBlendState.Alpha);
 
         stgBatch.End();
         base.Draw(gameTime);

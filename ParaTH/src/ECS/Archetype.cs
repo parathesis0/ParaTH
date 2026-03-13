@@ -160,7 +160,7 @@ public sealed partial class Archetype
     }
 
     // ensure capacity before this
-    public void AddBulk<T0>(Span<Entity> entities, in T0 component)
+    public void AddBulk<T0>(Span<Entity> entities, Span<T0> components)
     {
         var totalAmount = entities.Length;
         var created = 0;
@@ -179,9 +179,11 @@ public sealed partial class Archetype
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
-            // fill components
+            // copy components
             chunk.GetComponentSpanFull<T0>(out var span);
-            span.Slice(chunkEntityCount, fillAmount).Fill(component);
+            var srcC = components.Slice(created, fillAmount);
+            var dstC = span.Slice(chunkEntityCount, fillAmount);
+            srcC.CopyTo(dstC);
 
             chunkEntityCount += fillAmount;
             created += fillAmount;

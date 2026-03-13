@@ -5,7 +5,7 @@ namespace ParaTH;
 public sealed partial class World
 {
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1>(Span<Entity> entityBuffer, in T0 c0, in T1 c1)
+    public void CreateEntityBulk<T0, T1>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1>.GroupTypeInfo;
@@ -21,7 +21,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2)
+    public void CreateEntityBulk<T0, T1, T2>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2>.GroupTypeInfo;
@@ -37,7 +37,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3)
+    public void CreateEntityBulk<T0, T1, T2, T3>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3>.GroupTypeInfo;
@@ -53,7 +53,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4>.GroupTypeInfo;
@@ -69,7 +69,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5>.GroupTypeInfo;
@@ -85,7 +85,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6>.GroupTypeInfo;
@@ -101,7 +101,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupTypeInfo;
@@ -117,7 +117,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupTypeInfo;
@@ -133,7 +133,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupTypeInfo;
@@ -149,7 +149,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupTypeInfo;
@@ -165,7 +165,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupTypeInfo;
@@ -181,7 +181,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupTypeInfo;
@@ -197,7 +197,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12, in T13 c13)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupTypeInfo;
@@ -213,7 +213,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12, in T13 c13, in T14 c14)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13, Span<T14> c14)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupTypeInfo;
@@ -229,7 +229,7 @@ public sealed partial class World
         AddEntityDataBulk(entityBuffer, entityDataBuffer);
     }
     [SkipLocalsInit]
-    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(Span<Entity> entityBuffer, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12, in T13 c13, in T14 c14, in T15 c15)
+    public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13, Span<T14> c14, Span<T15> c15)
     {
         var amount = entityBuffer.Length;
         var types = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupTypeInfo;

@@ -15,7 +15,7 @@ public sealed partial class World
     {
         var range = Enumerable.Range(0, n);
         var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
-        var pArgs = string.Join(", ", range.Select(i => $"in T{i} c{i}"));
+        var pArgs = string.Join(", ", range.Select(i => $"Span<T{i}> c{i}"));
         var vArgs = string.Join(", ", range.Select(i => $"c{i}"));
 #>
     [SkipLocalsInit]
