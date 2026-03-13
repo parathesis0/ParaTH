@@ -14,7 +14,7 @@ public struct Spin { public float Angle; public float Speed; }
 public struct Lifetime { public int Ticks; }
 public struct Gravity { public float G; }
 public struct Orbit { public float CenterX; public float CenterY; public float Radius; public float Angle; public float Speed; }
-public struct Mutator { public int Threshold; } // 当寿命到达阈值时，触发组件增删
+public struct Mutator { public int Threshold; }
 public struct Renderable { public byte SpriteType; public byte ColorIndex; public float Scale; }
 public sealed class Engine : Game
 {
@@ -76,29 +76,50 @@ public sealed class Engine : Game
             baseChunkByteSize: 16384,
             baseChunkEntityCount: 256,
             initialArchetypeCapacity: 32,
-            initialEntityCapacity: 200000);
-
-        SpawnWave(10000);
+            initialEntityCapacity: 500000);
     }
 
     private void SpawnWave(int count)
     {
         for (int i = 0; i < count; i++)
         {
-            var e = world.CreateEntity(new Position { X = 640, Y = 360 });
+            var pos = new Position { X = 640, Y = 360 };
 
             float angle = (float)(rng.NextDouble() * Math.PI * 2);
             float speed = (float)(rng.NextDouble() * 3f + 1f);
+            var vel = new Velocity { DX = MathF.Cos(angle) * speed, DY = MathF.Sin(angle) * speed };
 
-            world.AddComponent(e, new Velocity { DX = MathF.Cos(angle) * speed, DY = MathF.Sin(angle) * speed });
-            world.AddComponent(e, new Lifetime { Ticks = rng.Next(300, 600) });
-            world.AddComponent(e, new Renderable { SpriteType = (byte)rng.Next(2), ColorIndex = (byte)rng.Next(8), Scale = 1.0f });
+            var life = new Lifetime { Ticks = rng.Next(300, 600) };
+            var rend = new Renderable
+            {
+                SpriteType = (byte)rng.Next(2),
+                ColorIndex = (byte)rng.Next(8),
+                Scale = 1.0f
+            };
 
-            if (rng.Next(2) == 0)
-                world.AddComponent(e, new Spin { Speed = (float)(rng.NextDouble() * 0.2 - 0.1) });
+            bool hasSpin = rng.Next(2) == 0;
+            bool hasGrav = rng.Next(5) == 0;
 
-            if (rng.Next(5) == 0)
-                world.AddComponent(e, new Gravity { G = 0.05f });
+            if (hasSpin && hasGrav)
+            {
+                world.CreateEntity(pos, vel, life, rend,
+                    new Spin { Speed = (float)(rng.NextDouble() * 0.2 - 0.1) },
+                    new Gravity { G = 0.05f });
+            }
+            else if (hasSpin)
+            {
+                world.CreateEntity(pos, vel, life, rend,
+                    new Spin { Speed = (float)(rng.NextDouble() * 0.2 - 0.1) });
+            }
+            else if (hasGrav)
+            {
+                world.CreateEntity(pos, vel, life, rend,
+                    new Gravity { G = 0.05f });
+            }
+            else
+            {
+                world.CreateEntity(pos, vel, life, rend);
+            }
         }
     }
 
@@ -106,11 +127,13 @@ public sealed class Engine : Game
     {
         for (int i = 0; i < count; i++)
         {
-            var e = world.CreateEntity(new Position { X = (float)(rng.NextDouble() * 1280), Y = 720 });
-            world.AddComponent(e, new Velocity { DX = (float)(rng.NextDouble() * 4 - 2), DY = -(float)(rng.NextDouble() * 5 + 2) });
-            world.AddComponent(e, new Lifetime { Ticks = 400 });
-            world.AddComponent(e, new Mutator { Threshold = rng.Next(150, 250) });
-            world.AddComponent(e, new Renderable { SpriteType = 1, ColorIndex = 1, Scale = 1.5f });
+            world.CreateEntity(
+                new Position { X = (float)(rng.NextDouble() * 1280), Y = 720 },
+                new Velocity { DX = (float)(rng.NextDouble() * 4 - 2), DY = -(float)(rng.NextDouble() * 5 + 2) },
+                new Lifetime { Ticks = 400 },
+                new Mutator { Threshold = rng.Next(150, 250) },
+                new Renderable { SpriteType = 1, ColorIndex = 1, Scale = 1.5f }
+            );
         }
     }
 
@@ -222,13 +245,11 @@ public sealed class Engine : Game
                 {
                     chunk.GetComponentSpan<Velocity, Gravity>(out var vSpan, out var gSpan);
                     for (int i = 0; i < chunk.EntityCount; i++)
-                    {
                         vSpan[i].DY += gSpan[i].G;
-                    }
                 }
             }
 
-            // [系统 4] 运动系统 (核心性能点：双数组纯内存相加，0 查询)
+            // [系统 4] 运动系统
             var velDesc = new QueryDescriptor().WithAll<Position, Velocity>();
             var velQuery = world.GetOrCreateQuery(in velDesc);
             foreach (var arch in velQuery.GetMatchingArchetypesSpan())
@@ -278,9 +299,7 @@ public sealed class Engine : Game
                 {
                     chunk.GetComponentSpan<Spin>(out var sSpan);
                     for (int i = 0; i < chunk.EntityCount; i++)
-                    {
                         sSpan[i].Angle += sSpan[i].Speed;
-                    }
                 }
             }
 
@@ -305,9 +324,8 @@ public sealed class Engine : Game
             entitiesToMutate.Clear();
 
             foreach (var e in entitiesToDestroy)
-            {
                 if (world.IsAlive(e)) world.DestroyEntity(e);
-            }
+
             entitiesToDestroy.Clear();
         }
 

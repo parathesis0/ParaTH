@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Collections.Frozen;
 
 namespace ParaTH;
 
@@ -418,6 +419,48 @@ public sealed partial class World : IDisposable
 #pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     #endregion
 
+    #region Batch Query Operations
+#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+    public void QueryDestroyEntity(in QueryDescriptor descriptor)
+    {
+        var query = GetOrCreateQuery(in descriptor);
+
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+        {
+            foreach (ref var chunk in archetype.Chunks.AsSpan())
+            {
+                var entities = chunk.Entities;
+                for (int i = 0; i < chunk.EntityCount; i++)
+                {
+                    var entity = entities.UnsafeAt(i);
+                    DestroyAndRecycleEntity(entity);
+                }
+                chunk.Clear();
+            }
+            archetype.Clear();
+        }
+    }
+
+    public void QuerySetComponentValue<T0>(in QueryDescriptor descriptor, in T0 component)
+    {
+        var query = GetOrCreateQuery(in descriptor);
+
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+        {
+            foreach (ref var chunk in archetype.Chunks.AsSpan())
+            {
+                chunk.GetComponentSpan<T0>(out var span);
+                for (int i = 0; i < span.Length; i++)
+                {
+                    ref var c = ref span[i];
+                    c = component;
+                }
+            }
+        }
+    }
+#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
+    #endregion
+
     #region Dispose
     public void Dispose()
     {
@@ -438,6 +481,7 @@ public sealed partial class World : IDisposable
         entityDatas.Clear();
         archetypes.Clear();
         groupMaskToArchetype.Clear();
+        queryCache.Clear();
         recycledEntities.Clear();
     }
     #endregion

@@ -1,0 +1,47 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+namespace ParaTH;
+
+public sealed partial class World
+{
+#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+<#
+    for (int n = 2; n <= 16; n++)
+    {
+        var range = Enumerable.Range(0, n);
+        var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
+        var iArgs = string.Join(", ", range.Select(i => $"in T{i} c{i}"));
+        var oArgs = string.Join(", ", range.Select(i => $"out Span<T{i}> s{i}"));
+#>
+    public void QuerySetComponentValue<<#= tArgs #>>(in QueryDescriptor descriptor, <#= iArgs #>)
+    {
+        var query = GetOrCreateQuery(in descriptor);
+
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+        {
+            foreach (ref var chunk in archetype.Chunks.AsSpan())
+            {
+                chunk.GetComponentSpan<<#= tArgs #>>(<#= oArgs #>);
+                var len = s0.Length; // all span length are the same
+                for (int i = 0; i < len; i++)
+                {
+<#
+                    foreach (int i in range)
+                    {
+#>
+                    ref var sc<#= i #> = ref s<#= i #>.UnsafeAt(i);
+                    sc<#= i #> = c<#= i #>;
+<#
+                    }
+#>
+                }
+            }
+        }
+    }
+<# } #>
+#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
+}

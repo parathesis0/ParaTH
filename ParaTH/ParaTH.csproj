@@ -129,6 +129,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>World.HasComponent.cs</LastGenOutput>
     </None>
+    <None Update="src\ECS\Variadic\World.QuerySetComponentValue.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.QuerySetComponentValue.cs</LastGenOutput>
+    </None>
     <None Update="src\ECS\Variadic\World.RemoveComponent.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>World.RemoveComponent.cs</LastGenOutput>
@@ -233,6 +237,11 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>World.HasComponent.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.QuerySetComponentValue.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.QuerySetComponentValue.tt</DependentUpon>
     </Compile>
     <Compile Update="src\ECS\Variadic\World.RemoveComponent.cs">
       <DesignTime>True</DesignTime>

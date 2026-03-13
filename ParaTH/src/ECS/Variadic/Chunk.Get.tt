@@ -25,14 +25,6 @@ public partial struct Chunk
         {
 #>
         ref var arr<#= i #> = ref GetComponentArrayReference<T<#= i #>>();
-<#
-        }
-#>
-
-<#
-        foreach (int i in range)
-        {
-#>
         ref var c<#= i #> = ref Unsafe.Add(ref arr<#= i #>, index);
 <#
         }
