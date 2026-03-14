@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -19,7 +20,7 @@ public sealed partial class World : IDisposable
     private readonly int baseChunkEntityCount;
 
     private int entityCount;
-    private int capacity;
+    private int entityCapacity;
 
     private bool isDisposed;
 
@@ -50,8 +51,8 @@ public sealed partial class World : IDisposable
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0>(entity, out var slot, in component);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -145,8 +146,8 @@ public sealed partial class World : IDisposable
         archetypes.Add(newArchetype);
 
         // archetypes allocate one chunk upon creation
-        capacity += newArchetype.EntitiesPerChunk;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += newArchetype.EntitiesPerChunk;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         return newArchetype;
     }
@@ -155,12 +156,12 @@ public sealed partial class World : IDisposable
     private Archetype GetOrCreateArchetypeWithCapacity(ComponentTypeInfo[] types, int amount)
     {
         var archetype = GetOrCreateArchetype(types);
-        capacity -= archetype.EntityCapacity; // no idea why i need to do this but Arch does it too
+        entityCapacity -= archetype.EntityCapacity; // no idea why i need to do this but Arch does it too
         archetype.EnsureEntityCapacity(archetype.EntityCount + amount);
 
-        var requiredCapacity = capacity + archetype.EntityCapacity;
+        var requiredCapacity = entityCapacity + archetype.EntityCapacity;
         entityDatas.EnsureCapacity(requiredCapacity);
-        capacity = requiredCapacity;
+        entityCapacity = requiredCapacity;
 
         return archetype;
     }
@@ -268,15 +269,15 @@ public sealed partial class World : IDisposable
     }
 
     [SkipLocalsInit]
-    private Archetype GetOrCreateArchetypeByAddEdge(in ComponentTypeInfo type, Archetype oldArchetype)
+    private Archetype GetOrCreateArchetypeByAddEdge(ComponentTypeInfo newType, Archetype oldArchetype)
     {
-        var index = type.Id;
+        var index = newType.Id;
 
         if (oldArchetype.TryGetAddEdge(index, out var archetype))
             return archetype;
 
         // todo: find a way to do this without allocating new memory?
-        var types = Merge(oldArchetype.ComponentTypes, [type]);
+        var types = Merge(oldArchetype.ComponentTypes, [newType]);
         var newArchetype = GetOrCreateArchetype(types);
         oldArchetype.AddAddEdge(index, newArchetype);
         newArchetype.AddRemoveEdge(index, oldArchetype);
@@ -285,15 +286,15 @@ public sealed partial class World : IDisposable
     }
 
     [SkipLocalsInit]
-    private Archetype GetOrCreateArchetypeByRemoveEdge(in ComponentTypeInfo type, Archetype oldArchetype)
+    private Archetype GetOrCreateArchetypeByRemoveEdge(ComponentTypeInfo removedType, Archetype oldArchetype)
     {
-        var index = type.Id;
+        var index = removedType.Id;
 
         if (oldArchetype.TryGetRemoveEdge(index, out var archetype))
             return archetype;
 
         // todo: find a way to do this without allocating new memory?
-        var types = Remove(oldArchetype.ComponentTypes, [type]);
+        var types = Remove(oldArchetype.ComponentTypes, [removedType]);
         var newArchetype = GetOrCreateArchetype(types);
         oldArchetype.AddRemoveEdge(index, newArchetype);
         newArchetype.AddAddEdge(index, oldArchetype);
@@ -310,7 +311,7 @@ public sealed partial class World : IDisposable
         var oldSlot = srcEntityData.Slot;
         var allocatedEntities = dstArchetype.Reserve(out var newSlot);
 
-        Archetype.CopyEntityAndMatchingComponents(srcArchetype, oldSlot, dstArchetype, newSlot);
+        Archetype.CopyEntityAndMatchingComponentsTo(srcArchetype, oldSlot, dstArchetype, newSlot);
         var movedEntityId = srcArchetype.Remove(oldSlot);
 
         var entityDatas = this.entityDatas;
@@ -319,8 +320,8 @@ public sealed partial class World : IDisposable
         srcEntityData.Archetype = dstArchetype;
         srcEntityData.Slot = newSlot;
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
     }
 
     // todo: idk make theses util?
@@ -479,6 +480,7 @@ public sealed partial class World : IDisposable
 
     #region Batch Query Operations
 #pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+    [SkipLocalsInit]
     public void QueryDestroyEntity(in QueryDescriptor descriptor)
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -499,6 +501,7 @@ public sealed partial class World : IDisposable
         }
     }
 
+    [SkipLocalsInit]
     public void QuerySetComponentValue<T0>(in QueryDescriptor descriptor, in T0 component)
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -507,7 +510,7 @@ public sealed partial class World : IDisposable
         {
             foreach (ref var chunk in archetype.Chunks.AsSpan())
             {
-                chunk.GetComponentSpan<T0>(out var span);
+                chunk.GetFilledComponentSpan<T0>(out var span);
                 for (int i = 0; i < span.Length; i++)
                 {
                     ref var c = ref span[i];
@@ -517,14 +520,73 @@ public sealed partial class World : IDisposable
         }
     }
 
+    [SkipLocalsInit]
     public void QueryAddComponent<T0>(in QueryDescriptor descriptor, in T0 component)
     {
-        throw new NotImplementedException();
+        var query = GetOrCreateQuery(in descriptor);
+
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+        {
+            var newArchetype = GetOrCreateArchetypeByAddEdge(Component<T0>.TypeInfo, archetype);
+
+            var oldArchetypeLastSlot = archetype.CurrentSlot;
+            var newArchetypeLastSlot = newArchetype.CurrentSlot;
+
+            var newArchetypeFirstFreeSlot =
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+
+            entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
+                                 newArchetype, newArchetypeFirstFreeSlot);
+
+            var oldEntityCapacity = archetype.EntityCapacity;
+            newArchetype.EnsureEntityCapacity(archetype.EntityCount + newArchetype.EntityCount);
+
+            Archetype.CopyEntityAndMatchingComponentsAppendBulk(archetype, newArchetype);
+            archetype.Clear();
+
+            var setRangeStartSlot = newArchetypeFirstFreeSlot;
+            var setRangeEndSlot = newArchetype.CurrentSlot;
+
+            newArchetype.SetRangeBulk<T0>(setRangeStartSlot, setRangeEndSlot, component);
+
+            var newEntityCapacity = newArchetype.EntityCapacity;
+            var capacityDelta = newEntityCapacity - oldEntityCapacity;
+            entityCapacity += capacityDelta;
+        }
+
+        entityDatas.EnsureCapacity(entityCapacity);
     }
 
+    [SkipLocalsInit]
     public void QueryRemoveComponent<T0>(in QueryDescriptor descriptor)
     {
-        throw new NotImplementedException();
+        var query = GetOrCreateQuery(in descriptor);
+
+        foreach (var archetype in query.GetMatchingArchetypesSpan())
+        {
+            var newArchetype = GetOrCreateArchetypeByRemoveEdge(Component<T0>.TypeInfo, archetype);
+
+            var oldArchetypeLastSlot = archetype.CurrentSlot;
+            var newArchetypeLastSlot = newArchetype.CurrentSlot;
+
+            var newArchetypeFirstFreeSlot =
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+
+            entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
+                                 newArchetype, newArchetypeFirstFreeSlot);
+
+            var oldEntityCapacity = archetype.EntityCapacity;
+            newArchetype.EnsureEntityCapacity(archetype.EntityCount + newArchetype.EntityCount);
+
+            Archetype.CopyEntityAndMatchingComponentsAppendBulk(archetype, newArchetype);
+            archetype.Clear();
+
+            var newEntityCapacity = newArchetype.EntityCapacity;
+            var capacityDelta = newEntityCapacity - oldEntityCapacity;
+            entityCapacity += capacityDelta;
+        }
+
+        entityDatas.EnsureCapacity(entityCapacity);
     }
 #pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     #endregion
@@ -544,7 +606,7 @@ public sealed partial class World : IDisposable
         isDisposed = true;
 
         entityCount = 0;
-        capacity = 0;
+        entityCapacity = 0;
 
         entityDatas.Clear();
         archetypes.Clear();

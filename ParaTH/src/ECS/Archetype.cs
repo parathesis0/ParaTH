@@ -21,10 +21,10 @@ public sealed partial class Archetype
     public int EntitiesPerChunk { get; }
     private int CurrentChunkIndex { get; set; }
     private ref Chunk CurrentChunk => ref chunks[CurrentChunkIndex];
-    private Slot CurrentSlot => new(CurrentChunk.EntityCount - 1, CurrentChunkIndex);
-    public int EntityCount { get; private set; }
+    public Slot CurrentSlot => new(CurrentChunk.EntityCount - 1, CurrentChunkIndex);
     public ComponentTypeInfo[] ComponentTypes => componentTypes;
     public ChunkList Chunks => chunks;
+    public int EntityCount { get; private set; }
     public int EntityCapacity => chunks.Capacity * EntitiesPerChunk;
 
     public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, int baseChunkEntityCount)
@@ -89,7 +89,7 @@ public sealed partial class Archetype
         {
             ref var chunk = ref chunks[chunkIndex];
             var chunkCount = chunk.EntityCount;
-            var fillLimit = Math.Min(chunk.Capacity - chunkCount, amount);
+            var fillLimit = Math.Min(chunk.EntityCapacity - chunkCount, amount);
 
             for (int index = chunkCount; index < chunkCount + fillLimit; index++)
                 slotBuffer.UnsafeAt(bufferIndex++) = new Slot(index, chunkIndex);
@@ -169,7 +169,7 @@ public sealed partial class Archetype
         {
             ref var chunk = ref chunks[i];
             var chunkEntityCount = chunk.EntityCount;
-            var chunkCapacity = chunk.Capacity;
+            var chunkCapacity = chunk.EntityCapacity;
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
@@ -179,7 +179,7 @@ public sealed partial class Archetype
             src.CopyTo(dst);
 
             // copy components
-            chunk.GetComponentSpanFull<T0>(out var span);
+            chunk.GetFullComponentSpan<T0>(out var span);
             var srcC = components.Slice(created, fillAmount);
             var dstC = span.Slice(chunkEntityCount, fillAmount);
             srcC.CopyTo(dstC);
@@ -264,6 +264,33 @@ public sealed partial class Archetype
     {
         ref var chunk = ref chunks[slot.ChunkIndex];
         chunk.Set<T0>(slot.Index, component);
+    }
+
+    public void SetRangeBulk<T0>(Slot startSlot, Slot endSlot, in T0 component)
+    {
+        // edge case, only one chunk
+        if (startSlot.ChunkIndex == endSlot.ChunkIndex)
+        {
+            var len = endSlot.Index + 1 - startSlot.Index;
+            Chunk.Fill<T0>(ref chunks[startSlot.ChunkIndex], startSlot.Index, len, component);
+            return;
+        }
+
+        // fill the first
+        ref var firstChunk = ref chunks[startSlot.ChunkIndex];
+        var lenTilEnd = firstChunk.EntityCapacity - startSlot.Index;
+        Chunk.Fill<T0>(ref firstChunk, startSlot.Index, lenTilEnd, component);
+
+        // fill the middle
+        for (int i = startSlot.ChunkIndex + 1; i <= endSlot.ChunkIndex - 1; i++)
+        {
+            ref var chunk = ref chunks[i];
+            Chunk.Fill<T0>(ref chunk, 0, chunk.EntityCapacity, component);
+        }
+
+        // fill the last
+        ref var lastChunk = ref chunks[endSlot.ChunkIndex];
+        Chunk.Fill<T0>(ref lastChunk, 0, endSlot.Index + 1, component);
     }
 
     public ref T0 Get<T0>(Slot slot)
@@ -373,7 +400,9 @@ public sealed partial class Archetype
         removeEdges.Remove(id);
     }
 
-    public static void CopyEntityAndMatchingComponents(Archetype src, Slot srcSlot, Archetype dst, Slot dstSlot)
+    // todo: fuck these two methods in particular, find a way to unify them
+    // reserve capacity before you call, dstSlot should be the reserved spot
+    public static void CopyEntityAndMatchingComponentsTo(Archetype src, Slot srcSlot, Archetype dst, Slot dstSlot)
     {
         ref var srcChunk = ref src.GetChunk(srcSlot.ChunkIndex);
         ref var dstChunk = ref dst.GetChunk(dstSlot.ChunkIndex);
@@ -384,5 +413,45 @@ public sealed partial class Archetype
             ref srcChunk, srcSlot.Index,
             ref dstChunk, dstSlot.Index,
             srcTypes, 1);
+    }
+
+    // ensure capacity before you call
+    public static void CopyEntityAndMatchingComponentsAppendBulk(Archetype src, Archetype dst)
+    {
+        var srcTypes = src.ComponentTypes;
+
+        for (int i = 0; i < src.Chunks.Count; i++)
+        {
+            ref var srcChunk = ref src.Chunks[i];
+
+            var copiedAmount = 0;
+            var remainingAmount = srcChunk.EntityCount;
+
+            for (int j = dst.Chunks.Count; j < dst.Chunks.Capacity; j++)
+            {
+                ref var dstChunk = ref dst.Chunks[j];
+                var fillAmount = Math.Min(remainingAmount, dstChunk.EntityCapacity - dstChunk.EntityCount);
+
+                Chunk.CopyEntityAndMatchingComponents(
+                    ref srcChunk, copiedAmount,
+                    ref dstChunk, dstChunk.EntityCount,
+                    srcTypes, fillAmount);
+
+                copiedAmount += fillAmount;
+                remainingAmount -= fillAmount;
+
+                // fuck this, CopyEntityAndMatchingComponents
+                // should modify dst.EntityCount and not this
+                dstChunk.EntityCount += fillAmount;
+
+                if (remainingAmount <= 0)
+                {
+                    dst.CurrentChunkIndex = j;
+                    break;
+                }
+            }
+        }
+
+        dst.EntityCount += src.EntityCount;
     }
 }

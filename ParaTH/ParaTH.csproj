@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>true</PublishAot>
+    <OptimizationPreference>Speed</OptimizationPreference>
   </PropertyGroup>
 
   <ItemGroup>
@@ -77,9 +79,17 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Archetype.Set.cs</LastGenOutput>
     </None>
+    <None Update="src\ECS\Variadic\Archetype.SetRangeBulk.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Archetype.SetRangeBulk.cs</LastGenOutput>
+    </None>
     <None Update="src\ECS\Variadic\Chunk.Add.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Chunk.Add.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Chunk.FIll.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Chunk.FIll.cs</LastGenOutput>
     </None>
     <None Update="src\ECS\Variadic\Chunk.Get.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
@@ -137,6 +147,14 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>World.HasComponent.cs</LastGenOutput>
     </None>
+    <None Update="src\ECS\Variadic\World.QueryAddComponent.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.QueryAddComponent.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\World.QueryRemoveComponent.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>World.QueryRemoveComponent.cs</LastGenOutput>
+    </None>
     <None Update="src\ECS\Variadic\World.QuerySetComponentValue.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>World.QuerySetComponentValue.cs</LastGenOutput>
@@ -181,10 +199,20 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Archetype.Set.tt</DependentUpon>
     </Compile>
+    <Compile Update="src\ECS\Variadic\Archetype.SetRangeBulk.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Archetype.SetRangeBulk.tt</DependentUpon>
+    </Compile>
     <Compile Update="src\ECS\Variadic\Chunk.Add.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Chunk.Add.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Chunk.FIll.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Chunk.FIll.tt</DependentUpon>
     </Compile>
     <Compile Update="src\ECS\Variadic\Chunk.Get.cs">
       <DesignTime>True</DesignTime>
@@ -255,6 +283,16 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>World.HasComponent.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.QueryAddComponent.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.QueryAddComponent.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\World.QueryRemoveComponent.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>World.QueryRemoveComponent.tt</DependentUpon>
     </Compile>
     <Compile Update="src\ECS\Variadic\World.QuerySetComponentValue.cs">
       <DesignTime>True</DesignTime>

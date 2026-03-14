@@ -20,7 +20,7 @@ public sealed class EntityDataMap
         => EntityDatas.Add(entityId, new EntityData(archetype, slot, version));
 
     public Archetype GetArchetype(int entityId)
-        =>  EntityDatas[entityId].Archetype;
+        => EntityDatas[entityId].Archetype;
 
     public Slot GetSlot(int entityId)
         => EntityDatas[entityId].Slot;
@@ -42,6 +42,29 @@ public sealed class EntityDataMap
 
     public void Move(int id, Slot slot)
         => EntityDatas[id].Slot = slot;
+
+    public void Move(int id, Archetype archetype, Slot slot)
+    {
+        ref var data = ref EntityDatas[id];
+        data.Archetype = archetype;
+        data.Slot = slot;
+    }
+
+    public void MoveBulk(Archetype srcArchetype, Slot srcLastSlot, Archetype dstArchetype, Slot dstFirstFreeSlot)
+    {
+        for (int i = 0; i <= srcLastSlot.ChunkIndex; i++)
+        {
+            ref var chunk = ref srcArchetype.Chunks[i];
+
+            for (int j = 0; j < chunk.EntityCount; j++)
+            {
+                var entity = chunk.Entities.UnsafeAt(j);
+
+                Move(entity.Id, dstArchetype, dstFirstFreeSlot);
+                dstFirstFreeSlot = Slot.GetNextFor(dstFirstFreeSlot, dstArchetype.EntitiesPerChunk);
+            }
+        }
+    }
 
     public void EnsureCapacity(int capacity)
         => EntityDatas.EnsureCapacity(capacity);

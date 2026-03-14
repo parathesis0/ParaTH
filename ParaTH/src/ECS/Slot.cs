@@ -13,4 +13,16 @@ public record struct Slot
         Index = index;
         ChunkIndex = chunkIndex;
     }
+
+    public static Slot GetNextFor(Slot slot, int capacity)
+    {
+        slot.Index++;
+        if (slot.Index >= capacity)
+        {
+            slot.Index = 0;
+            slot.ChunkIndex++;
+        }
+
+        return slot;
+    }
 }

@@ -361,7 +361,7 @@ public sealed class Engine : Game
                 {
                     foreach (ref var chunk in arch.Chunks.AsSpan())
                     {
-                        chunk.GetComponentSpan<Lifetime>(out var lSpan);
+                        chunk.GetFilledComponentSpan<Lifetime>(out var lSpan);
                         var entities = chunk.Entities;
                         for (int i = 0; i < chunk.EntityCount; i++)
                         {
@@ -469,7 +469,7 @@ public sealed class Engine : Game
                 {
                     foreach (ref var chunk in arch.Chunks.AsSpan())
                     {
-                        chunk.GetComponentSpan<Spin>(out var sSpan);
+                        chunk.GetFilledComponentSpan<Spin>(out var sSpan);
                         for (int i = 0; i < chunk.EntityCount; i++)
                             sSpan[i].Angle += sSpan[i].Speed;
                     }
@@ -546,8 +546,8 @@ public sealed class Engine : Game
 
                 Span<Spin> sSpan = default;
                 Span<Velocity> vSpan = default;
-                if (hasSpin) chunk.GetComponentSpan<Spin>(out sSpan);
-                if (hasVelocity) chunk.GetComponentSpan<Velocity>(out vSpan);
+                if (hasSpin) chunk.GetFilledComponentSpan<Spin>(out sSpan);
+                if (hasVelocity) chunk.GetFilledComponentSpan<Velocity>(out vSpan);
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {

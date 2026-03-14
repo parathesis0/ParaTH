@@ -14,8 +14,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1>(entity, out var slot, c0, c1);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -31,8 +31,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2>(entity, out var slot, c0, c1, c2);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -48,8 +48,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3>(entity, out var slot, c0, c1, c2, c3);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -65,8 +65,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4>(entity, out var slot, c0, c1, c2, c3, c4);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -82,8 +82,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5>(entity, out var slot, c0, c1, c2, c3, c4, c5);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -99,8 +99,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -116,8 +116,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6, T7>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6, c7);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -133,8 +133,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6, T7, T8>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6, c7, c8);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -150,8 +150,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -167,8 +167,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -184,8 +184,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -201,8 +201,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -218,8 +218,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -235,8 +235,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 
@@ -252,8 +252,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(entity, out var slot, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 

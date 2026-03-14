@@ -23,8 +23,12 @@ public sealed partial class World
         var oldArchetype = entityData.Archetype;
 
         // add/remove edge lookup supports only one component, for adding/removing 2 or more we'll have to do this
-        var newArchetypeTypes = Remove(oldArchetype.ComponentTypes, Component<<#= tArgs #>>.GroupTypeInfo);
-        var newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+        var mask = oldArchetype.Mask & ~Component<<#= tArgs #>>.GroupMask;
+        if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
+        {
+            var newArchetypeTypes = Remove(oldArchetype.ComponentTypes, Component<<#= tArgs #>>.GroupTypeInfo);
+            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+        }
 
         // moving to a archetype with less component types removes the component during chunk's copying
         Move(ref entityData, oldArchetype, newArchetype);

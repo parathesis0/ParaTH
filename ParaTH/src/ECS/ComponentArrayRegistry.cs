@@ -3,8 +3,8 @@ namespace ParaTH;
 // used for creating single component array during runtime without reflection
 public static class ComponentArrayRegistry
 {
-    private static readonly Func<int, Array>[] arrayFactories
-        = new Func<int, Array>[ComponentRegistry.MaxComponents];
+    private static readonly Func<int, Array>[] arrayFactories =
+        new Func<int, Array>[ComponentRegistry.MaxComponents];
 
     public static void AddFactory<T>()
     {
@@ -18,6 +18,6 @@ public static class ComponentArrayRegistry
 
     private static T[] Create<T>(int capacity)
     {
-        return capacity == 0 ? [] : new T[capacity];
+        return new T[capacity];
     }
 }

@@ -12,7 +12,7 @@ public partial struct Chunk
 
     public Chunk(int capacity, int[] componentIdToArrayIndex, Span<ComponentTypeInfo> types)
     {
-        Capacity = capacity;
+        EntityCapacity = capacity;
         EntityCount = 0;
         ComponentIdToArrayIndex = componentIdToArrayIndex;
 
@@ -27,8 +27,8 @@ public partial struct Chunk
     }
 
     public int EntityCount { get; set; }
-    public int Capacity { get; }
-    public readonly bool IsFull => EntityCount >= Capacity;
+    public int EntityCapacity { get; }
+    public readonly bool IsFull => EntityCount >= EntityCapacity;
 
     // returns the index of the added entity
     public int Add<T0>(Entity entity, in T0 component)
@@ -81,7 +81,7 @@ public partial struct Chunk
         return ref Unsafe.Add(ref arr, index);
     }
 
-    public readonly void GetComponentSpan<T0>(out Span<T0> s0)
+    public readonly void GetFilledComponentSpan<T0>(out Span<T0> s0)
     {
         s0 = MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T0>(), EntityCount);
     }
@@ -118,9 +118,9 @@ public partial struct Chunk
     }
 
     // not providing a variadic version because its only used internally
-    public readonly void GetComponentSpanFull<T>(out Span<T> s0)
+    public readonly void GetFullComponentSpan<T>(out Span<T> span)
     {
-        s0 = MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T>(), Capacity);
+        span = MemoryMarshal.CreateSpan(ref GetComponentArrayReference<T>(), EntityCapacity);
     }
 
     public static void CopyEntityAndMatchingComponents(
@@ -132,9 +132,9 @@ public partial struct Chunk
         var dstArrays = dst.Components;
 
         // copy entity
-        dst.Entities.UnsafeAt(dstIndex) = src.Entities.UnsafeAt(srcIndex);
+        Array.Copy(src.Entities, srcIndex, dst.Entities, dstIndex, length);
 
-        // copy components, the component removing of World.Remove is done here
+        // copy components, the component removing of World.RemoveComponent is done here
         for (int i = 0; i < srcTypes.Length; i++)
         {
             var srcArray = srcArrays[i];
@@ -148,5 +148,11 @@ public partial struct Chunk
 
             Array.Copy(srcArray, srcIndex, dstArray, dstIndex, length);
         }
+    }
+
+    public static void Fill<T0>(ref Chunk chunk, int startIndex, int length, in T0 component)
+    {
+        chunk.GetFullComponentSpan<T0>(out var span);
+        span.Slice(startIndex, length).Fill(component);
     }
 }
