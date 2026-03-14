@@ -39,8 +39,7 @@ public sealed class ArchetypeList : IDisposable
         if (index == -1)
             return false;
 
-        if (index < count)
-            Array.Copy(Archetypes, index + 1, Archetypes, index, count - index);
+        Array.Copy(Archetypes, index + 1, Archetypes, index, count - index - 1);
 
         count--;
         version++;

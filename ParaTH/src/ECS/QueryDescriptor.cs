@@ -78,6 +78,21 @@ public partial struct QueryDescriptor
         h ^= h >> 32;
         var hash = (int)(h ^ (h >> 16));
         hashCode = hash;
-        return hash;
+        return hash != -1 ? hash : -2;
     }
+
+    public readonly bool Equals(QueryDescriptor other)
+    {
+        return this.All == other.All &&
+            this.Any == other.Any &&
+            this.None == other.None &&
+            this.Exclusive == other.Exclusive;
+    }
+
+    public override bool Equals(object? obj) => obj is QueryDescriptor other && Equals(other);
+
+    public static bool operator ==(QueryDescriptor left, QueryDescriptor right) => left.Equals(right);
+
+    public static bool operator !=(QueryDescriptor left, QueryDescriptor right) => !(left == right);
+
 }

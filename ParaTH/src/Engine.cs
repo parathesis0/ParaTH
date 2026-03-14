@@ -108,8 +108,8 @@ public sealed class Engine : Game
 
         world = new World(
             baseChunkByteSize: 16384,
-            baseChunkEntityCount: 256,
-            initialArchetypeCapacity: 32,
+            baseChunkEntityCount: 100,
+            initialArchetypeCapacity: 2,
             initialEntityCapacity: 500000);
     }
 

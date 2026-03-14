@@ -350,7 +350,7 @@ public sealed partial class Archetype
 
     public void AddAddEdge(int id, Archetype archetype)
     {
-        addEdges.EnsureCapacity(id); // todo: why not id + 1?
+        addEdges.EnsureCapacity(id + 1);
         addEdges.Add(id, archetype);
     }
 
@@ -376,7 +376,7 @@ public sealed partial class Archetype
 
     public void AddRemoveEdge(int id, Archetype archetype)
     {
-        removeEdges.EnsureCapacity(id); // todo: why not id + 1?
+        removeEdges.EnsureCapacity(id + 1);
         removeEdges.Add(id, archetype);
     }
 
@@ -427,7 +427,7 @@ public sealed partial class Archetype
             var copiedAmount = 0;
             var remainingAmount = srcChunk.EntityCount;
 
-            for (int j = dst.Chunks.Count; j < dst.Chunks.Capacity; j++)
+            for (int j = dst.CurrentChunkIndex; j < dst.Chunks.Capacity; j++)
             {
                 ref var dstChunk = ref dst.Chunks[j];
                 var fillAmount = Math.Min(remainingAmount, dstChunk.EntityCapacity - dstChunk.EntityCount);

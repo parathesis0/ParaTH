@@ -156,7 +156,8 @@ public sealed partial class World : IDisposable
     private Archetype GetOrCreateArchetypeWithCapacity(ComponentTypeInfo[] types, int amount)
     {
         var archetype = GetOrCreateArchetype(types);
-        entityCapacity -= archetype.EntityCapacity; // no idea why i need to do this but Arch does it too
+        entityCapacity -= archetype.EntityCapacity;
+
         archetype.EnsureEntityCapacity(archetype.EntityCount + amount);
 
         var requiredCapacity = entityCapacity + archetype.EntityCapacity;
