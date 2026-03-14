@@ -9,6 +9,7 @@ public static class Component<T>
     static Component()
     {
         TypeInfo = ComponentRegistry.Add<T>();
+        ComponentArrayRegistry.AddFactory<T>();
         GroupTypeInfo = [TypeInfo];
         foreach (var type in GroupTypeInfo)
             GroupMask |= type.Mask;

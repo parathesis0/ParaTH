@@ -21,9 +21,8 @@ public partial struct Chunk
 
         for (int i = 0; i < Components.Length; i++)
         {
-            var type = types.UnsafeAt(i).Type;
-            // todo: reflection is slow, array registry maybe
-            Components.UnsafeAt(i) = Array.CreateInstance(type, capacity);
+            var type = types.UnsafeAt(i);
+            Components.UnsafeAt(i) = ComponentArrayRegistry.CreateArray(type, capacity);
         }
     }
 
