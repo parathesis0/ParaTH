@@ -30,11 +30,14 @@ public sealed partial class Archetype
     public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, int baseChunkEntityCount)
     {
         ulong mask = 0;
-        int max = 0;
+        var typesByteSize = 0;
+        var max = 0;
 
         foreach (var type in componentTypes)
         {
             mask |= type.Mask;
+            typesByteSize += type.ByteSize;
+
             var id = type.Id;
             if (id > max)
                 max = id;
@@ -54,9 +57,6 @@ public sealed partial class Archetype
         }
         this.componentTypes = componentTypes;
 
-        var typesByteSize = 0;
-        foreach (var type in componentTypes)
-            typesByteSize += type.ByteSize;
         ChunkByteSize = GetChunkByteSize(typesByteSize, baseChunkByteSize, baseChunkEntityCount);
         EntitiesPerChunk = GetEntitesPerChunk(ChunkByteSize, typesByteSize);
 

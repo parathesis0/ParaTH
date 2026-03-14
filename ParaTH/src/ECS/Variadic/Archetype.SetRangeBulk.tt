@@ -26,13 +26,13 @@ public sealed partial class Archetype
         }
 
         ref var firstChunk = ref chunks[startSlot.ChunkIndex];
-        var lenTilEnd = firstChunk.Capacity - startSlot.Index;
+        var lenTilEnd = firstChunk.EntityCapacity - startSlot.Index;
         Chunk.Fill<<#= tArgs #>>(ref firstChunk, startSlot.Index, lenTilEnd, <#= vArgs #>);
 
         for (int i = startSlot.ChunkIndex + 1; i <= endSlot.ChunkIndex - 1; i++)
         {
             ref var chunk = ref chunks[i];
-            Chunk.Fill<<#= tArgs #>>(ref chunk, 0, chunk.Capacity, <#= vArgs #>);
+            Chunk.Fill<<#= tArgs #>>(ref chunk, 0, chunk.EntityCapacity, <#= vArgs #>);
         }
 
         ref var lastChunk = ref chunks[endSlot.ChunkIndex];

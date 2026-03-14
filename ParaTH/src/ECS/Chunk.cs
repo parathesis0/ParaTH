@@ -63,6 +63,7 @@ public partial struct Chunk
             var srcArr = lastChunk.Components.UnsafeAt(i);
             var dstArr = Components.UnsafeAt(i);
             Array.Copy(srcArr, lastIndex, dstArr, index, 1);
+            Array.Clear(lastChunk.Components.UnsafeAt(i), lastIndex, 1);
         }
 
         lastChunk.EntityCount--;
@@ -91,7 +92,7 @@ public partial struct Chunk
         EntityCount = 0;
     }
 
-    public bool TryGetComponentArrayIndex(int ComponentId, out int arrayIndex)
+    public readonly bool TryGetComponentArrayIndex(int ComponentId, out int arrayIndex)
     {
         var mapping = ComponentIdToArrayIndex;
 

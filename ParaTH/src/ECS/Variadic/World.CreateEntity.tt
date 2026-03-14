@@ -28,8 +28,8 @@ public sealed partial class World
         var archetype = GetOrCreateArchetype(types);
         var allocatedEntities = archetype.Add<<#= tArgs #>>(entity, out var slot, <#= vArgs #>);
 
-        capacity += allocatedEntities;
-        entityDatas.EnsureCapacity(capacity);
+        entityCapacity += allocatedEntities;
+        entityDatas.EnsureCapacity(entityCapacity);
 
         entityDatas.Add(entity.Id, archetype, slot, entity.Version);
 

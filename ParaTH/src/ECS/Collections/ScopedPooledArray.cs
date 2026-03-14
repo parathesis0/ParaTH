@@ -24,11 +24,6 @@ public readonly record struct ScopedPooledArray<T>(T[] Array, int Length) : IDis
 
     public void Dispose()
     {
-        ArrayPool<T>.Shared.Return(Array);
-    }
-
-    public static implicit operator T[](ScopedPooledArray<T> scoped)
-    {
-        return scoped.Array;
+        ArrayPool<T>.Shared.Return(Array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
     }
 }

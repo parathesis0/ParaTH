@@ -18,7 +18,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1>(entityBuffer, c0, c1);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2)
@@ -34,7 +34,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2>(entityBuffer, c0, c1, c2);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3)
@@ -50,7 +50,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3>(entityBuffer, c0, c1, c2, c3);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4)
@@ -66,7 +66,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4>(entityBuffer, c0, c1, c2, c3, c4);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5)
@@ -82,7 +82,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5>(entityBuffer, c0, c1, c2, c3, c4, c5);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6)
@@ -98,7 +98,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6>(entityBuffer, c0, c1, c2, c3, c4, c5, c6);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7)
@@ -114,7 +114,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6, T7>(entityBuffer, c0, c1, c2, c3, c4, c5, c6, c7);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8)
@@ -130,7 +130,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8>(entityBuffer, c0, c1, c2, c3, c4, c5, c6, c7, c8);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9)
@@ -146,7 +146,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(entityBuffer, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10)
@@ -162,7 +162,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(entityBuffer, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11)
@@ -178,7 +178,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(entityBuffer, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12)
@@ -194,7 +194,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(entityBuffer, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13)
@@ -210,7 +210,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(entityBuffer, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13, Span<T14> c14)
@@ -226,7 +226,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(entityBuffer, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
     [SkipLocalsInit]
     public void CreateEntityBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13, Span<T14> c14, Span<T15> c15)
@@ -242,6 +242,6 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(entityBuffer, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
 }

@@ -38,6 +38,7 @@ public partial struct QueryDescriptor
     public ref QueryDescriptor WithAll<T0>()
     {
         All = Component<T0>.GroupMask;
+        hashCode = -1;
         return ref this;
     }
 
@@ -45,6 +46,7 @@ public partial struct QueryDescriptor
     public ref QueryDescriptor WithAny<T0>()
     {
         Any = Component<T0>.GroupMask;
+        hashCode = -1;
         return ref this;
     }
 
@@ -52,6 +54,7 @@ public partial struct QueryDescriptor
     public ref QueryDescriptor WithNone<T0>()
     {
         None = Component<T0>.GroupMask;
+        hashCode = -1;
         return ref this;
     }
 
@@ -59,6 +62,7 @@ public partial struct QueryDescriptor
     public ref QueryDescriptor WithExclusive<T0>()
     {
         Exclusive = Component<T0>.GroupMask;
+        hashCode = -1;
         return ref this;
     }
 

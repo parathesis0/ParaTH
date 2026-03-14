@@ -246,7 +246,7 @@ public sealed class SparsePagedArray<T>
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                 page[itemIndex] = default!;
 
-            page.TrimExcess();
+            //page.TrimExcess();
         }
     }
 

@@ -24,7 +24,7 @@ public sealed partial class Archetype
         {
             ref var chunk = ref chunks[i];
             var chunkEntityCount = chunk.EntityCount;
-            var chunkCapacity = chunk.Capacity;
+            var chunkCapacity = chunk.EntityCapacity;
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
@@ -36,7 +36,7 @@ public sealed partial class Archetype
             foreach (int i in range)
             {
 #>
-            chunk.GetComponentSpanFull<T<#= i #>>(out var s<#= i #>);
+            chunk.GetFullComponentSpan<T<#= i #>>(out var s<#= i #>);
             var srcC<#= i #> = c<#= i #>.Slice(created, fillAmount);
             var dstC<#= i #> = s<#= i #>.Slice(chunkEntityCount, fillAmount);
             srcC<#= i #>.CopyTo(dstC<#= i #>);

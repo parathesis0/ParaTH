@@ -32,7 +32,7 @@ public sealed partial class World
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<<#= tArgs #>>(entityBuffer, <#= vArgs #>);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
 <# } #>
 }

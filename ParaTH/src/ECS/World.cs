@@ -73,7 +73,7 @@ public sealed partial class World : IDisposable
         RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
         archetype.AddBulk<T0>(entityBuffer, components);
 
-        AddEntityDataBulk(entityBuffer, entityDataBuffer);
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
 
     [SkipLocalsInit]
@@ -277,7 +277,6 @@ public sealed partial class World : IDisposable
         if (oldArchetype.TryGetAddEdge(index, out var archetype))
             return archetype;
 
-        // todo: find a way to do this without allocating new memory?
         var types = Merge(oldArchetype.ComponentTypes, [newType]);
         var newArchetype = GetOrCreateArchetype(types);
         oldArchetype.AddAddEdge(index, newArchetype);
@@ -294,7 +293,6 @@ public sealed partial class World : IDisposable
         if (oldArchetype.TryGetRemoveEdge(index, out var archetype))
             return archetype;
 
-        // todo: find a way to do this without allocating new memory?
         var types = Remove(oldArchetype.ComponentTypes, [removedType]);
         var newArchetype = GetOrCreateArchetype(types);
         oldArchetype.AddRemoveEdge(index, newArchetype);
@@ -357,6 +355,7 @@ public sealed partial class World : IDisposable
     #region Query
 #pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
     [SkipLocalsInit]
+    // for optimal performance, use this and iterate archetypes chunks mannually
     public Query GetOrCreateQuery(in QueryDescriptor descriptor)
     {
         var queryCache = this.queryCache;
@@ -369,6 +368,7 @@ public sealed partial class World : IDisposable
 
     }
 
+    // slow, only use for prototyping
     [SkipLocalsInit]
     public void Query(in QueryDescriptor descriptor, ForEach forEntity)
     {
@@ -388,6 +388,7 @@ public sealed partial class World : IDisposable
         }
     }
 
+    // fast but could still be faster
     [SkipLocalsInit]
     public void Query<T>(in QueryDescriptor descriptor, ref T iForEach) where T : struct, IForeach
     {
@@ -512,11 +513,7 @@ public sealed partial class World : IDisposable
             foreach (ref var chunk in archetype.Chunks.AsSpan())
             {
                 chunk.GetFilledComponentSpan<T0>(out var span);
-                for (int i = 0; i < span.Length; i++)
-                {
-                    ref var c = ref span[i];
-                    c = component;
-                }
+                span.Fill(component);
             }
         }
     }

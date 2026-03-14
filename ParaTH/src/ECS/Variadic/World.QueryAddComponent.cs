@@ -15,7 +15,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -56,7 +56,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -97,7 +97,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -138,7 +138,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -179,7 +179,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -220,7 +220,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -261,7 +261,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -302,7 +302,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -343,7 +343,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -384,7 +384,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -425,7 +425,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -466,7 +466,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -507,7 +507,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -548,7 +548,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
@@ -589,7 +589,7 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Remove(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupTypeInfo);
+                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupTypeInfo);
                 newArchetype = GetOrCreateArchetype(newArchetypeTypes);
             }
 
