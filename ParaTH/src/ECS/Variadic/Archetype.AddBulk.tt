@@ -4,6 +4,8 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".cs" #>
+using System.Diagnostics;
+
 namespace ParaTH;
 
 public sealed partial class Archetype
@@ -15,9 +17,20 @@ public sealed partial class Archetype
         var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
         var pArgs = string.Join(", ", range.Select(i => $"Span<T{i}> c{i}"));
 #>
-    public void AddBulk<<#= tArgs #>>(Span<Entity> entities, <#= pArgs #>)
+    public void AddBulk<<#= tArgs #>>(Span<Entity> entityBuffer, <#= pArgs #>)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+<#
+        for (int i = 0; i < n - 1; i++)
+        {
+        var j = i + 1;
+#>
+        Debug.Assert(c<#= i #>.Length == c<#= j #>.Length);
+<#
+        }
+#>
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -28,7 +41,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 

@@ -1,10 +1,15 @@
+using System.Diagnostics;
+
 namespace ParaTH;
 
 public sealed partial class Archetype
 {
-    public void AddBulk<T0, T1>(Span<Entity> entities, Span<T0> c0, Span<T1> c1)
+    public void AddBulk<T0, T1>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -15,7 +20,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -42,9 +47,13 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2)
+    public void AddBulk<T0, T1, T2>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -55,7 +64,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -86,9 +95,14 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3)
+    public void AddBulk<T0, T1, T2, T3>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -99,7 +113,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -134,9 +148,15 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4)
+    public void AddBulk<T0, T1, T2, T3, T4>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -147,7 +167,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -186,9 +206,16 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5)
+    public void AddBulk<T0, T1, T2, T3, T4, T5>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -199,7 +226,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -242,9 +269,17 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -255,7 +290,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -302,9 +337,18 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+        Debug.Assert(c6.Length == c7.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -315,7 +359,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -366,9 +410,19 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+        Debug.Assert(c6.Length == c7.Length);
+        Debug.Assert(c7.Length == c8.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -379,7 +433,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -434,9 +488,20 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+        Debug.Assert(c6.Length == c7.Length);
+        Debug.Assert(c7.Length == c8.Length);
+        Debug.Assert(c8.Length == c9.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -447,7 +512,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -506,9 +571,21 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+        Debug.Assert(c6.Length == c7.Length);
+        Debug.Assert(c7.Length == c8.Length);
+        Debug.Assert(c8.Length == c9.Length);
+        Debug.Assert(c9.Length == c10.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -519,7 +596,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -582,9 +659,22 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+        Debug.Assert(c6.Length == c7.Length);
+        Debug.Assert(c7.Length == c8.Length);
+        Debug.Assert(c8.Length == c9.Length);
+        Debug.Assert(c9.Length == c10.Length);
+        Debug.Assert(c10.Length == c11.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -595,7 +685,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -662,9 +752,23 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+        Debug.Assert(c6.Length == c7.Length);
+        Debug.Assert(c7.Length == c8.Length);
+        Debug.Assert(c8.Length == c9.Length);
+        Debug.Assert(c9.Length == c10.Length);
+        Debug.Assert(c10.Length == c11.Length);
+        Debug.Assert(c11.Length == c12.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -675,7 +779,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -746,9 +850,24 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+        Debug.Assert(c6.Length == c7.Length);
+        Debug.Assert(c7.Length == c8.Length);
+        Debug.Assert(c8.Length == c9.Length);
+        Debug.Assert(c9.Length == c10.Length);
+        Debug.Assert(c10.Length == c11.Length);
+        Debug.Assert(c11.Length == c12.Length);
+        Debug.Assert(c12.Length == c13.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -759,7 +878,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -834,9 +953,25 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13, Span<T14> c14)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13, Span<T14> c14)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+        Debug.Assert(c6.Length == c7.Length);
+        Debug.Assert(c7.Length == c8.Length);
+        Debug.Assert(c8.Length == c9.Length);
+        Debug.Assert(c9.Length == c10.Length);
+        Debug.Assert(c10.Length == c11.Length);
+        Debug.Assert(c11.Length == c12.Length);
+        Debug.Assert(c12.Length == c13.Length);
+        Debug.Assert(c13.Length == c14.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -847,7 +982,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 
@@ -926,9 +1061,26 @@ public sealed partial class Archetype
 
         this.EntityCount += totalAmount;
     }
-    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(Span<Entity> entities, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13, Span<T14> c14, Span<T15> c15)
+    public void AddBulk<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(Span<Entity> entityBuffer, Span<T0> c0, Span<T1> c1, Span<T2> c2, Span<T3> c3, Span<T4> c4, Span<T5> c5, Span<T6> c6, Span<T7> c7, Span<T8> c8, Span<T9> c9, Span<T10> c10, Span<T11> c11, Span<T12> c12, Span<T13> c13, Span<T14> c14, Span<T15> c15)
     {
-        var totalAmount = entities.Length;
+        Debug.Assert(entityBuffer.Length == c0.Length);
+        Debug.Assert(c0.Length == c1.Length);
+        Debug.Assert(c1.Length == c2.Length);
+        Debug.Assert(c2.Length == c3.Length);
+        Debug.Assert(c3.Length == c4.Length);
+        Debug.Assert(c4.Length == c5.Length);
+        Debug.Assert(c5.Length == c6.Length);
+        Debug.Assert(c6.Length == c7.Length);
+        Debug.Assert(c7.Length == c8.Length);
+        Debug.Assert(c8.Length == c9.Length);
+        Debug.Assert(c9.Length == c10.Length);
+        Debug.Assert(c10.Length == c11.Length);
+        Debug.Assert(c11.Length == c12.Length);
+        Debug.Assert(c12.Length == c13.Length);
+        Debug.Assert(c13.Length == c14.Length);
+        Debug.Assert(c14.Length == c15.Length);
+
+        var totalAmount = entityBuffer.Length;
         var created = 0;
 
         for (int i = CurrentChunkIndex; i < chunks.Count; i++)
@@ -939,7 +1091,7 @@ public sealed partial class Archetype
 
             var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
 
-            var src = entities.Slice(created, fillAmount);
+            var src = entityBuffer.Slice(created, fillAmount);
             var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
             src.CopyTo(dst);
 

@@ -40,7 +40,7 @@ public sealed class ArchetypeList : IDisposable
             return false;
 
         Array.Copy(archetypes, index + 1, archetypes, index, count - index - 1);
-        archetypes[count] = null!;
+        archetypes[count - 1] = null!;
 
         count--;
         version++;

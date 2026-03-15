@@ -26,7 +26,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -69,7 +69,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -112,7 +112,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -155,7 +155,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -198,7 +198,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -241,7 +241,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -284,7 +284,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -327,7 +327,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -370,7 +370,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -413,7 +413,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -456,7 +456,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -499,7 +499,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -542,7 +542,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -585,7 +585,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
@@ -628,7 +628,7 @@ public sealed partial class World
             var newArchetypeLastSlot = newArchetype.CurrentSlot;
 
             var newArchetypeFirstFreeSlot =
-                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntityCapacity);
+                Slot.GetNextFor(newArchetypeLastSlot, newArchetype.EntitiesPerChunk);
 
             entityDatas.MoveBulk(archetype, oldArchetypeLastSlot,
                                  newArchetype, newArchetypeFirstFreeSlot);
