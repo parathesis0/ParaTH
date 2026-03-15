@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
@@ -7,6 +8,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -24,6 +28,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -41,6 +48,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -58,6 +68,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -75,6 +88,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -92,6 +108,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -109,6 +128,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6, T7>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6, T7>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -126,6 +148,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -143,6 +168,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -160,6 +188,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -177,6 +208,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -194,6 +228,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -211,6 +248,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -228,6 +268,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 
@@ -245,6 +288,9 @@ public sealed partial class World
     [SkipLocalsInit]
     public void RemoveComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+        Debug.Assert(HasComponent<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(entity));
+
         ref var entityData = ref entityDatas.GetEntityData(entity.Id);
         var oldArchetype = entityData.Archetype;
 

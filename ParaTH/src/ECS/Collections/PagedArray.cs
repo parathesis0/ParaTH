@@ -33,19 +33,19 @@ public sealed class PagedArray<T>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsSet(int index)
         {
-            return (Occupied.UnsafeAt(index >> 6) & (1UL << index)) != 0;
+            return (Occupied.UnsafeAt(index >> 6) & (1UL << (index & 0x3F))) != 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Set(int index)
         {
-            Occupied.UnsafeAt(index >> 6) |= (1UL << index);
+            Occupied.UnsafeAt(index >> 6) |= (1UL << (index & 0x3F));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Unset(int index)
         {
-            Occupied.UnsafeAt(index >> 6) &= ~(1UL << index);
+            Occupied.UnsafeAt(index >> 6) &= ~(1UL << (index & 0x3F));
         }
 
         public ref T this[int index]

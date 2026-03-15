@@ -4,6 +4,7 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".cs" #>
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
@@ -23,6 +24,8 @@ public sealed partial class World
     public void QueryRemoveComponent<<#= tArgs #>>(in QueryDescriptor descriptor)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<<#= tArgs #>>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {

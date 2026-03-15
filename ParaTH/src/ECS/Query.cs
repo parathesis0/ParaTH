@@ -29,7 +29,7 @@ public sealed class Query
         lastVersion = -1;
 
         allMask = descriptor.All;
-        anyMask = descriptor.Any;
+        anyMask = descriptor.Any == 0 ? ulong.MaxValue : descriptor.Any;
         noneMask = descriptor.None;
         exclusiveMask = descriptor.Exclusive;
 
@@ -37,7 +37,7 @@ public sealed class Query
             isExclusive = true;
     }
 
-    private bool Match(ulong archetypeMask)
+    public bool Matches(ulong archetypeMask)
     {
         return isExclusive
             ? archetypeMask == exclusiveMask
@@ -60,7 +60,7 @@ public sealed class Query
 
         foreach (var archetype in archetypeSpan)
         {
-            if (Match(archetype.Mask))
+            if (Matches(archetype.Mask))
                 matchingArchetypes.Add(archetype);
         }
 

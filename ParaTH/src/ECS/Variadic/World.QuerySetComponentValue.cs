@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
@@ -9,6 +10,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1>(in QueryDescriptor descriptor, in T0 c0, in T1 c1)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -30,6 +33,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -53,6 +58,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -78,6 +85,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -105,6 +114,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -134,6 +145,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -165,6 +178,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6, T7>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -198,6 +213,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6, T7, T8>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -233,6 +250,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -270,6 +289,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -309,6 +330,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -350,6 +373,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -393,6 +418,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12, in T13 c13)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -438,6 +465,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12, in T13 c13, in T14 c14)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {
@@ -485,6 +514,8 @@ public sealed partial class World
     public void QuerySetComponentValue<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(in QueryDescriptor descriptor, in T0 c0, in T1 c1, in T2 c2, in T3 c3, in T4 c4, in T5 c5, in T6 c6, in T7 c7, in T8 c8, in T9 c9, in T10 c10, in T11 c11, in T12 c12, in T13 c13, in T14 c14, in T15 c15)
     {
         var query = GetOrCreateQuery(in descriptor);
+
+        Debug.Assert(query.Matches(Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupMask));
 
         foreach (var archetype in query.GetMatchingArchetypesSpan())
         {

@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 namespace ParaTH;
 
 [SkipLocalsInit]
-public sealed class ChunkList
+public sealed class ChunkList : IDisposable
 {
     private Chunk[] items;
     public int Count { get; set; }
@@ -56,11 +56,21 @@ public sealed class ChunkList
             ref var chunk = ref this[i];
             chunk.Clear();
         }
+
+        Count = 0;
     }
 
     public Span<Chunk> AsSpan()
     {
         return items.AsSpan(0, Count);
+    }
+
+    public void Dispose()
+    {
+        ArrayPool<Chunk>.Shared.Return(items, true);
+        items = null!;
+        Count = 0;
+        Capacity = 0;
     }
 
     public ref Chunk this[int index]

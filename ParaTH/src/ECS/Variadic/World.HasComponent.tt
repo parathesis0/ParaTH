@@ -4,6 +4,7 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".cs" #>
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
@@ -19,6 +20,8 @@ public sealed partial class World
     [SkipLocalsInit]
     public bool HasComponent<<#= tArgs #>>(Entity entity)
     {
+        Debug.Assert(IsAlive(entity));
+
         var archetype = entityDatas.GetArchetype(entity.Id);
         return archetype.Has<<#= tArgs #>>();
     }

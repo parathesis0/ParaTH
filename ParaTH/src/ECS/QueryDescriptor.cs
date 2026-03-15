@@ -10,9 +10,9 @@ public partial struct QueryDescriptor
 {
     public static readonly QueryDescriptor MatchAll = new QueryDescriptor()
     {
-        hashCode = -1,
+        hashCode = 0,
         All = 0,
-        Any = UInt64.MaxValue,
+        Any = 0,
         None = 0,
         Exclusive = 0
     };
@@ -26,10 +26,10 @@ public partial struct QueryDescriptor
 
     public QueryDescriptor()
     {
-        hashCode = -1;
+        hashCode = 0;
 
         All = 0;
-        Any = UInt64.MaxValue;
+        Any = 0;
         None = 0;
         Exclusive = 0;
     }
@@ -37,39 +37,39 @@ public partial struct QueryDescriptor
     [UnscopedRef]
     public ref QueryDescriptor WithAll<T0>()
     {
-        All = Component<T0>.GroupMask;
-        hashCode = -1;
+        All |= Component<T0>.GroupMask;
+        hashCode = 0;
         return ref this;
     }
 
     [UnscopedRef]
     public ref QueryDescriptor WithAny<T0>()
     {
-        Any = Component<T0>.GroupMask;
-        hashCode = -1;
+        Any |= Component<T0>.GroupMask;
+        hashCode = 0;
         return ref this;
     }
 
     [UnscopedRef]
     public ref QueryDescriptor WithNone<T0>()
     {
-        None = Component<T0>.GroupMask;
-        hashCode = -1;
+        None |= Component<T0>.GroupMask;
+        hashCode = 0;
         return ref this;
     }
 
     [UnscopedRef]
     public ref QueryDescriptor WithExclusive<T0>()
     {
-        Exclusive = Component<T0>.GroupMask;
-        hashCode = -1;
+        Exclusive |= Component<T0>.GroupMask;
+        hashCode = 0;
         return ref this;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override int GetHashCode()
     {
-        if (hashCode != -1)
+        if (hashCode != 0)
             return hashCode;
 
         // idk claude told me this is fast
@@ -82,7 +82,7 @@ public partial struct QueryDescriptor
         h ^= h >> 32;
         var hash = (int)(h ^ (h >> 16));
         hashCode = hash;
-        return hash != -1 ? hash : -2;
+        return hash != 0 ? hash : -1;
     }
 
     public readonly bool Equals(QueryDescriptor other)

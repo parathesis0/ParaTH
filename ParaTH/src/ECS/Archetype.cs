@@ -1,6 +1,6 @@
 namespace ParaTH;
 
-public sealed partial class Archetype
+public sealed partial class Archetype : IDisposable
 {
     public const int InvalidIndex = -1;
     public const int PageSize = 16;
@@ -315,9 +315,9 @@ public sealed partial class Archetype
     // doesn't dispose any resources
     public void Clear()
     {
+        chunks.Clear();
         CurrentChunkIndex = 0;
         EntityCount = 0;
-        chunks.Clear();
     }
 
     public bool TryGetComponentArrayIndex<T>(out int arrayIndex)
@@ -453,5 +453,12 @@ public sealed partial class Archetype
         }
 
         dst.EntityCount += src.EntityCount;
+    }
+
+    public void Dispose()
+    {
+        chunks.Dispose();
+        EntityCount = 0;
+        CurrentChunkIndex = 0;
     }
 }

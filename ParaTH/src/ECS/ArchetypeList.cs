@@ -9,7 +9,7 @@ public sealed class ArchetypeList : IDisposable
     private Archetype[] archetypes;
     private readonly int initialCapacity;
     private int count;
-    private int version; // self increments when an structual change occurs
+    private int version; // self increments when a structual change occurs
 
     public int Count => count;
     public int Capacity => archetypes.Length;
@@ -67,6 +67,14 @@ public sealed class ArchetypeList : IDisposable
 
     public void Dispose()
     {
-        Clear();
+        for (int i = 0; i < count; i++)
+        {
+            archetypes[i].Dispose();
+            archetypes[i] = null!;
+        }
+
+        count = 0;
+        archetypes = [];
+        version++;
     }
 }

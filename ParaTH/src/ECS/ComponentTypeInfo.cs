@@ -1,9 +1,5 @@
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-
 namespace ParaTH;
 
-[StructLayout(LayoutKind.Sequential, Pack = 4)]
 public readonly struct ComponentTypeInfo(int id, int byteSize) : IEquatable<ComponentTypeInfo>
 {
     public readonly int Id = id;
