@@ -4,7 +4,7 @@ namespace ParaTH;
 
 public static class ComponentRegistry
 {
-    public const int MaxComponents = 64;
+    public const int MaxComponents = 256;
 
     private static int nextId;
     private static readonly Dictionary<Type, ComponentTypeInfo> typeToComponentTypeInfo = new(MaxComponents);
@@ -27,7 +27,7 @@ public static class ComponentRegistry
             return info;
 
         if (Size == MaxComponents)
-            throw new InvalidOperationException("Component types exceeded the upper limit of 64.");
+            throw new InvalidOperationException("Component types exceeded the upper limit of 256.");
 
         var typeInfo = new ComponentTypeInfo(nextId, typeByteSize);
         typeToComponentTypeInfo.Add(type, typeInfo);

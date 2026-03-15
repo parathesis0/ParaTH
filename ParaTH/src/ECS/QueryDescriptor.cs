@@ -8,30 +8,18 @@ namespace ParaTH;
 [SkipLocalsInit]
 public partial struct QueryDescriptor
 {
-    public static readonly QueryDescriptor MatchAll = new QueryDescriptor()
-    {
-        hashCode = 0,
-        All = 0,
-        Any = 0,
-        None = 0,
-        Exclusive = 0
-    };
+    public static readonly QueryDescriptor MatchAll = new QueryDescriptor();
 
     private int hashCode;
 
-    public ulong All;
-    public ulong Any;
-    public ulong None;
-    public ulong Exclusive;
+    public ComponentMask All;
+    public ComponentMask Any;
+    public ComponentMask None;
+    public ComponentMask Exclusive;
 
     public QueryDescriptor()
     {
         hashCode = 0;
-
-        All = 0;
-        Any = 0;
-        None = 0;
-        Exclusive = 0;
     }
 
     [UnscopedRef]
@@ -72,15 +60,9 @@ public partial struct QueryDescriptor
         if (hashCode != 0)
             return hashCode;
 
-        // idk claude told me this is fast
-        ulong h = (All       * 0x9E3779B97F4A7C15UL)
-                ^ (Any       * 0x517CC1B727220A95UL)
-                ^ (None      * 0x6C62272E07BB0142UL)
-                ^ (Exclusive * 0x9E3779B185EBCA87UL);
-
-        // avalanche finalizer
-        h ^= h >> 32;
-        var hash = (int)(h ^ (h >> 16));
+        var hash = HashCode.Combine(
+            All.GetHashCode(), Any.GetHashCode(),
+            None.GetHashCode(), Exclusive.GetHashCode());
         hashCode = hash;
         return hash != 0 ? hash : -1;
     }

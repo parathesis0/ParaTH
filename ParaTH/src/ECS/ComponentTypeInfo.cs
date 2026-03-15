@@ -5,7 +5,7 @@ public readonly struct ComponentTypeInfo(int id, int byteSize) : IEquatable<Comp
     public readonly int Id = id;
     public readonly int ByteSize = byteSize;
 
-    public ulong Mask => 1UL << Id;
+    public ComponentMask Mask => ComponentMask.FromBit(Id);
 
     public Type Type => ComponentRegistry.IdToType[Id];
 

@@ -12,7 +12,7 @@ public sealed partial class World : IDisposable
 {
     private readonly EntityDataMap entityDatas;
     private readonly ArchetypeList archetypes;
-    private readonly Dictionary<ulong, Archetype> groupMaskToArchetype;
+    private readonly Dictionary<ComponentMask, Archetype> groupMaskToArchetype;
     private readonly Dictionary<QueryDescriptor, Query> queryCache;
     private readonly Queue<Entity> recycledEntities;
 
@@ -32,7 +32,7 @@ public sealed partial class World : IDisposable
     {
         entityDatas = new EntityDataMap(baseChunkByteSize, initialEntityCapacity);
         archetypes = new ArchetypeList(initialArchetypeCapacity);
-        groupMaskToArchetype = new Dictionary<ulong, Archetype>(initialArchetypeCapacity);
+        groupMaskToArchetype = new Dictionary<ComponentMask, Archetype>(initialArchetypeCapacity);
         queryCache = new Dictionary<QueryDescriptor, Query>(initialArchetypeCapacity);
         recycledEntities = new Queue<Entity>(initialEntityCapacity);
 
@@ -138,7 +138,7 @@ public sealed partial class World : IDisposable
     [SkipLocalsInit]
     private Archetype GetOrCreateArchetype(ComponentTypeInfo[] types)
     {
-        ulong mask = 0;
+        var mask = ComponentMask.Zero;
         foreach (var type in types)
             mask |= type.Mask;
 

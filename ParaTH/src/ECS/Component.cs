@@ -4,7 +4,7 @@ public static class Component<T>
 {
     public static readonly ComponentTypeInfo TypeInfo;
     public static readonly ComponentTypeInfo[] GroupTypeInfo;
-    public static readonly ulong GroupMask;
+    public static readonly ComponentMask GroupMask;
 
     static Component()
     {

@@ -12,10 +12,10 @@ public sealed class Query
 
     private int lastVersion;
 
-    private readonly ulong allMask;
-    private readonly ulong anyMask;
-    private readonly ulong noneMask;
-    private readonly ulong exclusiveMask;
+    private readonly ComponentMask allMask;
+    private readonly ComponentMask anyMask;
+    private readonly ComponentMask noneMask;
+    private readonly ComponentMask exclusiveMask;
 
     private readonly bool isExclusive;
 
@@ -29,21 +29,21 @@ public sealed class Query
         lastVersion = -1;
 
         allMask = descriptor.All;
-        anyMask = descriptor.Any == 0 ? ulong.MaxValue : descriptor.Any;
+        anyMask = descriptor.Any == ComponentMask.Zero ? ComponentMask.AllBits : descriptor.Any;
         noneMask = descriptor.None;
         exclusiveMask = descriptor.Exclusive;
 
-        if (exclusiveMask != 0)
+        if (exclusiveMask != ComponentMask.Zero)
             isExclusive = true;
     }
 
-    public bool Matches(ulong archetypeMask)
+    public bool Matches(ComponentMask archetypeMask)
     {
         return isExclusive
             ? archetypeMask == exclusiveMask
             : (archetypeMask & allMask) == allMask &&
-              (archetypeMask & anyMask) != 0 &&
-              (archetypeMask & noneMask) == 0;
+              (archetypeMask & anyMask) != ComponentMask.Zero &&
+              (archetypeMask & noneMask) == ComponentMask.Zero;
     }
 
     public Span<Archetype> GetMatchingArchetypesSpan()

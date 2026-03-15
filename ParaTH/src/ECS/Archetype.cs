@@ -13,7 +13,7 @@ public sealed partial class Archetype : IDisposable
     private readonly SparsePagedArray<Archetype> addEdges;
     private readonly SparsePagedArray<Archetype> removeEdges;
 
-    public ulong Mask { get; }
+    public ComponentMask Mask { get; }
     private int BaseChunkByteSize { get; }
     private int BaseChunkEntityCount { get; }
 
@@ -29,7 +29,7 @@ public sealed partial class Archetype : IDisposable
 
     public Archetype(ComponentTypeInfo[] componentTypes, int baseChunkByteSize, int baseChunkEntityCount)
     {
-        ulong mask = 0;
+        var mask = ComponentMask.Zero;
         var typesByteSize = 0;
         var max = 0;
 
