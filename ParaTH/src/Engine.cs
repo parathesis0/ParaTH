@@ -336,6 +336,8 @@ public sealed class Engine : Game
                 }
             }
         }
+        if (IsKeyPressed(Keys.D6)) { world.Clear(); }
+        if (IsKeyPressed(Keys.D7)) { world.TrimExcess(); }
 
         prevKb = currKb;
 
