@@ -10,8 +10,12 @@ public sealed partial class Archetype : IDisposable
 
     private readonly ChunkList chunks;
 
-    private readonly SparsePagedArray<Archetype> addEdges;
-    private readonly SparsePagedArray<Archetype> removeEdges;
+    // overenginnering, use normal array
+    //private readonly SparsePagedArray<Archetype> addEdges;
+    //private readonly SparsePagedArray<Archetype> removeEdges;
+
+    private readonly Archetype[] addEdges;
+    private readonly Archetype[] removeEdges;
 
     public ComponentMask Mask { get; }
     private int BaseChunkByteSize { get; }
@@ -63,8 +67,9 @@ public sealed partial class Archetype : IDisposable
         chunks = new ChunkList(1);
         AddChunk();
 
-        addEdges = new SparsePagedArray<Archetype>(PageSize);
-        removeEdges = new SparsePagedArray<Archetype>(PageSize);
+        addEdges = new Archetype[ComponentRegistry.MaxComponents];
+        removeEdges = new Archetype[ComponentRegistry.MaxComponents];
+
     }
 
     public ref Chunk AddChunk()
@@ -350,13 +355,12 @@ public sealed partial class Archetype : IDisposable
 
     public void AddAddEdge(int id, Archetype archetype)
     {
-        addEdges.EnsureCapacity(id + 1);
-        addEdges.Add(id, archetype);
+        addEdges[id] =  archetype;
     }
 
     public bool HasAddEdge(int id)
     {
-        return addEdges.ContainsKey(id);
+        return addEdges[id] != null;
     }
 
     public Archetype GetAddEdge(int id)
@@ -366,23 +370,23 @@ public sealed partial class Archetype : IDisposable
 
     public bool TryGetAddEdge(int id, out Archetype archetype)
     {
-        return addEdges.TryGetValue(id, out archetype);
+        archetype = addEdges[id];
+        return archetype != null;
     }
 
     public void RemoveAddEdge(int id)
     {
-        addEdges.Remove(id);
+        addEdges[id] = null!;
     }
 
     public void AddRemoveEdge(int id, Archetype archetype)
     {
-        removeEdges.EnsureCapacity(id + 1);
-        removeEdges.Add(id, archetype);
+        removeEdges[id] = archetype;
     }
 
     public bool HasRemoveEdge(int id)
     {
-        return removeEdges.ContainsKey(id);
+        return removeEdges[id] != null;
     }
 
     public Archetype GetRemoveEdge(int id)
@@ -392,12 +396,25 @@ public sealed partial class Archetype : IDisposable
 
     public bool TryGetRemoveEdge(int id, out Archetype archetype)
     {
-        return removeEdges.TryGetValue(id, out archetype);
+        archetype = removeEdges[id];
+        return archetype != null;
     }
 
     public void RemoveRemoveEdge(int id)
     {
-        removeEdges.Remove(id);
+        removeEdges[id] = null!;
+    }
+
+    public void RemoveAllEdgesByValue(Archetype archetype)
+    {
+        for (int i = 0; i < ComponentRegistry.MaxComponents; i++)
+        {
+            if (addEdges[i] == archetype)
+                RemoveAddEdge(i);
+
+            if (removeEdges[i] == archetype)
+                RemoveRemoveEdge(i);
+        }
     }
 
     // todo: fuck these two methods in particular, find a way to unify them

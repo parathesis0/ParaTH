@@ -608,15 +608,35 @@ public sealed partial class World : IDisposable
 #pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     #endregion
 
-    #region Misc
+    #region Capacity Management
+    public void DestroyArchetype(Archetype archetype)
+    {
+        var mask = archetype.Mask;
+
+        archetypes.Remove(archetype);
+        groupMaskToArchetype.Remove(mask);
+
+        foreach (var otherArchetype in archetypes.AsSpan())
+            otherArchetype.RemoveAllEdgesByValue(archetype);
+
+        archetype.Dispose(); // dispose?
+        entityCapacity -= archetype.EntityCapacity;
+    }
+
     // don't destroy any archetype for simplicity's sake
     public void TrimExcess()
     {
         // we do not trim entityDatas since it's sparse
-        // and trimming it desyncs entityCapacity and entityDatas' capacity
+        // and trimming it desyncs its capacity and entityCapacity
         for (int i = archetypes.Count - 1; i >= 0; i--)
         {
             var archetype = archetypes[i];
+
+            if (archetype.EntityCount == 0)
+            {
+                DestroyArchetype(archetype);
+                continue;
+            }
 
             var original = archetype.EntityCapacity;
             archetype.TrimExcess();
@@ -626,6 +646,7 @@ public sealed partial class World : IDisposable
             entityCapacity += delta;
         }
 
+        // trim recycledEntities
         var queue = recycledEntities;
         for (int i = 0; i < queue.Count; i++)
         {
