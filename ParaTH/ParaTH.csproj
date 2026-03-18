@@ -59,6 +59,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="ParaTH.dll.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="src\ECS\Variadic\Archetype.Add.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Archetype.Add.cs</LastGenOutput>

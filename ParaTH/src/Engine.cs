@@ -1,5 +1,6 @@
 using FontStashSharp;
 using FontStashSharp.RichText;
+using LuaNET.LuaJIT;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -111,6 +112,13 @@ public sealed class Engine : Game
             baseChunkEntityCount: 100,
             initialArchetypeCapacity: 2,
             initialEntityCapacity: 500000);
+
+        lua_State L = Lua.luaL_newstate();
+        if (L == 0)
+            Console.WriteLine("ERROR: Failed to create Lua state!");
+        else
+            Console.WriteLine("[OK] Lua state created");
+
     }
 
     private void SpawnWave(int count)
