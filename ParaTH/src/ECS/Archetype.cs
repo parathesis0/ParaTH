@@ -311,6 +311,11 @@ public sealed partial class Archetype : IDisposable
         return (archetypeMask & groupMask) == groupMask;
     }
 
+    public Span<Chunk> GetChunksSpan()
+    {
+        return Chunks.AsSpan();
+    }
+
     public void TrimExcess()
     {
         chunks.Count = CurrentChunkIndex + 1;

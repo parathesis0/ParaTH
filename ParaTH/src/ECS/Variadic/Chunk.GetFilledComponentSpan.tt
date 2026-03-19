@@ -17,7 +17,7 @@ public partial struct Chunk
         var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
         var pArgs = string.Join(", ", range.Select(i => $"out Span<T{i}> s{i}"));
 #>
-    public readonly void GetComponentSpan<<#= tArgs #>>(<#= pArgs #>)
+    public readonly void GetFilledComponentSpan<<#= tArgs #>>(<#= pArgs #>)
     {
         var count = EntityCount;
 <#

@@ -96,13 +96,13 @@ public sealed class AnimationAssetLoader(AssetManager assetManager) : IAssetLoad
                     $"expected 7 fields, got {f.Length}");
             }
 
-            var x   =  int.Parse(f[0]);
-            var y   =  int.Parse(f[1]);
-            var w   =  int.Parse(f[2]);
-            var h   =  int.Parse(f[3]);
-            var ax  =  int.Parse(f[4]);
-            var ay  =  int.Parse(f[5]);
-            var dur = uint.Parse(f[6]);
+            var x   = int.Parse(f[0]);
+            var y   = int.Parse(f[1]);
+            var w   = int.Parse(f[2]);
+            var h   = int.Parse(f[3]);
+            var ax  = int.Parse(f[4]);
+            var ay  = int.Parse(f[5]);
+            var dur = int.Parse(f[6]);
 
             var frame = new Frame(
                 new Rectangle(x, y, w, h),

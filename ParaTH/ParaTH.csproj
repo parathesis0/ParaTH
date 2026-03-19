@@ -37,6 +37,9 @@
     <None Include="Asset\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="ParaTH.dll.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -59,9 +62,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="ParaTH.dll.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="src\ECS\Variadic\Archetype.Add.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Archetype.Add.cs</LastGenOutput>
@@ -98,9 +98,9 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Chunk.Get.cs</LastGenOutput>
     </None>
-    <None Update="src\ECS\Variadic\Chunk.GetComponentSpan.tt">
+    <None Update="src\ECS\Variadic\Chunk.GetFilledComponentSpan.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>Chunk.GetComponentSpan.cs</LastGenOutput>
+      <LastGenOutput>Chunk.GetFilledComponentSpan.cs</LastGenOutput>
     </None>
     <None Update="src\ECS\Variadic\Chunk.Set.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
@@ -222,10 +222,10 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Chunk.Get.tt</DependentUpon>
     </Compile>
-    <Compile Update="src\ECS\Variadic\Chunk.GetComponentSpan.cs">
+    <Compile Update="src\ECS\Variadic\Chunk.GetFilledComponentSpan.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
-      <DependentUpon>Chunk.GetComponentSpan.tt</DependentUpon>
+      <DependentUpon>Chunk.GetFilledComponentSpan.tt</DependentUpon>
     </Compile>
     <Compile Update="src\ECS\Variadic\Chunk.Set.cs">
       <DesignTime>True</DesignTime>

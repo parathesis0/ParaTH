@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
+[Obsolete("Use ECS for particles instead")]
 public sealed class ParticleManager
 {
     private const int Capacity = 0xFFFF;

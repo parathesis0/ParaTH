@@ -5,7 +5,7 @@ using lua_Number = System.Double;
 using lua_Integer = System.Int64;
 
 namespace LuaNET.LuaJIT;
-
+#pragma warning disable
 public struct lua_State : IEquatable<lua_State>
 {
     public nuint Handle;
@@ -962,4 +962,4 @@ public static class Lua
     public static extern void luaL_openlibs(lua_State L);
 
 }
-
+#pragma warning enable

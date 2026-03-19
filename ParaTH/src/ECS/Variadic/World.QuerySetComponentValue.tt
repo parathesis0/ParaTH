@@ -31,7 +31,7 @@ public sealed partial class World
         {
             foreach (ref var chunk in archetype.Chunks.AsSpan())
             {
-                chunk.GetComponentSpan<<#= tArgs #>>(<#= oArgs #>);
+                chunk.GetFilledComponentSpan<<#= tArgs #>>(<#= oArgs #>);
                 var len = s0.Length; // all span length are the same
                 for (int i = 0; i < len; i++)
                 {
