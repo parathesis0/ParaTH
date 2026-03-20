@@ -1,5 +1,6 @@
-﻿namespace ParaTH;
+namespace ParaTH;
 
+public delegate float EasingFunction(float t);
 public static class Easing
 {
     public static float Linear(float t) => t;

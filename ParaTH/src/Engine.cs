@@ -15,7 +15,7 @@ public sealed class TestScript(BulletManager bulletManager)
     {
         if (counter % 5 == 0)
         {
-            float way = 4;
+            float way = 6;
             float angleOffset = counter / 10f;
             for (int i = 0; i < way; i++)
             {
@@ -23,8 +23,10 @@ public sealed class TestScript(BulletManager bulletManager)
 
                 bulletManager.SpawnBullet()
                     .SetEssentials(new Vector2(640, 360), "heart_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetVelocity(2f, Vector2.Zero, angle).ToggleTransformRotationSync()
-                    .AngularVelocityDelay(100).SetAngularVelocity(0.05f)
+                    .SetMovement(3f, Vector2.Zero, angle).EnableSyncTransformRotation()
+                        .SetAngularVelocity( MathHelper.Pi / 60).DelayAngularVelocity(30)
+                        .SetAngularVelocity(-MathHelper.Pi / 60).DelayAngularVelocity(30)
+                        .AngularVelocityLoopFrom(1, 1) // 0 is sentiel don't loop from 0
                     .Build();
             }
         }
@@ -74,7 +76,7 @@ public sealed class Engine : Game
             baseChunkByteSize: 16384,
             baseChunkEntityCount: 100,
             initialArchetypeCapacity: 2,
-            initialEntityCapacity: 500000);
+            initialEntityCapacity: 50000);
 
         bulletManager = new BulletManager(world, assetManager);
 
