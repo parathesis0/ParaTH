@@ -11,108 +11,144 @@ public sealed class MovementSystem(World world)
     {
         var q = world.GetOrCreateQuery(query);
 
-        // not scalable, find better way
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
-            if (archetype.Has<CurveMovementController>())
-                UpdateCurveBullet(archetype);
+            if (archetype.Has<BulletController>())
+                UpdateControlledBullet(archetype);
             else
                 UpdateBasicBullet(archetype);
         }
     }
 
-    private static void UpdateCurveBullet(Archetype archetype)
+    private static void UpdateControlledBullet(Archetype archetype)
     {
         foreach (ref var chunk in archetype.GetChunksSpan())
         {
-            chunk.GetFilledComponentSpan<Transform, Movement, CurveMovementController>
-                (out var transforms, out var movements, out var curves);
+            chunk.GetFilledComponentSpan<Transform, Movement, BulletController>
+                (out var transforms, out var movements, out var controllers);
 
             for (int i = 0; i < chunk.EntityCount; i++)
             {
                 ref var transform = ref transforms.UnsafeAt(i);
                 ref var movement = ref movements.UnsafeAt(i);
-                ref var curve = ref curves.UnsafeAt(i);
+                ref var controller = ref controllers.UnsafeAt(i);
+
+                var oldPosition = transform.Position;
 
                 // update velocity first
                 movement.Velocity += movement.Acceleration;
 
                 // update curve movement controller
-                var angularVelocity = UpdateCurveMovementController(ref curve);
+                if (controller.CurveInstructions is not null)
+                    UpdateCurveMovement(ref controller, ref movement);
 
-                // rotate velocity based on angular velocity
-                var sin = MathF.Sin(angularVelocity);
-                var cos = MathF.Cos(angularVelocity);
-                var x = movement.Velocity.X;
-                var y = movement.Velocity.Y;
-                movement.Velocity.X = x * cos - y * sin;
-                movement.Velocity.Y = x * sin + y * cos;
+                // update velocity control
+                if (controller.VelocityInstructions is not null)
+                    UpdateVelocityController(ref controller, ref movement);
 
                 // update position
                 transform.Position += movement.Velocity;
-                if (movement.SyncTransformRotation)
-                    transform.Rotation = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
+
+                var newPosition = transform.Position;
+
+                var delta = newPosition - oldPosition;
+
+                if (movement.SyncTransformRotation && delta.Length() >= float.Epsilon)
+                    transform.Rotation = MathF.Atan2(delta.Y, delta.X);
             }
         }
     }
 
-    private static float UpdateCurveMovementController(ref CurveMovementController curve)
+    private static void UpdateCurveMovement(ref BulletController ctrl, ref Movement movement)
     {
+        var insts = ctrl.CurveInstructions;
+
         // handle instruction advance
-        var instructions = curve.Instructions;
-        while (curve.CurrentIndex < instructions.Length - 1 &&
-               curve.TickCount >= instructions.UnsafeAt(curve.CurrentIndex + 1).TriggerFrame)
+        while (ctrl.CurveIndex < insts.Length - 1 &&
+               ctrl.CurveTick >= insts.UnsafeAt(ctrl.CurveIndex + 1).TriggerFrame)
         {
-            curve.CurrentIndex++;
+            ctrl.CurveIndex++;
         }
 
-        // handle looping
-        ref var instructionRef = ref instructions.UnsafeAt(curve.CurrentIndex);
-        if (instructionRef.TargetIndex > 0 && instructionRef.LoopRepeatTimes > 0)
+        float currentAngularVelocity = 0f;
+        ref var instRef = ref insts.UnsafeAt(ctrl.CurveIndex);
+
+        // only apply once we've reached the current instruction's trigger frame
+        if (ctrl.CurveTick >= instRef.TriggerFrame)
         {
-            curve.CurrentIndex = instructionRef.TargetIndex;
-            curve.TickCount = instructions.UnsafeAt(curve.CurrentIndex).TriggerFrame;
-            if (instructionRef.LoopRepeatTimes != CurveMovementInstruction.Infinite)
-                instructionRef.LoopRepeatTimes--;
+            // handle looping
+            if (instRef.TargetIndex >= 0 && instRef.LoopRepeatTimes > 0)
+            {
+                ctrl.CurveIndex = instRef.TargetIndex;
+                ctrl.CurveTick = insts.UnsafeAt(ctrl.CurveIndex).TriggerFrame;
+                if (instRef.LoopRepeatTimes != CurveInstruction.Infinite)
+                    instRef.LoopRepeatTimes--;
+            }
+
+            currentAngularVelocity = insts.UnsafeAt(ctrl.CurveIndex).AngularVelocity;
         }
 
-        // get and return the current angular velocity
-        var currentInstruction = instructions.UnsafeAt(curve.CurrentIndex);
-        var currentAngularVelocity = currentInstruction.AngularVelocity;
+        // rotate velocity based on angular velocity
+        if (currentAngularVelocity != 0f)
+        {
+            var sin = MathF.Sin(currentAngularVelocity);
+            var cos = MathF.Cos(currentAngularVelocity);
+            var x = movement.Velocity.X;
+            var y = movement.Velocity.Y;
+            movement.Velocity.X = x * cos - y * sin;
+            movement.Velocity.Y = x * sin + y * cos;
+        }
 
-        curve.TickCount++;
-
-        return currentAngularVelocity;
+        ctrl.CurveTick++;
     }
 
-    // wip, not tested. def mistakes
-    private static void UpdateVelocityController(ref VelocityController vCon, ref Movement movement)
+    // wip, not tested. prob mistakes
+    private static void UpdateVelocityController(ref BulletController ctrl, ref Movement movement)
     {
-        var insts = vCon.Instructions;
-        while (vCon.CurrentIndex < insts.Length - 1 &&
-               vCon.TickCount >= insts.UnsafeAt(vCon.CurrentIndex + 1).TriggerFrame)
+        // handle instruction advance
+        var insts = ctrl.VelocityInstructions;
+        while (ctrl.VelocityIndex < insts.Length - 1 &&
+               ctrl.VelocityTick >= insts.UnsafeAt(ctrl.VelocityIndex + 1).TriggerFrame)
         {
-            // reached new frame, init it
-            vCon.CurrentIndex++;
-            vCon.TickCount = 0;
+            // reached new instruction, init it
+            ctrl.VelocityIndex++;
+            ctrl.VelocityTick = 0;
 
-            if (vCon.CurrentInstrucion.IsRelative)
+            // setup relative lerp params
+            ref var instRef = ref ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
+            if (instRef.IsRelative)
             {
-                ref var instRef = ref vCon.CurrentInstrucionRef;
+                var currentAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
+                var angle = currentAngle + instRef.RelativeAngle;
+                var magnitute = instRef.SpeedIncrement;
+
+                var relativeVelocity = new Vector2(
+                    magnitute * MathF.Cos(angle),
+                    magnitute * MathF.Sin(angle));
+
+                instRef.StartVelocity = movement.Velocity;
+                instRef.EndVelocity = instRef.StartVelocity + relativeVelocity;
+            }
+            else if (instRef.IsLerpTo)
+            {
                 instRef.StartVelocity = movement.Velocity;
                 instRef.EndVelocity += movement.Velocity;
             }
         }
 
+        // lerp velocity directly
         // assume no acceleration during the lerp
-        var inst = vCon.Instructions[vCon.CurrentIndex];
-        var t = inst.Duration == 0 ? 1 : (float)(vCon.TickCount / inst.Duration);
-        t = inst.Ease(t);
-        var targetVelocity = Vector2.Lerp(inst.StartVelocity, inst.EndVelocity, t);
+        var inst = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
 
-        vCon.TickCount++;
+        if (!inst.IsDelay)
+        {
+            var t = inst.Duration == 0 ? 1 : (float)(ctrl.VelocityTick + 1) / inst.Duration;
+            t = inst.Ease(t);
+            var targetVelocity = Vector2.Lerp(inst.StartVelocity, inst.EndVelocity, t);
+            movement.Velocity = targetVelocity;
+        }
 
-        movement.Velocity = targetVelocity;
+        ctrl.VelocityTick++;
     }
 
     private static void UpdateBasicBullet(Archetype archetype)
