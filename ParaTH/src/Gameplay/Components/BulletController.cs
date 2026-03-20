@@ -16,6 +16,7 @@ public struct CurveInstruction(ushort triggerFrame, float angularVelocity,
 }
 
 // 32 bytes to fit exactly 2 or 4 within cache lines, most unreadable code ever
+// todo: sneak field in Vector2s for even less size?
 public struct VelocityInstruction(ushort triggerFrame, Vector2 startVelocity, Vector2 endVelocity,
                                   float relativeAngle, ushort duration, EasingFunction ease)
 {
@@ -26,22 +27,16 @@ public struct VelocityInstruction(ushort triggerFrame, Vector2 startVelocity, Ve
     public ushort TriggerFrame = triggerFrame;
     public ushort Duration = duration;
 
-    public float SpeedIncrement
-    {
-        set => StartVelocity.X = value;
-        readonly get => StartVelocity.X;
-    }
-
+    public readonly float SpeedIncrement => StartVelocity.X;
     public readonly bool IsDelay => float.IsNaN(StartVelocity.X) &&
                                     float.IsNaN(StartVelocity.Y) &&
                                     float.IsNaN(EndVelocity.X) &&
                                     float.IsNaN(EndVelocity.Y);
-
-    public readonly bool IsLerpTo => float.IsNaN(StartVelocity.X) &&
-                                     float.IsNaN(StartVelocity.Y) &&
-                                     !float.IsNaN(EndVelocity.X) &&
-                                     !float.IsNaN(EndVelocity.Y);
-    public readonly bool IsRelative => !float.IsNaN(RelativeAngle);
+    public readonly bool IsAdd => float.IsNaN(StartVelocity.X) &&
+                                  float.IsNaN(StartVelocity.Y) &&
+                                  !float.IsNaN(EndVelocity.X) &&
+                                  !float.IsNaN(EndVelocity.Y);
+    public readonly bool IsAddRelative => !float.IsNaN(RelativeAngle);
 }
 
 public struct BulletController

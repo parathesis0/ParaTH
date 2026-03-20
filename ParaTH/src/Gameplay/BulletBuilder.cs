@@ -89,14 +89,16 @@ public ref struct BulletBuilder(BulletManager bulletManager, Vector2 position)
     [UnscopedRef]
     public ref BulletBuilder SetVelocity(Vector2 newVelocity)
     {
-        throw new NotImplementedException();
+        velocityInstructions.Add(new(currentVelocityFrame,
+            Vector2.Zero, newVelocity, float.NaN, 0, Easing.Linear));
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetVelocityRelative(Vector2 velocityDelta)
+    public ref BulletBuilder AddVelocity(Vector2 delta)
     {
-        throw new NotImplementedException();
+        velocityInstructions.Add(new(currentVelocityFrame,
+            new Vector2(float.NaN, float.NaN), delta, float.NaN, 0, Easing.Linear));
         return ref this;
     }
 
@@ -104,6 +106,14 @@ public ref struct BulletBuilder(BulletManager bulletManager, Vector2 position)
     public ref BulletBuilder SetVelocityRelative(float speedIncrement, float rotateAngle)
     {
         throw new NotImplementedException();
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder AddVelocityRelative(float speedIncrement, float rotateAngle)
+    {
+        velocityInstructions.Add(new(currentVelocityFrame,
+            Vector2.UnitX * speedIncrement, Vector2.Zero, rotateAngle, 0, Easing.Linear));
         return ref this;
     }
 
@@ -118,16 +128,23 @@ public ref struct BulletBuilder(BulletManager bulletManager, Vector2 position)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder LerpVelocityTo(Vector2 end, ushort frameDuration, EasingFunction easingFunction)
+    public ref BulletBuilder LerpAddVelocity(Vector2 delta, ushort frameDuration, EasingFunction easingFunction)
     {
         velocityInstructions.Add(new(currentVelocityFrame,
-            new Vector2(float.NaN, float.NaN), end, float.NaN, frameDuration, easingFunction));
+            new Vector2(float.NaN, float.NaN), delta, float.NaN, frameDuration, easingFunction));
         currentCurveFrame += frameDuration;
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder LerpVelocityRelative(float speedIncrement, float rotateAngle, ushort frameDuration, EasingFunction easingFunction)
+    public ref BulletBuilder LerpVelocityRelative(Vector2 start, Vector2 end, ushort frameDuration, EasingFunction easingFunction)
+    {
+        throw new NotImplementedException();
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder LerpAddVelocityRelative(float speedIncrement, float rotateAngle, ushort frameDuration, EasingFunction easingFunction)
     {
         velocityInstructions.Add(new(currentVelocityFrame,
             Vector2.UnitX * speedIncrement, Vector2.Zero, rotateAngle, frameDuration, easingFunction));

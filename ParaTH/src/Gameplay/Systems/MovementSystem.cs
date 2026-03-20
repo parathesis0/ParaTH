@@ -116,7 +116,7 @@ public sealed class MovementSystem(World world)
 
             // setup relative lerp params
             ref var instRef = ref ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
-            if (instRef.IsRelative)
+            if (instRef.IsAddRelative)
             {
                 var currentAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
                 var angle = currentAngle + instRef.RelativeAngle;
@@ -129,7 +129,7 @@ public sealed class MovementSystem(World world)
                 instRef.StartVelocity = movement.Velocity;
                 instRef.EndVelocity = instRef.StartVelocity + relativeVelocity;
             }
-            else if (instRef.IsLerpTo)
+            else if (instRef.IsAdd)
             {
                 instRef.StartVelocity = movement.Velocity;
                 instRef.EndVelocity += movement.Velocity;

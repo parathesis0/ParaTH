@@ -35,8 +35,12 @@ public sealed class TestScript(BulletManager bulletManager)
                         .SetSprite(heart, Color.White, 100, StgBlendState.Alpha)
                         .SetMovement(2f, Vector2.Zero, angle).EnableSyncTransformRotation()
                             .DelayVelocity(60)
-                            //.LerpVelocityRelative(2f, MathHelper.Pi, 10, Easing.Linear)
-                            .LerpVelocityTo(Vector2.UnitY, 10, Easing.Linear)
+                            //.SetVelocity(Vector2.UnitY * 2)
+                            //.AddVelocity(Vector2.UnitY * 2)
+                            //.AddVelocityRelative(2, MathHelper.Pi / 2)
+                            //.LerpVelocity(Vector2.Zero, Vector2.One, 10, Easing.Linear)
+                            //.LerpAddVelocity(Vector2.UnitY, 10, Easing.Linear)
+                            //.LerpAddVelocityRelative(2f, MathHelper.Pi / 2, 10, Easing.Linear)
                         .Build();
             }
         }
