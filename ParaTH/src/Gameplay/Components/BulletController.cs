@@ -15,28 +15,41 @@ public struct CurveInstruction(ushort triggerFrame, float angularVelocity,
     public const byte Infinite = byte.MaxValue;
 }
 
-// 32 bytes to fit exactly 2 or 4 within cache lines, most unreadable code ever
-// todo: sneak field in Vector2s for even less size?
-public struct VelocityInstruction(ushort triggerFrame, Vector2 startVelocity, Vector2 endVelocity,
-                                  float relativeAngle, ushort duration, EasingFunction ease)
+// 28 bytes, as small as it can be without reducing vector percision. most unreadable code ever, the shit we do to trim sizes...
+// we have four modes here. Set/Adds happen in an instant and Lerps happen over frameDuration
+// - Set/Lerp
+//     directly override Velocity with a fixed vector.
+//     default behaviour. straightfoward.
+//     start is StartVelocity, end is EndVelocity.
+// - Add/LerpAdd
+//     add a vector to the current Velocity.
+//     EndVelocity.X == NaN is the flag for this.
+//     StartVelocity is the velocity vector to add.
+// - Set/LerpRelative
+//     directly override Velocity with a vector whose magnitude is fixed angle is relative to the Velocity's angle.
+//     EndVelocity.Y == NaN is the flag for this.
+//     StartVelocity.X is the new vector's magnitude, StartVelocity.Y is the relative angle.
+// - AddRelative/LerpAddRelative
+//     add a vector whose magnitude is fixed angle is relative to the Velocity's angle to the current Velocity
+//     EndVelocity.X == NaN && EndVelocity.Y == NaN is the flag for this.
+//     StartVelocity.X is the added vector's magnitude, StartVelocity.Y is the relative angle.
+public struct VelocityInstruction(ushort triggerFrame, Vector2 start, Vector2 end, ushort duration, EasingFunction easing)
 {
-    public EasingFunction Ease = ease;
-    public Vector2 StartVelocity = startVelocity;   // only start is nan for lerp to, both nan for delay, if relative, magnitute equals to relativeVelocity's magnitude
-    public Vector2 EndVelocity = endVelocity;       // both nan for delay, if lerp to, is the destination for the lerp
-    public float RelativeAngle = relativeAngle;     // not nan for relative
+    public EasingFunction Ease = easing;
+    public Vector2 StartVelocity = start;
+    public Vector2 EndVelocity = end;
     public ushort TriggerFrame = triggerFrame;
     public ushort Duration = duration;
 
-    public readonly float SpeedIncrement => StartVelocity.X;
-    public readonly bool IsDelay => float.IsNaN(StartVelocity.X) &&
-                                    float.IsNaN(StartVelocity.Y) &&
+    public readonly float NewVelocityMagnitude => StartVelocity.X;
+    public readonly float AngleDelta => StartVelocity.Y;
+    public readonly Vector2 AddEndVelocity => StartVelocity;
+    public readonly bool IsDelay => !float.IsNaN(StartVelocity.X) &&
+                                    !float.IsNaN(StartVelocity.Y) &&
                                     float.IsNaN(EndVelocity.X) &&
                                     float.IsNaN(EndVelocity.Y);
-    public readonly bool IsAdd => float.IsNaN(StartVelocity.X) &&
-                                  float.IsNaN(StartVelocity.Y) &&
-                                  !float.IsNaN(EndVelocity.X) &&
-                                  !float.IsNaN(EndVelocity.Y);
-    public readonly bool IsAddRelative => !float.IsNaN(RelativeAngle);
+    public readonly bool IsAdd => float.IsNaN(EndVelocity.X);
+    public readonly bool IsRelative => float.IsNaN(EndVelocity.Y);
 }
 
 public struct BulletController

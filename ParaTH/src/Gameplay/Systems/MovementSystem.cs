@@ -24,8 +24,8 @@ public sealed class MovementSystem(World world)
     {
         foreach (ref var chunk in archetype.GetChunksSpan())
         {
-            chunk.GetFilledComponentSpan<Transform, Movement, BulletController>
-                (out var transforms, out var movements, out var controllers);
+            chunk.GetFilledComponentSpan<Transform, Movement, BulletController>(
+                out var transforms, out var movements, out var controllers);
 
             for (int i = 0; i < chunk.EntityCount; i++)
             {
@@ -102,7 +102,7 @@ public sealed class MovementSystem(World world)
         ctrl.CurveTick++;
     }
 
-    // wip, not tested. prob mistakes
+    // painful to write and debug. all this shit to save 4 bytes
     private static void UpdateVelocityController(ref BulletController ctrl, ref Movement movement)
     {
         // handle instruction advance
@@ -114,30 +114,48 @@ public sealed class MovementSystem(World world)
             ctrl.VelocityIndex++;
             ctrl.VelocityTick = 0;
 
-            // setup relative lerp params
             ref var instRef = ref ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
-            if (instRef.IsAddRelative)
-            {
-                var currentAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
-                var angle = currentAngle + instRef.RelativeAngle;
-                var magnitute = instRef.SpeedIncrement;
 
-                var relativeVelocity = new Vector2(
+            if (instRef.IsRelative && instRef.IsAdd) // AddRelative
+            {
+                // calculate relative velocity vector
+                var currentAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
+                var angle = currentAngle + instRef.AngleDelta;
+                var magnitute = instRef.NewVelocityMagnitude;
+
+                var velocityDelta = new Vector2(
                     magnitute * MathF.Cos(angle),
                     magnitute * MathF.Sin(angle));
 
                 instRef.StartVelocity = movement.Velocity;
-                instRef.EndVelocity = instRef.StartVelocity + relativeVelocity;
+                instRef.EndVelocity = instRef.StartVelocity + velocityDelta;
             }
-            else if (instRef.IsAdd)
+            else if (instRef.IsRelative) // SetRelative.
             {
+                // calculate relative velocity vector
+                var currentAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
+                var angle = currentAngle + instRef.AngleDelta;
+                var magnitute = instRef.NewVelocityMagnitude;
+
+                var velocityDelta = new Vector2(
+                    magnitute * MathF.Cos(angle),
+                    magnitute * MathF.Sin(angle));
+
+                // you could merge this branch with the previous one but it's confusing enough
                 instRef.StartVelocity = movement.Velocity;
-                instRef.EndVelocity += movement.Velocity;
+                instRef.EndVelocity = velocityDelta;
             }
+            else if (instRef.IsAdd) // Add
+            {
+                // assignment has to be done in this order because AddEndVelocity is stored in StartVelocity
+                instRef.EndVelocity = movement.Velocity + instRef.AddEndVelocity;
+                instRef.StartVelocity = movement.Velocity;
+            }
+            // Set, no value juggling here
         }
 
         // lerp velocity directly
-        // assume no acceleration during the lerp
+        // takes over acceleration during the lerp
         var inst = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
 
         if (!inst.IsDelay)
@@ -155,8 +173,8 @@ public sealed class MovementSystem(World world)
     {
         foreach (ref var chunk in archetype.GetChunksSpan())
         {
-            chunk.GetFilledComponentSpan<Transform, Movement>
-                (out var transforms, out var movements);
+            chunk.GetFilledComponentSpan<Transform, Movement>(
+                out var transforms, out var movements);
 
             for (int i = 0; i < chunk.EntityCount; i++)
             {

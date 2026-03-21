@@ -10,8 +10,7 @@ public sealed class TestScript(BulletManager bulletManager)
 
     public void Update(AssetManager assetManager)
     {
-        var heart = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "heart_pink");
-        var arrow = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "arrow_pink");
+
 
         if (counter % 5 == 0)
         {
@@ -24,7 +23,7 @@ public sealed class TestScript(BulletManager bulletManager)
                 // curve Test
 
                 //bulletManager.SpawnBullet(new Vector2(640, 360))
-                //    .SetSprite(heart, Color.White, 100, StgBlendState.Alpha)
+                //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetMovement(2f, Vector2.Zero, angle).EnableSyncTransformRotation()
                 //        .SetAngularVelocity(MathHelper.Pi / 60).DelayAngularVelocity(30)
                 //        .SetAngularVelocity(-MathHelper.Pi / 60).DelayAngularVelocity(30)
@@ -32,15 +31,17 @@ public sealed class TestScript(BulletManager bulletManager)
                 //    .Build();
 
                 bulletManager.SpawnBullet(new Vector2(640, 360))
-                        .SetSprite(heart, Color.White, 100, StgBlendState.Alpha)
+                        .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                         .SetMovement(2f, Vector2.Zero, angle).EnableSyncTransformRotation()
-                            .DelayVelocity(60)
-                            //.SetVelocity(Vector2.UnitY * 2)
-                            //.AddVelocity(Vector2.UnitY * 2)
-                            //.AddVelocityRelative(2, MathHelper.Pi / 2)
-                            //.LerpVelocity(Vector2.Zero, Vector2.One, 10, Easing.Linear)
-                            //.LerpAddVelocity(Vector2.UnitY, 10, Easing.Linear)
-                            //.LerpAddVelocityRelative(2f, MathHelper.Pi / 2, 10, Easing.Linear)
+                        .DelayVelocity(60)
+                        //.SetVelocity(Vector2.UnitY * 2)
+                        .AddVelocity(Vector2.UnitY * 2)
+                        //.SetVelocityRelative(2, MathHelper.Pi / 2)
+                        //.AddVelocityRelative(2, MathHelper.Pi / 2)
+                        //.LerpVelocity(Vector2.Zero, Vector2.One, 10, Easing.Linear)
+                        //.LerpAddVelocity(Vector2.UnitY, 10, Easing.Linear)
+                        //.LerpVelocityRelative(2f, MathHelper.Pi / 2, 10, Easing.Linear)
+                        //.LerpAddVelocityRelative(2f, MathHelper.Pi / 2, 10, Easing.Linear)
                         .Build();
             }
         }
@@ -87,6 +88,9 @@ public sealed class Engine : Game
         assetManager.RegisterLoader(new SpriteAssetLoader(assetManager));
         assetManager.RegisterLoader(new FontAssetLoader());
 
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "heart_pink");
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "arrow_pink");
+
         stgBatch = new StgBatch(GraphicsDevice);
         projection = Matrix.CreateOrthographicOffCenter(0, 1280, 720, 0, 0, 1);
 
@@ -96,7 +100,7 @@ public sealed class Engine : Game
             initialArchetypeCapacity: 2,
             initialEntityCapacity: 50000);
 
-        bulletManager = new BulletManager(world);
+        bulletManager = new BulletManager(world, assetManager);
 
         movementSystem = new MovementSystem(world);
         renderSystem = new RenderSystem(world, stgBatch);
