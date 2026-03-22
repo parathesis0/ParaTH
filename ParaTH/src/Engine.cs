@@ -16,25 +16,54 @@ public sealed class TestScript(BulletManager bulletManager)
             float angleOffset = counter / 10f;
             for (int i = 0; i < way; i++)
             {
-                float angle = angleOffset + (MathHelper.TwoPi / way * i);
+                var angle = angleOffset + (MathHelper.TwoPi / way * i);
+                var delta = new Vector2(
+                    100f * MathF.Cos(angle),
+                    100f * MathF.Sin(angle));
+
+                // position test
+                bulletManager.SpawnBullet()
+                    .SetPosition(new Vector2(200, 200))
+                    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Additive)
+                    .LerpAddPosition(delta, 120, Easing.OutQuad)
+                    .LerpAddPosition(-delta, 120, Easing.InQuad)
+                    .DelayVelocity(240)
+                    .SetVelocity(delta / 30f)
+                    .AutoSyncTransformRotation()
+                    .Build();
+
+                // velocity test
+                //bulletManager.SpawnBullet()
+                //    .SetPosition(new Vector2(640, 360))
+                //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+                //    .SetMovement(2f, Vector2.Zero, angle).EnableSyncTransformRotation()
+                //    .DelayVelocity(60)
+                //    //.SetVelocity(Vector2.UnitY * 2)
+                //    //.AddVelocity(Vector2.UnitY * 2)
+                //    //.LerpToVelocity(Vector2.UnitY * 2, 30, Easing.InQuad)
+                //    //.LerpAddVelocity(Vector2.UnitY * 2, 30, Easing.InQuad)
+                //    //.SetVelocityMagnitude(4f)
+                //    //.AddVelocityMagnitude(4f)
+                //    //.LerpToVelocityMagnitude(4f, 30, Easing.InQuad)
+                //    //.LerpAddVelocityMagnitude(4f, 30, Easing.InQuad)
+                //    //.SetVelocityAngle(0)
+                //    //.AddVelocityAngle(MathHelper.PiOver2)
+                //    //.LerpToVelocityAngle(0, 30, Easing.InQuad)
+                //    //.LerpAddVelocityAngle(MathHelper.PiOver2, 30, Easing.InQuad)
+                //    .Build();
+
+                // acceleration test
+
 
                 // curve Test
-                //bulletManager.SpawnBullet(new Vector2(640, 360))
+                //bulletManager.SpawnBullet()
+                //    .SetPosition(new Vector2(640, 360))
                 //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetMovement(2f, Vector2.Zero, angle).EnableSyncTransformRotation()
                 //        .SetAngularVelocity(MathHelper.Pi / 60).DelayAngularVelocity(30)
                 //        .SetAngularVelocity(-MathHelper.Pi / 60).DelayAngularVelocity(30)
                 //        .AngularVelocityLoopFrom(0, 1)
                 //    .Build();
-
-
-                // velocity test
-                bulletManager.SpawnBullet(new Vector2(640, 360))
-                        .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                        .SetMovement(2f, Vector2.Zero, angle).EnableSyncTransformRotation()
-                        .DelayVelocity(60)
-                        .AddVelocity(Vector2.UnitY * 2)
-                        .Build();
             }
         }
 
