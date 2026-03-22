@@ -102,7 +102,6 @@ public sealed class MovementSystem(World world)
         ctrl.CurveTick++;
     }
 
-    // painful to write and debug. all this shit to save 4 bytes
     private static void UpdateVelocityController(ref BulletController ctrl, ref Movement movement)
     {
         // handle instruction advance
@@ -112,58 +111,125 @@ public sealed class MovementSystem(World world)
         {
             // reached new instruction, init it
             ctrl.VelocityIndex++;
-            ctrl.VelocityTick = 0;
 
+            var op = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex).Op;
             ref var instRef = ref ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
 
-            if (instRef.IsRelative && instRef.IsAdd) // AddRelative
+            // handle ops
+            switch (op)
             {
-                // calculate relative velocity vector
-                var currentAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
-                var angle = currentAngle + instRef.AngleDelta;
-                var magnitute = instRef.NewVelocityMagnitude;
+                case VelocityInstruction.Ops.Delay:
+                {
+                    break;
+                }
+                case VelocityInstruction.Ops.SetVelocity:
+                {
+                    instRef.EndValue = instRef.ParamsOrStartValue; // params: vec2 newVelocity
+                    instRef.ParamsOrStartValue = movement.Velocity; // StartValue
+                    break;
+                }
+                case VelocityInstruction.Ops.SetMagnitude:
+                {
+                    var currentVelocity = movement.Velocity;
+                    currentVelocity.Normalize(); // if you get NaN here its your fault
+                    instRef.EndValue = currentVelocity * instRef.ParamsOrStartValue.X; // params: float newMagnitude
+                    instRef.ParamsOrStartValue = movement.Velocity; // StartValue
+                    break;
+                }
+                case VelocityInstruction.Ops.SetAngle:
+                {
+                    // reuses fields:
+                    // ParamsOrStartValue: X = startAngle, Y = currentMagnitude
+                    // EndValue: X = endAngle (calculated to use nearest warp)
+                    var currentMagnitude = movement.Velocity.Length();
+                    var startAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
+                    var endAngle = instRef.ParamsOrStartValue.X; // params: float newAngle
 
-                var velocityDelta = new Vector2(
-                    magnitute * MathF.Cos(angle),
-                    magnitute * MathF.Sin(angle));
+                    float angleDelta = (endAngle - startAngle) % (MathHelper.TwoPi);
+                    if (angleDelta >  MathHelper.Pi)
+                        angleDelta -= MathHelper.Pi * 2;
+                    if (angleDelta < -MathHelper.Pi)
+                        angleDelta += MathHelper.Pi * 2;
 
-                instRef.StartVelocity = movement.Velocity;
-                instRef.EndVelocity = instRef.StartVelocity + velocityDelta;
+                    instRef.ParamsOrStartValue = new Vector2(startAngle, currentMagnitude);
+                    instRef.EndValue.X = startAngle + angleDelta;
+                    break;
+                }
+                case VelocityInstruction.Ops.AddVelocity:
+                {
+                    instRef.EndValue = movement.Velocity + instRef.ParamsOrStartValue; // params: vec2 velocityDelta
+                    instRef.ParamsOrStartValue = movement.Velocity; // StartValue
+                    break;
+                }
+                case VelocityInstruction.Ops.AddMagnitude:
+                {
+                    var baseVelocity = movement.Velocity;
+                    var baseMagnitude = baseVelocity.Length();
+                    baseVelocity.Normalize(); // if you get NaN here its your fault
+                    instRef.EndValue = baseVelocity * (baseMagnitude + instRef.ParamsOrStartValue.X); // params: float magnitudeDelta
+                    instRef.ParamsOrStartValue = movement.Velocity; // StartValue
+                    break;
+                }
+                case VelocityInstruction.Ops.AddAngle:
+                {
+                    // reuses fields:
+                    // ParamsOrStartValue: X = startAngle, Y = currentMagnitude
+                    // EndValue: X = endAngle (use warp lerp)
+                    var currentMagnitude = movement.Velocity.Length();
+                    var baseAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
+                    var angleDelta = instRef.ParamsOrStartValue.X; // params: float newAngle
+                    instRef.ParamsOrStartValue = new Vector2(baseAngle, currentMagnitude);
+                    instRef.EndValue.X = baseAngle + angleDelta;
+                    break;
+                }
             }
-            else if (instRef.IsRelative) // SetRelative.
+
+            // instruction takes 0 frame
+            // update the Velocity immediately to ensure the next op can get the correct value
+            if (instRef.Duration == 0)
             {
-                // calculate relative velocity vector
-                var currentAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
-                var angle = currentAngle + instRef.AngleDelta;
-                var magnitute = instRef.NewVelocityMagnitude;
-
-                var velocityDelta = new Vector2(
-                    magnitute * MathF.Cos(angle),
-                    magnitute * MathF.Sin(angle));
-
-                // you could merge this branch with the previous one but it's confusing enough
-                instRef.StartVelocity = movement.Velocity;
-                instRef.EndVelocity = velocityDelta;
+                if (op == VelocityInstruction.Ops.SetAngle ||
+                    op == VelocityInstruction.Ops.AddAngle)
+                {
+                    float magnitude = instRef.ParamsOrStartValue.Y;
+                    movement.Velocity = new Vector2(
+                        magnitude * MathF.Cos(instRef.EndValue.X),
+                        magnitude * MathF.Sin(instRef.EndValue.X));
+                }
+                else if (op != VelocityInstruction.Ops.Delay)
+                {
+                    movement.Velocity = instRef.EndValue;
+                }
             }
-            else if (instRef.IsAdd) // Add
-            {
-                // assignment has to be done in this order because AddEndVelocity is stored in StartVelocity
-                instRef.EndVelocity = movement.Velocity + instRef.AddEndVelocity;
-                instRef.StartVelocity = movement.Velocity;
-            }
-            // Set, no value juggling here
         }
 
-        // lerp velocity directly
+        // modify velocity directly
         // takes over acceleration during the lerp
-        var inst = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
-
-        if (!inst.IsDelay)
+        if (ctrl.VelocityIndex >= 0 &&
+            ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex).Op != VelocityInstruction.Ops.Delay)
         {
-            var t = inst.Duration == 0 ? 1 : (float)(ctrl.VelocityTick + 1) / inst.Duration;
-            t = inst.Ease(t);
-            var targetVelocity = Vector2.Lerp(inst.StartVelocity, inst.EndVelocity, t);
-            movement.Velocity = targetVelocity;
+            var inst = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
+            int relativeTick = ctrl.VelocityTick - inst.TriggerFrame;
+            if (relativeTick < inst.Duration)
+            {
+                var t = inst.Duration == 0 ? 1 : (float)(relativeTick + 1) / inst.Duration;
+                t = inst.Ease(t);
+                if (inst.Op == VelocityInstruction.Ops.SetAngle ||
+                    inst.Op == VelocityInstruction.Ops.AddAngle)
+                {
+                    // lerp angle
+                    float lerpedAngle = float.Lerp(inst.ParamsOrStartValue.X, inst.EndValue.X, t);
+                    float magnitude = inst.ParamsOrStartValue.Y;
+
+                    movement.Velocity = new Vector2(
+                        magnitude * MathF.Cos(lerpedAngle),
+                        magnitude * MathF.Sin(lerpedAngle));
+                }
+                else // vector lerp logic
+                {
+                    movement.Velocity = Vector2.Lerp(inst.ParamsOrStartValue, inst.EndValue, t); // StartValue;
+                }
+            }
         }
 
         ctrl.VelocityTick++;

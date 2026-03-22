@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using System.Diagnostics.CodeAnalysis;
+using static ParaTH.AnimationAsset;
 
 namespace ParaTH;
 
@@ -77,13 +78,12 @@ public ref struct BulletBuilder(BulletManager bulletManager, Vector2 position)
     #endregion
 
     #region Velocity Control
-    // the most unholy lines of code you will ever read
     [UnscopedRef]
     public ref BulletBuilder DelayVelocity(ushort frames)
     {
         currentVelocityFrame += frames;
         velocityInstructions.Add(new(currentVelocityFrame,
-            Vector2.Zero, new Vector2(float.NaN, float.NaN), frames, Easing.Linear));
+            Vector2.Zero, frames, Easing.Linear, VelocityInstruction.Ops.Delay));
         return ref this;
     }
 
@@ -91,68 +91,101 @@ public ref struct BulletBuilder(BulletManager bulletManager, Vector2 position)
     public ref BulletBuilder SetVelocity(Vector2 newVelocity)
     {
         velocityInstructions.Add(new(currentVelocityFrame,
-            Vector2.Zero, newVelocity, 0, Easing.Linear));
+            newVelocity, 0, Easing.Linear, VelocityInstruction.Ops.SetVelocity));
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder AddVelocity(Vector2 delta)
+    public ref BulletBuilder SetVelocityMagnitude(float newMagnitude)
     {
         velocityInstructions.Add(new(currentVelocityFrame,
-            delta, new Vector2(float.NaN, 0), 0, Easing.Linear));
+            new Vector2(newMagnitude, 0), 0, Easing.Linear, VelocityInstruction.Ops.SetMagnitude));
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetVelocityRelative(float newVelocityMagnitude, float angleDelta)
+    public ref BulletBuilder SetVelocityAngle(float newAngle)
     {
         velocityInstructions.Add(new(currentVelocityFrame,
-            new Vector2(newVelocityMagnitude, angleDelta), new Vector2(0, float.NaN), 0, Easing.Linear));
+            new Vector2(newAngle, 0), 0, Easing.Linear, VelocityInstruction.Ops.SetAngle));
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder AddVelocityRelative(float velocityDelta, float angleDelta)
+    public ref BulletBuilder AddVelocity(Vector2 velocityDelta)
     {
         velocityInstructions.Add(new(currentVelocityFrame,
-            new Vector2(velocityDelta, angleDelta), new Vector2(float.NaN, float.NaN), 0, Easing.Linear));
-        return ref this;
-    }
-
-    // why the fuck are we lerping velocity, just use acceleration
-    [UnscopedRef]
-    public ref BulletBuilder LerpVelocity(Vector2 start, Vector2 end, ushort frameDuration, EasingFunction easing)
-    {
-        velocityInstructions.Add(new(currentVelocityFrame,
-            start, end, frameDuration, easing));
-        currentVelocityFrame += frameDuration;
+            velocityDelta, 0, Easing.Linear, VelocityInstruction.Ops.AddVelocity));
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder LerpAddVelocity(Vector2 delta, ushort frameDuration, EasingFunction easing)
+    public ref BulletBuilder AddVelocityMagnitude(float magnitudeDelta)
     {
         velocityInstructions.Add(new(currentVelocityFrame,
-            delta, new Vector2(float.NaN, 0), frameDuration, easing));
-        currentVelocityFrame += frameDuration;
+            new Vector2(magnitudeDelta, 0), 0, Easing.Linear, VelocityInstruction.Ops.AddMagnitude));
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder LerpVelocityRelative(float newVelocityMagnitude, float angleDelta, ushort frameDuration, EasingFunction easing)
+    public ref BulletBuilder AddVelocityAngle(float angleDelta)
     {
         velocityInstructions.Add(new(currentVelocityFrame,
-            new Vector2(newVelocityMagnitude, angleDelta), new Vector2(0, float.NaN), frameDuration, easing));
-        currentVelocityFrame += frameDuration;
+            new Vector2(angleDelta, 0), 0, Easing.Linear, VelocityInstruction.Ops.AddAngle));
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder LerpAddVelocityRelative(float velocityDelta, float angleDelta, ushort frameDuration, EasingFunction easing)
+    public ref BulletBuilder LerpToVelocity(Vector2 newVelocity, ushort duration, EasingFunction easing)
     {
         velocityInstructions.Add(new(currentVelocityFrame,
-            new Vector2(velocityDelta, angleDelta), new Vector2(float.NaN, float.NaN), frameDuration, easing));
-        currentVelocityFrame += frameDuration;
+            newVelocity, duration, easing, VelocityInstruction.Ops.SetVelocity));
+        currentVelocityFrame += duration;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder LerpToVelocityMagnitude(float newMagnitude, ushort duration, EasingFunction easing)
+    {
+        velocityInstructions.Add(new(currentVelocityFrame,
+            new Vector2(newMagnitude, 0), duration, easing, VelocityInstruction.Ops.SetMagnitude));
+        currentVelocityFrame += duration;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder LerpToVelocityAngle(float newAngle, ushort duration, EasingFunction easing)
+    {
+        velocityInstructions.Add(new(currentVelocityFrame,
+            new Vector2(newAngle, 0), duration, easing, VelocityInstruction.Ops.SetAngle));
+        currentVelocityFrame += duration;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder LerpAddVelocity(Vector2 velocityDelta, ushort duration, EasingFunction easing)
+    {
+        velocityInstructions.Add(new(currentVelocityFrame,
+            velocityDelta, duration, easing, VelocityInstruction.Ops.AddVelocity));
+        currentVelocityFrame += duration;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder LerpAddVelocityMagnitude(float magnitudeDelta, ushort duration, EasingFunction easing)
+    {
+        velocityInstructions.Add(new(currentVelocityFrame,
+            new Vector2(magnitudeDelta, 0), duration, easing, VelocityInstruction.Ops.AddMagnitude));
+        currentVelocityFrame += duration;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder LerpAddVelocityAngle(float angleDelta, ushort duration, EasingFunction easing)
+    {
+        velocityInstructions.Add(new(currentVelocityFrame,
+            new Vector2(angleDelta, 0), duration, easing, VelocityInstruction.Ops.AddAngle));
+        currentVelocityFrame += duration;
         return ref this;
     }
     #endregion
@@ -203,6 +236,7 @@ public ref struct BulletBuilder(BulletManager bulletManager, Vector2 position)
         if (needController)
         {
             controller.VelocityInstructions = InitializeInstructionsWith(velocityInstructions);
+            controller.VelocityIndex = -1; // so that the first instruction can get inited
             controller.CurveInstructions = InitializeInstructionsWith(curveInstructions);
 
             return manager.World.CreateEntity(transform, movement, spriteRenderer, controller);
