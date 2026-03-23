@@ -2,7 +2,7 @@ using Microsoft.Xna.Framework;
 
 namespace ParaTH;
 
-// 32 bytes, 2 can fit within a cache line
+// 24 bytes
 public struct PositionInstruction(ushort triggerFrame, Vector2 end, ushort duration,
                                   EasingFunction easing, PositionInstruction.Ops op)
 {
@@ -14,14 +14,13 @@ public struct PositionInstruction(ushort triggerFrame, Vector2 end, ushort durat
     }
 
     public EasingFunction Ease = easing;
-    public Vector2 StartValue;
-    public Vector2 EndValue = end;
+    public Vector2 Params = end;
     public ushort TriggerFrame = triggerFrame;
     public ushort Duration = duration;
     public Ops Op = op;
 }
 
-// 32 bytes, 2 can fit within a cache line
+// 24 bytes
 public struct VelocityInstruction(ushort triggerFrame, Vector2 @params, ushort duration,
                                   EasingFunction easing, VelocityInstruction.Ops op)
 {
@@ -33,14 +32,13 @@ public struct VelocityInstruction(ushort triggerFrame, Vector2 @params, ushort d
     }
 
     public EasingFunction Ease = easing;
-    public Vector2 ParamsOrStartValue = @params;
-    public Vector2 EndValue; // generated during instruction initialization
+    public Vector2 Params = @params;
     public ushort TriggerFrame = triggerFrame;
     public ushort Duration = duration;
     public Ops Op = op;
 }
 
-// 32 bytes, 2 can fit within a cache line
+// 24 bytes
 public struct AccelerationInstruction(ushort triggerFrame, Vector2 @params, ushort duration,
                                       EasingFunction easing, AccelerationInstruction.Ops op)
 {
@@ -52,8 +50,7 @@ public struct AccelerationInstruction(ushort triggerFrame, Vector2 @params, usho
     }
 
     public EasingFunction Ease = easing;
-    public Vector2 ParamsOrStartValue = @params;
-    public Vector2 EndValue; // generated during instruction initialization
+    public Vector2 Params = @params;
     public ushort TriggerFrame = triggerFrame;
     public ushort Duration = duration;
     public Ops Op = op;
@@ -72,21 +69,29 @@ public struct CurveInstruction(ushort triggerFrame, float angularVelocity,
     public const byte Infinite = byte.MaxValue;
 }
 
-// todo: find a way to make this less bloat
+// todo: find a way to make this less bloat, remove curve looping so that we can unify the Ticks & Indexes?
 // all instructions have a maximum number of 127
+// lerp start value & end value is kept
+// instructions is shared among bullets
 public struct BulletController
 {
     public PositionInstruction[] PositionInstructions;
     public ushort PositionTick;
     public sbyte PositionIndex;
+    public Vector2 PositionStartValue;
+    public Vector2 PositionEndValue;
 
     public VelocityInstruction[] VelocityInstructions;
     public ushort VelocityTick;
     public sbyte VelocityIndex;
+    public Vector2 VelocityStartValue;
+    public Vector2 VelocityEndValue;
 
     public AccelerationInstruction[] AccelerationInstructions;
     public ushort AccelerationTick;
     public sbyte AccelerationIndex;
+    public Vector2 AccelerationStartValue;
+    public Vector2 AccelerationEndValue;
 
     public CurveInstruction[] CurveInstructions;
     public ushort CurveTick;

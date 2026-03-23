@@ -1,8 +1,10 @@
 using Microsoft.Xna.Framework;
 using System.Diagnostics.CodeAnalysis;
-using static ParaTH.AnimationAsset;
 
 namespace ParaTH;
+
+// todo: make it so that there is only one frame counter
+// enable group spawning & instruction sharing
 
 public ref struct BulletBuilder(BulletManager bulletManager)
 {
