@@ -2,98 +2,91 @@ using Microsoft.Xna.Framework;
 
 namespace ParaTH;
 
-// 24 bytes
+// 16 bytes
 public struct PositionInstruction(ushort triggerFrame, Vector2 end, ushort duration,
-                                  EasingFunction easing, PositionInstruction.Ops op)
+                                  EaseType type, PositionInstruction.Ops op)
 {
     public enum Ops : byte
     {
-        Delay,
         Set,
         Add
     }
 
-    public EasingFunction Ease = easing;
-    public Vector2 Params = end;
-    public ushort TriggerFrame = triggerFrame;
-    public ushort Duration = duration;
-    public Ops Op = op;
+    public Vector2 Params = end;                // 8
+    public ushort TriggerFrame = triggerFrame;  // 2
+    public ushort Duration = duration;          // 2
+    public EaseType EaseType = type;            // 1
+    public Ops Op = op;                         // 1
+                                                // 2 padding
 }
 
-// 24 bytes
+// 16 bytes
 public struct VelocityInstruction(ushort triggerFrame, Vector2 @params, ushort duration,
-                                  EasingFunction easing, VelocityInstruction.Ops op)
+                                  EaseType type, VelocityInstruction.Ops op)
 {
     public enum Ops : byte
     {
-        Delay,
         SetVelocity, SetMagnitude, SetAngle,
         AddVelocity, AddMagnitude, AddAngle
     }
 
-    public EasingFunction Ease = easing;
-    public Vector2 Params = @params;
-    public ushort TriggerFrame = triggerFrame;
-    public ushort Duration = duration;
-    public Ops Op = op;
+    public Vector2 Params = @params;            // 8
+    public ushort TriggerFrame = triggerFrame;  // 2
+    public ushort Duration = duration;          // 2
+    public EaseType EaseType = type;            // 1
+    public Ops Op = op;                         // 1
+                                                // 2 padding
 }
 
-// 24 bytes
-public struct AccelerationInstruction(ushort triggerFrame, Vector2 @params, ushort duration,
-                                      EasingFunction easing, AccelerationInstruction.Ops op)
+// 12 bytes
+public struct AccelerationInstruction(ushort triggerFrame, Vector2 @params,
+                                      AccelerationInstruction.Ops op)
 {
     public enum Ops : byte
     {
-        Delay,
         SetAcceleration, SetMagnitude, SetAngle,
         AddAcceleration, AddMagnitude, AddAngle
     }
 
-    public EasingFunction Ease = easing;
-    public Vector2 Params = @params;
-    public ushort TriggerFrame = triggerFrame;
-    public ushort Duration = duration;
-    public Ops Op = op;
+    public Vector2 Params = @params;            // 8
+    public ushort TriggerFrame = triggerFrame;  // 2
+    public Ops Op = op;                         // 1
+                                                // 1 padding
 }
 
 // 8 bytes
-public struct CurveInstruction(ushort triggerFrame, float angularVelocity,
-                               sbyte jumpToindex, byte loopTimes)
+// todo: add Add/Turn?
+public struct CurveInstruction(ushort triggerFrame, float angularVelocity)
 {
-    public float AngularVelocity = angularVelocity;
-    public ushort TriggerFrame = triggerFrame;
-
-    public sbyte TargetIndex = jumpToindex; // negative for not jump
-    public byte LoopRepeatTimes = loopTimes;
-
-    public const byte Infinite = byte.MaxValue;
+    public float AngularVelocity = angularVelocity; // 4
+    public ushort TriggerFrame = triggerFrame;      // 2
+                                                    // 2 padding
 }
 
-// todo: find a way to make this less bloat, remove curve looping so that we can unify the Ticks & Indexes?
-// all instructions have a maximum number of 127
-// lerp start value & end value is kept
+// todo: maybe find a way to make this less bloat? offset black magic?
+// we have to put these together for less structual changes during creation & better archetyping.
+// all instructions have a maximum limit of 127
 // instructions is shared among bullets
+// currently at 72 bytes
 public struct BulletController
 {
-    public PositionInstruction[] PositionInstructions;
-    public ushort PositionTick;
-    public sbyte PositionIndex;
-    public Vector2 PositionStartValue;
-    public Vector2 PositionEndValue;
+    public PositionInstruction[] PositionInstructions;          // 8
+    public Vector2 PositionStartValue;                          // 8
+    public Vector2 PositionEndValue;                            // 8
 
-    public VelocityInstruction[] VelocityInstructions;
-    public ushort VelocityTick;
-    public sbyte VelocityIndex;
-    public Vector2 VelocityStartValue;
-    public Vector2 VelocityEndValue;
+    public VelocityInstruction[] VelocityInstructions;          // 8
+    public Vector2 VelocityStartValue;                          // 8
+    public Vector2 VelocityEndValue;                            // 8
 
-    public AccelerationInstruction[] AccelerationInstructions;
-    public ushort AccelerationTick;
-    public sbyte AccelerationIndex;
-    public Vector2 AccelerationStartValue;
-    public Vector2 AccelerationEndValue;
+    public AccelerationInstruction[] AccelerationInstructions;  // 8
 
-    public CurveInstruction[] CurveInstructions;
-    public ushort CurveTick;
-    public sbyte CurveIndex;
+    public CurveInstruction[] CurveInstructions;                // 8
+
+    public sbyte VelocityIndex;     // 1
+    public sbyte AccelerationIndex; // 1
+    public sbyte PositionIndex;     // 1
+    public sbyte CurveIndex;        // 1
+
+    public ushort CurrentFrame;     // 2
+                                    // 2 padding
 }

@@ -8,7 +8,7 @@ public sealed class TestScript(BulletManager bulletManager)
 {
     int counter;
 
-    public void Update(AssetManager assetManager)
+    public void Update()
     {
         if (counter % 5 == 0)
         {
@@ -22,35 +22,34 @@ public sealed class TestScript(BulletManager bulletManager)
                     100f * MathF.Sin(angle));
 
                 // position test
-                bulletManager.SpawnBullet()
-                    .SetPosition(new Vector2(200, 200))
-                    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Additive)
-                    .LerpAddPosition(delta, 120, Easing.OutQuad)
-                    .LerpAddPosition(-delta, 120, Easing.InQuad)
-                    .DelayVelocity(240)
-                    .SetVelocity(delta / 30f)
-                    .AutoSyncTransformRotation()
-                    .Build();
+                //bulletManager.SpawnBullet()
+                //    .SetPosition(new Vector2(200, 200))
+                //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Additive)
+                //    .LerpAddPosition(delta, 120, EaseType.OutQuad)
+                //    .LerpAddPosition(-delta, 120, EaseType.InQuad)
+                //    .SetVelocity(delta / 30f)
+                //    .AutoSyncTransformRotation()
+                //    .Build();
 
                 // velocity test
-                //bulletManager.SpawnBullet()
-                //    .SetPosition(new Vector2(640, 360))
-                //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                //    .SetMovement(2f, Vector2.Zero, angle).EnableSyncTransformRotation()
-                //    .DelayVelocity(60)
-                //    //.SetVelocity(Vector2.UnitY * 2)
-                //    //.AddVelocity(Vector2.UnitY * 2)
-                //    //.LerpToVelocity(Vector2.UnitY * 2, 30, Easing.InQuad)
-                //    //.LerpAddVelocity(Vector2.UnitY * 2, 30, Easing.InQuad)
-                //    //.SetVelocityMagnitude(4f)
-                //    //.AddVelocityMagnitude(4f)
-                //    //.LerpToVelocityMagnitude(4f, 30, Easing.InQuad)
-                //    //.LerpAddVelocityMagnitude(4f, 30, Easing.InQuad)
-                //    //.SetVelocityAngle(0)
-                //    //.AddVelocityAngle(MathHelper.PiOver2)
-                //    //.LerpToVelocityAngle(0, 30, Easing.InQuad)
-                //    //.LerpAddVelocityAngle(MathHelper.PiOver2, 30, Easing.InQuad)
-                //    .Build();
+                bulletManager.SpawnBullet()
+                    .SetPosition(new Vector2(640, 360))
+                    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+                    .SetMovement(2f, Vector2.Zero, angle).AutoSyncTransformRotation()
+                    .Delay(60)
+                    //.SetVelocity(Vector2.UnitY * 2)
+                    //.AddVelocity(Vector2.UnitY * 2)
+                    //.LerpToVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad)
+                    //.LerpAddVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad)
+                    //.SetVelocityMagnitude(4f)
+                    //.AddVelocityMagnitude(4f)
+                    //.LerpToVelocityMagnitude(4f, 30, EaseType.InQuad)
+                    //.LerpAddVelocityMagnitude(4f, 30, EaseType.InQuad)
+                    //.SetVelocityAngle(0)
+                    //.AddVelocityAngle(MathHelper.PiOver2)
+                    //.LerpToVelocityAngle(0, 30, EaseType.InQuad)
+                    //.LerpAddVelocityAngle(MathHelper.PiOver2, 30, EaseType.InQuad)
+                    .Build();
 
                 // acceleration test
 
@@ -59,10 +58,14 @@ public sealed class TestScript(BulletManager bulletManager)
                 //bulletManager.SpawnBullet()
                 //    .SetPosition(new Vector2(640, 360))
                 //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
-                //    .SetMovement(2f, Vector2.Zero, angle).EnableSyncTransformRotation()
-                //        .SetAngularVelocity(MathHelper.Pi / 60).DelayAngularVelocity(30)
-                //        .SetAngularVelocity(-MathHelper.Pi / 60).DelayAngularVelocity(30)
-                //        .AngularVelocityLoopFrom(0, 1)
+                //    .SetMovement(2f, Vector2.Zero, angle).AutoSyncTransformRotation()
+                //        .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
+                //        .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
+                //        .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
+                //        .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
+                //        .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
+                //        .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
+                //        .SetAngularVelocity(0)
                 //    .Build();
             }
         }
@@ -85,7 +88,7 @@ public sealed class Engine : Game
 
     private TestScript script = null!;
 
-    private InputManager inputManager = InputManager.Instance;
+    private InputManager Input { get; } = InputManager.Instance;
     bool isPaused = false;
     bool shouldAdvance = false;
 
@@ -131,20 +134,20 @@ public sealed class Engine : Game
 
     protected override void Update(GameTime gameTime)
     {
-        if (inputManager.IsKeyPressed(Keys.P))
+        if (Input.IsKeyPressed(Keys.P))
             isPaused = !isPaused;
 
-        if (inputManager.IsKeyPressed(Keys.K))
+        if (Input.IsKeyPressed(Keys.K))
             shouldAdvance = true;
 
         if (!isPaused || shouldAdvance)
         {
-            script.Update(assetManager);
+            script.Update();
             movementSystem.Update();
         }
 
         shouldAdvance = false;
-        inputManager.Update();
+        Input.Update();
 
         base.Update(gameTime);
     }

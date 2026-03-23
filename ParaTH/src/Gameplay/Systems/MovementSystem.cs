@@ -35,28 +35,28 @@ public sealed class MovementSystem(World world)
 
                 var oldPosition = transform.Position;
 
-                if (controller.AccelerationInstructions is not null)
+                if (controller.AccelerationInstructions.Length != 0)
                     UpdateAccelerationController(ref controller, ref movement);
 
                 movement.Velocity += movement.Acceleration;
 
-                if (controller.CurveInstructions is not null)
+                if (controller.CurveInstructions.Length != 0)
                     UpdateCurveMovement(ref controller, ref movement);
 
-                if (controller.VelocityInstructions is not null)
+                if (controller.VelocityInstructions.Length != 0)
                     UpdateVelocityController(ref controller, ref movement);
 
-                if (controller.PositionInstructions is not null)
+                if (controller.PositionInstructions.Length != 0)
                     UpdatePositionController(ref controller, ref transform);
 
                 transform.Position += movement.Velocity;
 
                 var newPosition = transform.Position;
-
                 var delta = newPosition - oldPosition;
-
                 if (movement.SyncTransformRotation && delta.Length() >= float.Epsilon)
                     transform.Rotation = MathF.Atan2(delta.Y, delta.X);
+
+                controller.CurrentFrame++;
             }
         }
     }
@@ -66,7 +66,7 @@ public sealed class MovementSystem(World world)
         // handle instruction advance
         var insts = ctrl.PositionInstructions;
         while (ctrl.PositionIndex < insts.Length - 1 &&
-               ctrl.PositionTick >= insts.UnsafeAt(ctrl.PositionIndex + 1).TriggerFrame)
+               ctrl.CurrentFrame >= insts.UnsafeAt(ctrl.PositionIndex + 1).TriggerFrame)
         {
             // reached new instruction, init it
             ctrl.PositionIndex++;
@@ -76,9 +76,8 @@ public sealed class MovementSystem(World world)
 
             switch (op)
             {
-                case PositionInstruction.Ops.Delay:
-                    break;
                 case PositionInstruction.Ops.Set:
+                    ctrl.PositionStartValue = transform.Position;
                     break;
                 case PositionInstruction.Ops.Add: // inst.EndValue = positionDelta
                     ctrl.PositionStartValue = transform.Position;
@@ -94,20 +93,17 @@ public sealed class MovementSystem(World world)
 
         // modify position directly
         // takes over velocity during the lerp
-        if (ctrl.PositionIndex >= 0 &&
-            ctrl.PositionInstructions.UnsafeAt(ctrl.PositionIndex).Op != PositionInstruction.Ops.Delay)
+        if (ctrl.PositionIndex >= 0)
         {
             var inst = ctrl.PositionInstructions.UnsafeAt(ctrl.PositionIndex);
-            int relativeTick = ctrl.PositionTick - inst.TriggerFrame;
+            int relativeTick = ctrl.CurrentFrame - inst.TriggerFrame;
             if (relativeTick < inst.Duration)
             {
                 var t = (float)(relativeTick + 1) / inst.Duration;
-                t = inst.Ease(t);
+                t = Easing.Evaluate(inst.EaseType, t);
                 transform.Position = Vector2.Lerp(ctrl.PositionStartValue, ctrl.PositionEndValue, t);
             }
         }
-
-        ctrl.PositionTick++;
     }
 
     private static void UpdateVelocityController(ref BulletController ctrl, ref Movement movement)
@@ -115,7 +111,7 @@ public sealed class MovementSystem(World world)
         // handle instruction advance
         var insts = ctrl.VelocityInstructions;
         while (ctrl.VelocityIndex < insts.Length - 1 &&
-               ctrl.VelocityTick >= insts.UnsafeAt(ctrl.VelocityIndex + 1).TriggerFrame)
+               ctrl.CurrentFrame >= insts.UnsafeAt(ctrl.VelocityIndex + 1).TriggerFrame)
         {
             // reached new instruction, init it
             ctrl.VelocityIndex++;
@@ -126,32 +122,27 @@ public sealed class MovementSystem(World world)
             // handle ops
             switch (op)
             {
-                case VelocityInstruction.Ops.Delay:
-                {
-                    break;
-                }
                 case VelocityInstruction.Ops.SetVelocity:
                 {
                     ctrl.VelocityStartValue = movement.Velocity;
-                    ctrl.VelocityEndValue = inst.Params; // params: vec2 newVelocity
+                    ctrl.VelocityEndValue = inst.Params; // newVelocity
                     break;
                 }
                 case VelocityInstruction.Ops.SetMagnitude:
                 {
-                    var currentVelocity = movement.Velocity;
-                    currentVelocity.Normalize(); // if you get NaN here its your fault
+                    var direction = movement.Velocity;
+                    direction.Normalize(); // if you get NaN here its your fault
                     ctrl.VelocityStartValue = movement.Velocity;
-                    ctrl.VelocityEndValue = currentVelocity * inst.Params.X; // params: float newMagnitude
+                    ctrl.VelocityEndValue = direction * inst.Params.X; // newMagnitude
                     break;
                 }
                 case VelocityInstruction.Ops.SetAngle:
                 {
-                    // reuses fields:
                     // ctrl.VelocityStartValue: X = startAngle, Y = currentMagnitude
-                    // ctrl.VelocityEndValue: X = endAngle (calculated to use nearest warp)
+                    // ctrl.VelocityEndValue: X = endAngle (calculated to use nearest lerp)
                     var currentMagnitude = movement.Velocity.Length();
                     var startAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
-                    var endAngle = inst.Params.X; // params: float newAngle
+                    var endAngle = inst.Params.X; // newAngle
 
                     float angleDelta = MathHelper.WrapAngle(endAngle - startAngle);
                     ctrl.VelocityStartValue = new Vector2(startAngle, currentMagnitude);
@@ -161,28 +152,24 @@ public sealed class MovementSystem(World world)
                 case VelocityInstruction.Ops.AddVelocity:
                 {
                     ctrl.VelocityStartValue = movement.Velocity;
-                    ctrl.VelocityEndValue = movement.Velocity + inst.Params; // params: vec2 velocityDelta
+                    ctrl.VelocityEndValue = movement.Velocity + inst.Params; // velocityDelta
                     break;
                 }
                 case VelocityInstruction.Ops.AddMagnitude:
                 {
-                    var baseVelocity = movement.Velocity;
-                    var baseMagnitude = baseVelocity.Length();
-                    baseVelocity /= baseMagnitude; // if you get NaN here its your fault
+                    var magnitude = movement.Velocity.Length();
                     ctrl.VelocityStartValue = movement.Velocity;
-                    ctrl.VelocityEndValue = baseVelocity * (baseMagnitude + inst.Params.X); // params: float magnitudeDelta
+                    ctrl.VelocityEndValue = movement.Velocity / magnitude * (magnitude + inst.Params.X); // magnitudeDelta
                     break;
                 }
                 case VelocityInstruction.Ops.AddAngle:
                 {
-                    // reuses fields:
                     // ctrl.VelocityStartValue: X = startAngle, Y = currentMagnitude
                     // ctrl.VelocityEndValue: X = endAngle (use warp lerp)
                     var currentMagnitude = movement.Velocity.Length();
                     var baseAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
-                    var angleDelta = inst.Params.X; // params: float newAngle
                     ctrl.VelocityStartValue = new Vector2(baseAngle, currentMagnitude);
-                    ctrl.VelocityEndValue.X = baseAngle + angleDelta;
+                    ctrl.VelocityEndValue.X = baseAngle + inst.Params.X; // angleDelta
                     break;
                 }
             }
@@ -199,7 +186,7 @@ public sealed class MovementSystem(World world)
                         magnitude * MathF.Cos(ctrl.VelocityEndValue.X),
                         magnitude * MathF.Sin(ctrl.VelocityEndValue.X));
                 }
-                else if (op != VelocityInstruction.Ops.Delay)
+                else
                 {
                     movement.Velocity = ctrl.VelocityEndValue;
                 }
@@ -208,22 +195,21 @@ public sealed class MovementSystem(World world)
 
         // modify velocity directly
         // takes over acceleration during the lerp
-        if (ctrl.VelocityIndex >= 0 &&
-            ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex).Op != VelocityInstruction.Ops.Delay)
+        if (ctrl.VelocityIndex >= 0)
         {
             var inst = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
-            int relativeTick = ctrl.VelocityTick - inst.TriggerFrame;
+            int relativeTick = ctrl.CurrentFrame - inst.TriggerFrame;
             if (relativeTick < inst.Duration)
             {
                 // duration won't be zero here for it is handled in the while loop
                 var t = (float)(relativeTick + 1) / inst.Duration;
-                t = inst.Ease(t);
+                t = Easing.Evaluate(inst.EaseType, t);
                 if (inst.Op == VelocityInstruction.Ops.SetAngle ||
                     inst.Op == VelocityInstruction.Ops.AddAngle)
                 {
                     // lerp angle
                     float lerpedAngle = float.Lerp(ctrl.VelocityStartValue.X, ctrl.VelocityEndValue.X, t);
-                    float magnitude = inst.Params.Y;
+                    float magnitude = ctrl.VelocityStartValue.Y;
 
                     movement.Velocity = new Vector2(
                         magnitude * MathF.Cos(lerpedAngle),
@@ -235,166 +221,74 @@ public sealed class MovementSystem(World world)
                 }
             }
         }
-
-        ctrl.VelocityTick++;
     }
 
     private static void UpdateAccelerationController(ref BulletController ctrl, ref Movement movement)
     {
-        // handle instruction advance
         var insts = ctrl.AccelerationInstructions;
         while (ctrl.AccelerationIndex < insts.Length - 1 &&
-               ctrl.AccelerationTick >= insts.UnsafeAt(ctrl.AccelerationIndex + 1).TriggerFrame)
+               ctrl.CurrentFrame >= insts.UnsafeAt(ctrl.AccelerationIndex + 1).TriggerFrame)
         {
-            // reached new instruction, init it
             ctrl.AccelerationIndex++;
+            var inst = insts.UnsafeAt(ctrl.AccelerationIndex);
 
-            var op = ctrl.AccelerationInstructions.UnsafeAt(ctrl.AccelerationIndex).Op;
-            var inst = ctrl.AccelerationInstructions.UnsafeAt(ctrl.AccelerationIndex);
-
-            // handle ops
-            switch (op)
+            switch (inst.Op)
             {
-                case AccelerationInstruction.Ops.Delay:
-                {
-                    break;
-                }
                 case AccelerationInstruction.Ops.SetAcceleration:
                 {
-                    ctrl.AccelerationStartValue = movement.Acceleration;
-                    ctrl.AccelerationEndValue = inst.Params; // params: vec2 newAcceleration
+                    movement.Acceleration = inst.Params;    // newAcceleration
                     break;
                 }
                 case AccelerationInstruction.Ops.SetMagnitude:
                 {
-                    var currentAcceleration = movement.Acceleration;
-                    currentAcceleration.Normalize(); // if you get NaN here its your fault
-                    ctrl.AccelerationStartValue = movement.Acceleration;
-                    ctrl.AccelerationEndValue = currentAcceleration * inst.Params.X; // params: float newMagnitude
+                    var direction = movement.Acceleration;
+                    direction.Normalize();
+                    movement.Acceleration = direction * inst.Params.X; // newMagnitude
                     break;
                 }
                 case AccelerationInstruction.Ops.SetAngle:
                 {
-                    // reuses fields:
-                    // ctrl.AccelerationStartValue: X = startAngle, Y = currentMagnitude
-                    // ctrl.AccelerationEndValue: X = endAngle (calculated to use nearest warp)
-                    var currentMagnitude = movement.Acceleration.Length();
-                    var startAngle = MathF.Atan2(movement.Acceleration.Y, movement.Acceleration.X);
-                    var endAngle = inst.Params.X; // params: float newAngle
-
-                    float angleDelta = MathHelper.WrapAngle(endAngle - startAngle);
-                    ctrl.AccelerationStartValue = new Vector2(startAngle, currentMagnitude);
-                    ctrl.AccelerationEndValue.X = startAngle + angleDelta;
+                    var magnitude = movement.Acceleration.Length();
+                    movement.Acceleration = new Vector2(
+                        magnitude * MathF.Cos(inst.Params.X),   // newAngle
+                        magnitude * MathF.Sin(inst.Params.X));  // newAngle
                     break;
                 }
                 case AccelerationInstruction.Ops.AddAcceleration:
                 {
-                    ctrl.AccelerationStartValue = movement.Acceleration;
-                    ctrl.AccelerationEndValue = movement.Acceleration + inst.Params; // params: vec2 accelerationDelta
+                    movement.Acceleration += inst.Params; // newAcceleration
                     break;
                 }
                 case AccelerationInstruction.Ops.AddMagnitude:
                 {
-                    var baseAcceleration = movement.Acceleration;
-                    var baseMagnitude = baseAcceleration.Length();
-                    baseAcceleration /= baseMagnitude; // if you get NaN here its your fault
-                    ctrl.AccelerationStartValue = movement.Acceleration;
-                    ctrl.AccelerationEndValue = baseAcceleration * (baseMagnitude + inst.Params.X); // params: float magnitudeDelta
+                    var magnitude = movement.Acceleration.Length();
+                    movement.Acceleration = movement.Acceleration / magnitude * (magnitude + inst.Params.X); // magnitudeDelta
                     break;
                 }
                 case AccelerationInstruction.Ops.AddAngle:
                 {
-                    // reuses fields:
-                    // ctrl.AccelerationStartValue: X = startAngle, Y = currentMagnitude
-                    // ctrl.AccelerationEndValue: X = endAngle (use warp lerp)
-                    var currentMagnitude = movement.Acceleration.Length();
-                    var baseAngle = MathF.Atan2(movement.Acceleration.Y, movement.Acceleration.X);
-                    var angleDelta = inst.Params.X; // params: float newAngle
-                    ctrl.AccelerationStartValue = new Vector2(baseAngle, currentMagnitude);
-                    ctrl.AccelerationEndValue.X = baseAngle + angleDelta;
+                    var magnitude = movement.Acceleration.Length();
+                    var angle = MathF.Atan2(movement.Acceleration.Y, movement.Acceleration.X) + inst.Params.X; // angleDelta
+                    movement.Acceleration = new Vector2(
+                        magnitude * MathF.Cos(angle),
+                        magnitude * MathF.Sin(angle));
                     break;
                 }
             }
-
-            // instruction takes 0 frame
-            // update the Acceleration immediately to ensure the next op can get the correct value
-            if (inst.Duration == 0)
-            {
-                if (op == AccelerationInstruction.Ops.SetAngle ||
-                    op == AccelerationInstruction.Ops.AddAngle)
-                {
-                    float magnitude = ctrl.AccelerationStartValue.Y;
-                    movement.Acceleration = new Vector2(
-                        magnitude * MathF.Cos(ctrl.AccelerationEndValue.X),
-                        magnitude * MathF.Sin(ctrl.AccelerationEndValue.X));
-                }
-                else if (op != AccelerationInstruction.Ops.Delay)
-                {
-                    movement.Acceleration = ctrl.AccelerationEndValue;
-                }
-            }
         }
-
-        // modify acceleration directly
-        if (ctrl.AccelerationIndex >= 0 &&
-            ctrl.AccelerationInstructions.UnsafeAt(ctrl.AccelerationIndex).Op != AccelerationInstruction.Ops.Delay)
-        {
-            var inst = ctrl.AccelerationInstructions.UnsafeAt(ctrl.AccelerationIndex);
-            int relativeTick = ctrl.AccelerationTick - inst.TriggerFrame;
-            if (relativeTick < inst.Duration)
-            {
-                // duration won't be zero here for it is handled in the while loop
-                var t = (float)(relativeTick + 1) / inst.Duration;
-                t = inst.Ease(t);
-                if (inst.Op == AccelerationInstruction.Ops.SetAngle ||
-                    inst.Op == AccelerationInstruction.Ops.AddAngle)
-                {
-                    // lerp angle
-                    float lerpedAngle = float.Lerp(ctrl.AccelerationStartValue.X, ctrl.AccelerationEndValue.X, t);
-                    float magnitude = inst.Params.Y;
-
-                    movement.Acceleration = new Vector2(
-                        magnitude * MathF.Cos(lerpedAngle),
-                        magnitude * MathF.Sin(lerpedAngle));
-                }
-                else // vector lerp logic
-                {
-                    movement.Acceleration = Vector2.Lerp(ctrl.AccelerationStartValue, ctrl.AccelerationEndValue, t);
-                }
-            }
-        }
-
-        ctrl.AccelerationTick++;
     }
 
     private static void UpdateCurveMovement(ref BulletController ctrl, ref Movement movement)
     {
         var insts = ctrl.CurveInstructions;
-
         // handle instruction advance
         while (ctrl.CurveIndex < insts.Length - 1 &&
-               ctrl.CurveTick >= insts.UnsafeAt(ctrl.CurveIndex + 1).TriggerFrame)
+               ctrl.CurrentFrame >= insts.UnsafeAt(ctrl.CurveIndex + 1).TriggerFrame)
         {
             ctrl.CurveIndex++;
         }
 
-        float currentAngularVelocity = 0f;
-        ref var instRef = ref insts.UnsafeAt(ctrl.CurveIndex);
-
-        // only apply once we've reached the current instruction's trigger frame
-        if (ctrl.CurveTick >= instRef.TriggerFrame)
-        {
-            // handle looping
-            if (instRef.TargetIndex >= 0 && instRef.LoopRepeatTimes > 0)
-            {
-                ctrl.CurveIndex = instRef.TargetIndex;
-                ctrl.CurveTick = insts.UnsafeAt(ctrl.CurveIndex).TriggerFrame;
-                if (instRef.LoopRepeatTimes != CurveInstruction.Infinite)
-                    instRef.LoopRepeatTimes--;
-            }
-
-            currentAngularVelocity = insts.UnsafeAt(ctrl.CurveIndex).AngularVelocity;
-        }
+        var currentAngularVelocity = insts.UnsafeAt(ctrl.CurveIndex).AngularVelocity;
 
         // rotate velocity based on angular velocity
         if (currentAngularVelocity != 0f)
@@ -406,8 +300,6 @@ public sealed class MovementSystem(World world)
             movement.Velocity.X = x * cos - y * sin;
             movement.Velocity.Y = x * sin + y * cos;
         }
-
-        ctrl.CurveTick++;
     }
 
     private static void UpdateBasicBullet(Archetype archetype)
@@ -422,10 +314,15 @@ public sealed class MovementSystem(World world)
                 ref var transform = ref transforms.UnsafeAt(i);
                 ref var movement = ref movements.UnsafeAt(i);
 
+                var oldPosition = transform.Position;
+
                 movement.Velocity += movement.Acceleration;
                 transform.Position += movement.Velocity;
-                if (movement.SyncTransformRotation)
-                    transform.Rotation = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
+
+                var newPosition = transform.Position;
+                var delta = newPosition - oldPosition;
+                if (movement.SyncTransformRotation && delta.Length() >= float.Epsilon)
+                    transform.Rotation = MathF.Atan2(delta.Y, delta.X);
             }
         }
     }
