@@ -11,6 +11,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     private Transform transform = new(Vector2.Zero, Vector2.One, 0);
     private Movement movement;
     private SpriteRenderer spriteRenderer;
+    private SpawnAnimation spawnAnimation;
     private BulletController controller;
 
     private ushort currentFrame = 0;
@@ -18,6 +19,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     private readonly List<VelocityInstruction> velocityInstructions = [];
     private readonly List<AccelerationInstruction> accelerationInstructions = [];
     private readonly List<CurveInstruction> curveInstructions = [];
+    private float currentAngularVelocity = 0f;
 
     [UnscopedRef]
     public ref BulletBuilder Delay(ushort frames)
@@ -25,57 +27,6 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         currentFrame += frames;
         return ref this;
     }
-
-    #region Basic Movement
-    // todo: make this better
-    [UnscopedRef]
-    public ref BulletBuilder SetMovement(Vector2 velocity, Vector2 acceleration)
-    {
-        movement.Velocity = velocity;
-        movement.Acceleration = acceleration;
-
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref BulletBuilder SetMovement(float velocity, Vector2 acceleration, float angle)
-    {
-        var velocityVector = new Vector2(
-            velocity * MathF.Cos(angle),
-            velocity * MathF.Sin(angle));
-
-        movement.Velocity = velocityVector;
-        movement.Acceleration = acceleration;
-
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref BulletBuilder SetMovement(float velocity, float acceleration, float angle)
-    {
-        var cos = MathF.Cos(angle);
-        var sin = MathF.Sin(angle);
-
-        var velocityVector = new Vector2(
-            velocity * cos,
-            velocity * sin);
-        var accelerationVector = new Vector2(
-            acceleration * cos,
-            acceleration * sin);
-
-        movement.Velocity = velocityVector;
-        movement.Acceleration = accelerationVector;
-
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref BulletBuilder AutoSyncTransformRotation()
-    {
-        movement.SyncTransformRotation = true;
-        return ref this;
-    }
-    #endregion
 
     #region Position Control
     [UnscopedRef]
@@ -127,6 +78,16 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
     #region Velocity Control
     // todo: add Set/LerpVelocityAngleToPlayer
+    // convert from magnitude angle to vector for conveniences sake
+    [UnscopedRef]
+    public ref BulletBuilder SetVelocity(float velocityMagnitude, float angle)
+    {
+        var velocityVector = new Vector2(
+            velocityMagnitude * MathF.Cos(angle),
+            velocityMagnitude * MathF.Sin(angle));
+        return ref SetVelocity(velocityVector);
+    }
+
     [UnscopedRef]
     public ref BulletBuilder SetVelocity(Vector2 newVelocity)
     {
@@ -193,8 +154,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         if (currentFrame == 0)
         {
             var magnitude = movement.Velocity.Length();
-            movement.Velocity /= magnitude;
-            movement.Velocity *= (magnitude + magnitudeDelta);
+            movement.Velocity = movement.Velocity / magnitude * (magnitude + magnitudeDelta);
             return ref this;
         }
 
@@ -278,6 +238,15 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
     #region Acceleration Control
     // todo: add Set/LerpAccelerationAngleToPlayer
+    // convert from magnitude angle to vector for conveniences sake
+    [UnscopedRef]
+    public ref BulletBuilder SetAcceleration(float accelerationMagnitude, float angle)
+    {
+        var accelerationVector = new Vector2(
+            accelerationMagnitude * MathF.Cos(angle),
+            accelerationMagnitude * MathF.Sin(angle));
+        return ref SetAcceleration(accelerationVector);
+    }
     [UnscopedRef]
     public ref BulletBuilder SetAcceleration(Vector2 newAcceleration)
     {
@@ -373,11 +342,71 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
     #endregion
 
-    #region Angular Velocity
+    #region Movement
+    // ways to set velocity and acceleration at once to save effort
     [UnscopedRef]
-    public ref BulletBuilder SetAngularVelocity(float angularVelocity)
+    public ref BulletBuilder SetMovement(Vector2 velocity, Vector2 acceleration)
     {
-        curveInstructions.Add(new(currentFrame, angularVelocity));
+        SetVelocity(velocity);
+        SetAcceleration(acceleration);
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetMovement(float velocityMagnitude, float angle, Vector2 acceleration)
+    {
+        SetVelocity(velocityMagnitude, angle);
+        SetAcceleration(acceleration);
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetMovement(float velocityMagnitude, float angle, float acceleration)
+    {
+        var cos = MathF.Cos(angle);
+        var sin = MathF.Sin(angle);
+        var velocityVector = new Vector2(
+            velocityMagnitude * cos,
+            velocityMagnitude * sin);
+        var accelerationVector = new Vector2(
+            acceleration * cos,
+            acceleration * sin);
+        SetVelocity(velocityVector);
+        SetAcceleration(accelerationVector);
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder AddMovementAngle(float angleDelta)
+    {
+        AddVelocityAngle(angleDelta);
+        AddAccelerationAngle(angleDelta);
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder AutoSyncTransformRotation()
+    {
+        movement.SyncTransformRotation = true;
+        return ref this;
+    }
+    #endregion
+
+    #region Angular Velocity
+    // not compatable with VelocityAngle controls
+    [UnscopedRef]
+    public ref BulletBuilder SetAngularVelocity(float newAngularVelocity)
+    {
+        currentAngularVelocity = newAngularVelocity;
+        curveInstructions.Add(new(currentFrame, newAngularVelocity));
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder AddAngularVelocity(float angularVelocityDelta)
+    {
+        currentAngularVelocity += angularVelocityDelta;
+        curveInstructions.Add(new(currentFrame, currentAngularVelocity));
         return ref this;
     }
     #endregion
@@ -395,9 +424,24 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
         return ref this;
     }
-    #endregion
 
     [UnscopedRef]
+    public ref BulletBuilder SetSpawnAnimation(string spriteName, Half startScaleMultiplier, Half startAlphaMultiplier,
+                                               Half spawningSpeedMultiplier, byte duration, EaseType easeType)
+    {
+        var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
+
+        spawnAnimation.Sprite = sprite;
+        spawnAnimation.StartScaleMultiplier = startScaleMultiplier;
+        spawnAnimation.StartAlphaMultiplier = startAlphaMultiplier;
+        spawnAnimation.SpawningVelocityMultiplier = spawningSpeedMultiplier;
+        spawnAnimation.Duration = duration;
+        spawnAnimation.Type = easeType;
+
+        return ref this;
+    }
+    #endregion
+
     public Entity Build()
     {
         bool needController = positionInstructions.Count > 0 ||
@@ -407,10 +451,10 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
         if (needController)
         {
-            var posInsts = InitializeInstructions(positionInstructions);
-            var velInsts = InitializeInstructions(velocityInstructions);
-            var accelInsts = InitializeInstructions(accelerationInstructions);
-            var curveInsts = InitializeInstructions(curveInstructions);
+            var posInsts = positionInstructions.ToArray();
+            var velInsts = velocityInstructions.ToArray();
+            var accelInsts = accelerationInstructions.ToArray();
+            var curveInsts = curveInstructions.ToArray();
 
             // index is -1 so the first instruction can get inited
             controller.PositionInstructions = posInsts;
@@ -422,14 +466,9 @@ public ref struct BulletBuilder(BulletManager bulletManager)
             controller.CurveInstructions = curveInsts;
             controller.CurveIndex = -1;
 
-            return manager.World.CreateEntity(transform, movement, spriteRenderer, controller);
+            return manager.World.CreateEntity(transform, movement, spriteRenderer, spawnAnimation, controller);
         }
 
-        return manager.World.CreateEntity(transform, movement, spriteRenderer);
-    }
-
-    private static T[] InitializeInstructions<T>(List<T> instructions)
-    {
-        return [.. instructions];
+        return manager.World.CreateEntity(transform, movement, spriteRenderer, spawnAnimation);
     }
 }

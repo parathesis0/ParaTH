@@ -2,10 +2,10 @@ using Microsoft.Xna.Framework;
 
 namespace ParaTH;
 
-public sealed class MovementSystem(World world)
+public sealed class BulletSystem(World world)
 {
     private QueryDescriptor query = new QueryDescriptor()
-        .WithAll<Transform, Movement>();
+        .WithAll<Transform, Movement, SpawnAnimation>();
 
     public void Update()
     {
@@ -24,13 +24,14 @@ public sealed class MovementSystem(World world)
     {
         foreach (ref var chunk in archetype.GetChunksSpan())
         {
-            chunk.GetFilledComponentSpan<Transform, Movement, BulletController>(
-                out var transforms, out var movements, out var controllers);
+            chunk.GetFilledComponentSpan<Transform, Movement, SpawnAnimation, BulletController>(
+                out var transforms, out var movements, out var spawnAnims, out var controllers);
 
             for (int i = 0; i < chunk.EntityCount; i++)
             {
                 ref var transform = ref transforms.UnsafeAt(i);
                 ref var movement = ref movements.UnsafeAt(i);
+                ref var spawnAnim = ref spawnAnims.UnsafeAt(i);
                 ref var controller = ref controllers.UnsafeAt(i);
 
                 var oldPosition = transform.Position;
@@ -49,7 +50,9 @@ public sealed class MovementSystem(World world)
                 if (controller.PositionInstructions.Length != 0)
                     UpdatePositionController(ref controller, ref transform);
 
-                transform.Position += movement.Velocity;
+                UpdateSpawnAnimation(ref spawnAnim, out var velocityMultiplier);
+
+                transform.Position += movement.Velocity * velocityMultiplier;
 
                 var newPosition = transform.Position;
                 var delta = newPosition - oldPosition;
@@ -302,22 +305,39 @@ public sealed class MovementSystem(World world)
         }
     }
 
+    private static void UpdateSpawnAnimation(ref SpawnAnimation spawnAnim, out float velocityMultiplier)
+    {
+        bool playingSpawnAnimation = spawnAnim.Counter < spawnAnim.Duration;
+        if (playingSpawnAnimation)
+        {
+            spawnAnim.Counter++;
+            velocityMultiplier = (float)spawnAnim.SpawningVelocityMultiplier;
+            return;
+        }
+
+        velocityMultiplier = 1f;
+    }
+
     private static void UpdateBasicBullet(Archetype archetype)
     {
         foreach (ref var chunk in archetype.GetChunksSpan())
         {
-            chunk.GetFilledComponentSpan<Transform, Movement>(
-                out var transforms, out var movements);
+            chunk.GetFilledComponentSpan<Transform, Movement, SpawnAnimation>(
+                out var transforms, out var movements, out var spawnAnims);
 
             for (int i = 0; i < chunk.EntityCount; i++)
             {
                 ref var transform = ref transforms.UnsafeAt(i);
                 ref var movement = ref movements.UnsafeAt(i);
+                ref var spawnAnim = ref spawnAnims.UnsafeAt(i);
 
                 var oldPosition = transform.Position;
 
                 movement.Velocity += movement.Acceleration;
-                transform.Position += movement.Velocity;
+
+                UpdateSpawnAnimation(ref spawnAnim, out var velocityMultiplier);
+
+                transform.Position += movement.Velocity * velocityMultiplier;
 
                 var newPosition = transform.Position;
                 var delta = newPosition - oldPosition;

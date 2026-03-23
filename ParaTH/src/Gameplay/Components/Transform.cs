@@ -2,9 +2,10 @@ using Microsoft.Xna.Framework;
 
 namespace ParaTH;
 
+// 20 bytes
 public struct Transform(Vector2 position, Vector2 scale, float rotation)
 {
-    public Vector2 Position = position;
-    public Vector2 Scale = scale;
-    public float Rotation = rotation;
+    public Vector2 Position = position; // 8
+    public Vector2 Scale = scale;       // 8
+    public float Rotation = rotation;   // 4
 }
