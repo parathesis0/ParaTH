@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -623,7 +622,6 @@ public sealed partial class World : IDisposable
         entityCapacity -= archetype.EntityCapacity;
     }
 
-    // don't destroy any archetype for simplicity's sake
     public void TrimExcess()
     {
         // we do not trim entityDatas since it's sparse

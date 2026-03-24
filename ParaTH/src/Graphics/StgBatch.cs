@@ -31,7 +31,7 @@ public sealed unsafe class StgBatch : IDisposable
             if (Count == Commands.Length)
                 Array.Resize(ref Commands, Count == 0 ? BucketInitialSize : Count * 2);
 
-            Commands[Count++] = command;
+            Commands.UnsafeAt(Count++) = command;
         }
     }
     #endregion
@@ -85,7 +85,7 @@ public sealed unsafe class StgBatch : IDisposable
 
         buckets = new CommandBucket[BucketCount];
         for (int i = 0; i < BucketCount; i++)
-            buckets[i] = new CommandBucket();
+            buckets.UnsafeAt(i) = new CommandBucket();
 
         vertexBuffer = new DynamicVertexBuffer(
             GraphicsDevice,
@@ -326,8 +326,8 @@ public sealed unsafe class StgBatch : IDisposable
         vertexCount += 4;
         indexCount += 6;
 
-        buckets[layerDepth].Add(new DrawCommand(commandCount, startIndex, 6, blendState));
-        textureInfo[commandCount++] = texture;
+        buckets.UnsafeAt(layerDepth).Add(new DrawCommand(commandCount, startIndex, 6, blendState));
+        textureInfo.UnsafeAt(commandCount++) = texture;
     }
 
     public void DrawConvexPolygon(
@@ -360,11 +360,11 @@ public sealed unsafe class StgBatch : IDisposable
 
         for (int i = 0; i < vCount; i++)
         {
-            currVertex->Position.X = vertices[i].X;
-            currVertex->Position.Y = vertices[i].Y;
+            currVertex->Position.X = vertices.UnsafeAt(i).X;
+            currVertex->Position.Y = vertices.UnsafeAt(i).Y;
             currVertex->Position.Z = 0;
             currVertex->Color = color;
-            currVertex->TextureCoordinate = textureCoords[i];
+            currVertex->TextureCoordinate = textureCoords.UnsafeAt(i);
             currVertex++;
         }
 
@@ -381,8 +381,8 @@ public sealed unsafe class StgBatch : IDisposable
         vertexCount += vCount;
         indexCount += iCount;
 
-        buckets[layerDepth].Add(new DrawCommand(commandCount, startIndex, iCount, blendState));
-        textureInfo[commandCount++] = texture;
+        buckets.UnsafeAt(layerDepth).Add(new DrawCommand(commandCount, startIndex, iCount, blendState));
+        textureInfo.UnsafeAt(commandCount++) = texture;
     }
     #endregion
 
@@ -395,7 +395,7 @@ public sealed unsafe class StgBatch : IDisposable
 
         for (int i = 0; i < BucketCount; i++)
         {
-            ref var bucket = ref buckets[i];
+            ref var bucket = ref buckets.UnsafeAt(i);
 
             if (bucket.Count == 0) continue;
 
@@ -404,7 +404,7 @@ public sealed unsafe class StgBatch : IDisposable
 
             for (int j = 0; j < count; j++)
             {
-                ref var cmd = ref cmds[j];
+                ref var cmd = ref cmds.UnsafeAt(j);
 
                 int bytesToCopy = cmd.IndexCount * sizeof(short);
 
@@ -441,7 +441,7 @@ public sealed unsafe class StgBatch : IDisposable
         indexCount = 0;
         commandCount = 0;
         for (int i = 0; i < BucketCount; i++)
-            buckets[i].Count = 0;
+            buckets.UnsafeAt(i).Count = 0;
     }
 
     private void PrepRenderState()
@@ -466,7 +466,7 @@ public sealed unsafe class StgBatch : IDisposable
             StgBlendState.Subtract => StgBlendStates.Subtract,
             StgBlendState.ReverseSubtract => StgBlendStates.ReverseSubtract,
             StgBlendState.Invert => StgBlendStates.Invert,
-            _ => throw new NotImplementedException()
+            _ => default! // unreachable
         };
     }
 
@@ -479,13 +479,13 @@ public sealed unsafe class StgBatch : IDisposable
 
         for (int i = 0; i < BucketCount; i++)
         {
-            ref var bucket = ref buckets[i];
+            ref var bucket = ref buckets.UnsafeAt(i);
             if (bucket.Count == 0) continue;
 
             for (int j = 0; j < bucket.Count; j++)
             {
-                ref var cmd = ref bucket.Commands[j];
-                Texture2D cmdTexture = textureInfo[cmd.TextureIndex];
+                ref var cmd = ref bucket.Commands.UnsafeAt(j);
+                Texture2D cmdTexture = textureInfo.UnsafeAt(cmd.TextureIndex);
 
                 if (currentTexture is null)
                 {

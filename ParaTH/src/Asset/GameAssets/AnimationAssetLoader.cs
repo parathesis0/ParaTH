@@ -16,7 +16,7 @@ public sealed class AnimationAssetLoader(AssetManager assetManager) : IAssetLoad
         if (animName is null || type is null || frames is null || frames.Count == 0)
             return;
 
-        var animation = new AnimationAsset(tex.Texture, type.Value, frames);
+        var animation = new AnimationAsset(tex.Texture, type.Value, [.. frames]);
 
         pool.Add(animName, animation);
     }

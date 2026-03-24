@@ -138,7 +138,7 @@ public static class Easing
         EaseType.InOutBounce => InOutBounce(t),
         EaseType.SmoothStep => SmoothStep(t),
         EaseType.QuintSmoothStep => QuintSmoothStep(t),
-        _ => throw new IndexOutOfRangeException(),
+        _ => default,
     };
 
     public static float Linear(float t) => t;
