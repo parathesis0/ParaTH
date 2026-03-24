@@ -1,310 +1,269 @@
+using System;
 using Microsoft.Xna.Framework;
 
 namespace ParaTH;
 
 public sealed class BulletSystem(World world)
 {
-    private QueryDescriptor query = new QueryDescriptor()
+    private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Movement, Lifetime, SpawnAnimation>();
 
     public void Update()
     {
-        var q = world.GetOrCreateQuery(query);
+        var q = world.GetOrCreateQuery(descriptor);
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
-            if (archetype.Has<BulletController>())
-                UpdateControlledBullet(archetype);
-            else
-                UpdateBasicBullet(archetype);
-        }
-    }
+            bool hasPos = archetype.Has<PositionController>();
+            bool hasVel = archetype.Has<VelocityController>();
+            bool hasAcc = archetype.Has<AccelerationController>();
+            bool hasCur = archetype.Has<CurveController>();
 
-    private static void UpdateControlledBullet(Archetype archetype)
-    {
-        foreach (ref var chunk in archetype.GetChunksSpan())
-        {
-            chunk.GetFilledComponentSpan<Transform, Movement, Lifetime, SpawnAnimation, BulletController>(
-                out var transforms, out var movements, out var lifetimes, out var spawnAnims, out var controllers);
-
-            for (int i = 0; i < chunk.EntityCount; i++)
+            foreach (ref var chunk in archetype.GetChunksSpan())
             {
-                ref var transform = ref transforms.UnsafeAt(i);
-                ref var movement = ref movements.UnsafeAt(i);
-                ref var lifetime = ref lifetimes.UnsafeAt(i);
-                ref var spawnAnim = ref spawnAnims.UnsafeAt(i);
-                ref var controller = ref controllers.UnsafeAt(i);
+                chunk.GetFilledComponentSpan<Transform, Movement, Lifetime, SpawnAnimation>(
+                    out var transforms, out var movements, out var lifetimes, out var spawnAnims);
 
-                var oldPosition = transform.Position;
+                var posSpan = hasPos ? chunk.GetFilledComponentSpan<PositionController>() : default;
+                var velSpan = hasVel ? chunk.GetFilledComponentSpan<VelocityController>() : default;
+                var accSpan = hasAcc ? chunk.GetFilledComponentSpan<AccelerationController>() : default;
+                var curSpan = hasCur ? chunk.GetFilledComponentSpan<CurveController>() : default;
 
-                var currentFrame = lifetime.AliveFrames;
+                for (int i = 0; i < chunk.EntityCount; i++)
+                {
+                    ref var transform = ref transforms.UnsafeAt(i);
+                    ref var movement = ref movements.UnsafeAt(i);
+                    ref var lifetime = ref lifetimes.UnsafeAt(i);
+                    ref var spawnAnim = ref spawnAnims.UnsafeAt(i);
 
-                if (controller.AccelerationInstructions.Length != 0)
-                    UpdateAccelerationController(ref controller, currentFrame, ref movement);
+                    var currentFrame = lifetime.AliveFrames;
+                    var oldPosition = transform.Position;
 
-                movement.Velocity += movement.Acceleration;
+                    if (hasAcc)
+                        UpdateAccelerationController(ref accSpan.UnsafeAt(i), currentFrame, ref movement);
 
-                if (controller.CurveInstructions.Length != 0)
-                    UpdateCurveMovement(ref controller, currentFrame, ref movement);
+                    movement.Velocity += movement.Acceleration;
 
-                if (controller.VelocityInstructions.Length != 0)
-                    UpdateVelocityController(ref controller, currentFrame, ref movement);
+                    if (hasCur)
+                        UpdateCurveMovement(ref curSpan.UnsafeAt(i), currentFrame, ref movement);
 
-                if (controller.PositionInstructions.Length != 0)
-                    UpdatePositionController(ref controller, currentFrame, ref transform);
+                    if (hasVel)
+                        UpdateVelocityController(ref velSpan.UnsafeAt(i), currentFrame, ref movement);
 
-                UpdateSpawnAnimation(ref spawnAnim, currentFrame, out var velocityMultiplier);
+                    if (hasPos)
+                        UpdatePositionController(ref posSpan.UnsafeAt(i), currentFrame, ref transform);
 
-                transform.Position += movement.Velocity * velocityMultiplier;
+                    UpdateSpawnAnimation(ref spawnAnim, currentFrame, out var velocityMultiplier);
 
-                var newPosition = transform.Position;
-                var delta = newPosition - oldPosition;
-                if (movement.SyncTransformRotation && delta.Length() >= float.Epsilon)
-                    transform.Rotation = MathF.Atan2(delta.Y, delta.X);
+                    transform.Position += movement.Velocity * velocityMultiplier;
 
-                lifetime.AliveFrames++;
+                    var newPosition = transform.Position;
+                    var delta = newPosition - oldPosition;
+                    if (movement.SyncTransformRotation && delta.LengthSquared() >= float.Epsilon)
+                        transform.Rotation = MathF.Atan2(delta.Y, delta.X);
+
+                    lifetime.AliveFrames++;
+                }
             }
         }
     }
 
-    private static void UpdatePositionController(ref BulletController ctrl, ushort currentFrame, ref Transform transform)
+    private static void UpdatePositionController(ref PositionController ctrl, ushort currentFrame, ref Transform transform)
     {
         // handle instruction advance
-        var insts = ctrl.PositionInstructions;
-        while (ctrl.PositionIndex < insts.Length - 1 &&
-               currentFrame >= insts.UnsafeAt(ctrl.PositionIndex + 1).TriggerFrame)
+        var insts = ctrl.Instructions;
+        while (ctrl.Index < insts.Length - 1 && currentFrame >= insts.UnsafeAt(ctrl.Index + 1).TriggerFrame)
         {
             // reached new instruction, init it
-            ctrl.PositionIndex++;
+            ctrl.Index++;
+            var inst = insts.UnsafeAt(ctrl.Index);
 
-            var op = ctrl.PositionInstructions.UnsafeAt(ctrl.PositionIndex).Op;
-            var inst = ctrl.PositionInstructions.UnsafeAt(ctrl.PositionIndex);
-
-            switch (op)
+            switch (inst.Op)
             {
                 case PositionInstruction.Ops.Set:
-                    ctrl.PositionStartValue = transform.Position;
+                    ctrl.StartValue = transform.Position;
+                    ctrl.EndValue = inst.Params;
                     break;
-                case PositionInstruction.Ops.Add: // inst.EndValue = positionDelta
-                    ctrl.PositionStartValue = transform.Position;
-                    ctrl.PositionEndValue = transform.Position + inst.Params;
+                case PositionInstruction.Ops.Add:
+                    ctrl.StartValue = transform.Position;
+                    ctrl.EndValue = transform.Position + inst.Params; // positionDelta
                     break;
             }
 
             // instruction takes 0 frame
             // update position immediately to ensure the next op can get the correct value
             if (inst.Duration == 0)
-                transform.Position = ctrl.PositionEndValue;
+                transform.Position = ctrl.EndValue;
         }
 
         // modify position directly
         // takes over velocity during the lerp
-        if (ctrl.PositionIndex >= 0)
+        if (ctrl.Index >= 0)
         {
-            var inst = ctrl.PositionInstructions.UnsafeAt(ctrl.PositionIndex);
+            var inst = insts.UnsafeAt(ctrl.Index);
             int relativeTick = currentFrame - inst.TriggerFrame;
             if (relativeTick < inst.Duration)
             {
                 var t = (float)(relativeTick + 1) / inst.Duration;
                 t = Easing.Evaluate(inst.EaseType, t);
-                transform.Position = Vector2.Lerp(ctrl.PositionStartValue, ctrl.PositionEndValue, t);
+                transform.Position = Vector2.Lerp(ctrl.StartValue, ctrl.EndValue, t);
             }
         }
     }
 
-    private static void UpdateVelocityController(ref BulletController ctrl, ushort currentFrame, ref Movement movement)
+    private static void UpdateVelocityController(ref VelocityController ctrl, ushort currentFrame, ref Movement movement)
     {
         // handle instruction advance
-        var insts = ctrl.VelocityInstructions;
-        while (ctrl.VelocityIndex < insts.Length - 1 &&
-               currentFrame >= insts.UnsafeAt(ctrl.VelocityIndex + 1).TriggerFrame)
+        var insts = ctrl.Instructions;
+        while (ctrl.Index < insts.Length - 1 && currentFrame >= insts.UnsafeAt(ctrl.Index + 1).TriggerFrame)
         {
             // reached new instruction, init it
-            ctrl.VelocityIndex++;
-
-            var op = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex).Op;
-            var inst = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
+            ctrl.Index++;
+            var inst = insts.UnsafeAt(ctrl.Index);
+            var op = inst.Op;
 
             // handle ops
             switch (op)
             {
                 case VelocityInstruction.Ops.SetVelocity:
-                {
-                    ctrl.VelocityStartValue = movement.Velocity;
-                    ctrl.VelocityEndValue = inst.Params; // newVelocity
+                    ctrl.StartValue = movement.Velocity;
+                    ctrl.EndValue = inst.Params; // newVelocity
                     break;
-                }
                 case VelocityInstruction.Ops.SetMagnitude:
-                {
                     var direction = movement.Velocity;
                     direction.Normalize(); // if you get NaN here its your fault
-                    ctrl.VelocityStartValue = movement.Velocity;
-                    ctrl.VelocityEndValue = direction * inst.Params.X; // newMagnitude
+                    ctrl.StartValue = movement.Velocity;
+                    ctrl.EndValue = direction * inst.Params.X; // newMagnitude
                     break;
-                }
                 case VelocityInstruction.Ops.SetAngle:
-                {
-                    // ctrl.VelocityStartValue: X = startAngle, Y = currentMagnitude
-                    // ctrl.VelocityEndValue: X = endAngle (calculated to use nearest lerp)
+                    // ctrl.StartValue: X = startAngle, Y = currentMagnitude
+                    // ctrl.EndValue: X = endAngle (calculated to use nearest lerp)
                     var currentMagnitude = movement.Velocity.Length();
                     var startAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
                     var endAngle = inst.Params.X; // newAngle
-
                     float angleDelta = MathHelper.WrapAngle(endAngle - startAngle);
-                    ctrl.VelocityStartValue = new Vector2(startAngle, currentMagnitude);
-                    ctrl.VelocityEndValue.X = startAngle + angleDelta;
+                    ctrl.StartValue = new Vector2(startAngle, currentMagnitude);
+                    ctrl.EndValue.X = startAngle + angleDelta;
                     break;
-                }
                 case VelocityInstruction.Ops.AddVelocity:
-                {
-                    ctrl.VelocityStartValue = movement.Velocity;
-                    ctrl.VelocityEndValue = movement.Velocity + inst.Params; // velocityDelta
+                    ctrl.StartValue = movement.Velocity;
+                    ctrl.EndValue = movement.Velocity + inst.Params; // velocityDelta
                     break;
-                }
                 case VelocityInstruction.Ops.AddMagnitude:
-                {
                     var magnitude = movement.Velocity.Length();
-                    ctrl.VelocityStartValue = movement.Velocity;
-                    ctrl.VelocityEndValue = movement.Velocity / magnitude * (magnitude + inst.Params.X); // magnitudeDelta
+                    ctrl.StartValue = movement.Velocity;
+                    ctrl.EndValue = movement.Velocity / magnitude * (magnitude + inst.Params.X); // magnitudeDelta
                     break;
-                }
                 case VelocityInstruction.Ops.AddAngle:
-                {
-                    // ctrl.VelocityStartValue: X = startAngle, Y = currentMagnitude
-                    // ctrl.VelocityEndValue: X = endAngle (use warp lerp)
-                    var currentMagnitude = movement.Velocity.Length();
+                    // ctrl.StartValue: X = startAngle, Y = currentMagnitude
+                    // ctrl.EndValue: X = endAngle (use warp lerp)
+                    var currentMag = movement.Velocity.Length();
                     var baseAngle = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
-                    ctrl.VelocityStartValue = new Vector2(baseAngle, currentMagnitude);
-                    ctrl.VelocityEndValue.X = baseAngle + inst.Params.X; // angleDelta
+                    ctrl.StartValue = new Vector2(baseAngle, currentMag);
+                    ctrl.EndValue.X = baseAngle + inst.Params.X; // angleDelta
                     break;
-                }
             }
 
             // instruction takes 0 frame
             // update the Velocity immediately to ensure the next op can get the correct value
             if (inst.Duration == 0)
             {
-                if (op == VelocityInstruction.Ops.SetAngle ||
-                    op == VelocityInstruction.Ops.AddAngle)
+                if (op == VelocityInstruction.Ops.SetAngle || op == VelocityInstruction.Ops.AddAngle)
                 {
-                    float magnitude = ctrl.VelocityStartValue.Y;
-                    movement.Velocity = new Vector2(
-                        magnitude * MathF.Cos(ctrl.VelocityEndValue.X),
-                        magnitude * MathF.Sin(ctrl.VelocityEndValue.X));
+                    float mag = ctrl.StartValue.Y;
+                    movement.Velocity = new Vector2(mag * MathF.Cos(ctrl.EndValue.X), mag * MathF.Sin(ctrl.EndValue.X));
                 }
                 else
                 {
-                    movement.Velocity = ctrl.VelocityEndValue;
+                    movement.Velocity = ctrl.EndValue;
                 }
             }
         }
 
         // modify velocity directly
         // takes over acceleration during the lerp
-        if (ctrl.VelocityIndex >= 0)
+        if (ctrl.Index >= 0)
         {
-            var inst = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
+            var inst = insts.UnsafeAt(ctrl.Index);
             int relativeTick = currentFrame - inst.TriggerFrame;
             if (relativeTick < inst.Duration)
             {
                 // duration won't be zero here for it is handled in the while loop
                 var t = (float)(relativeTick + 1) / inst.Duration;
                 t = Easing.Evaluate(inst.EaseType, t);
-                if (inst.Op == VelocityInstruction.Ops.SetAngle ||
-                    inst.Op == VelocityInstruction.Ops.AddAngle)
+                if (inst.Op == VelocityInstruction.Ops.SetAngle || inst.Op == VelocityInstruction.Ops.AddAngle)
                 {
                     // lerp angle
-                    float lerpedAngle = float.Lerp(ctrl.VelocityStartValue.X, ctrl.VelocityEndValue.X, t);
-                    float magnitude = ctrl.VelocityStartValue.Y;
-
-                    movement.Velocity = new Vector2(
-                        magnitude * MathF.Cos(lerpedAngle),
-                        magnitude * MathF.Sin(lerpedAngle));
+                    float lerpedAngle = float.Lerp(ctrl.StartValue.X, ctrl.EndValue.X, t);
+                    float magnitude = ctrl.StartValue.Y;
+                    movement.Velocity = new Vector2(magnitude * MathF.Cos(lerpedAngle), magnitude * MathF.Sin(lerpedAngle));
                 }
                 else // vector lerp logic
                 {
-                    movement.Velocity = Vector2.Lerp(ctrl.VelocityStartValue, ctrl.VelocityEndValue, t);
+                    movement.Velocity = Vector2.Lerp(ctrl.StartValue, ctrl.EndValue, t);
                 }
             }
         }
     }
 
-    private static void UpdateAccelerationController(ref BulletController ctrl, ushort currentFrame, ref Movement movement)
+    private static void UpdateAccelerationController(ref AccelerationController ctrl, ushort currentFrame, ref Movement movement)
     {
-        var insts = ctrl.AccelerationInstructions;
-        while (ctrl.AccelerationIndex < insts.Length - 1 &&
-               currentFrame >= insts.UnsafeAt(ctrl.AccelerationIndex + 1).TriggerFrame)
+        var insts = ctrl.Instructions;
+        while (ctrl.Index < insts.Length - 1 && currentFrame >= insts.UnsafeAt(ctrl.Index + 1).TriggerFrame)
         {
-            ctrl.AccelerationIndex++;
-            var inst = insts.UnsafeAt(ctrl.AccelerationIndex);
+            ctrl.Index++;
+            var inst = insts.UnsafeAt(ctrl.Index);
 
             switch (inst.Op)
             {
                 case AccelerationInstruction.Ops.SetAcceleration:
-                {
-                    movement.Acceleration = inst.Params;    // newAcceleration
+                    movement.Acceleration = inst.Params; // newAcceleration
                     break;
-                }
                 case AccelerationInstruction.Ops.SetMagnitude:
-                {
                     var direction = movement.Acceleration;
                     direction.Normalize();
                     movement.Acceleration = direction * inst.Params.X; // newMagnitude
                     break;
-                }
                 case AccelerationInstruction.Ops.SetAngle:
-                {
                     var magnitude = movement.Acceleration.Length();
-                    movement.Acceleration = new Vector2(
-                        magnitude * MathF.Cos(inst.Params.X),   // newAngle
-                        magnitude * MathF.Sin(inst.Params.X));  // newAngle
+                    movement.Acceleration = new Vector2(magnitude * MathF.Cos(inst.Params.X), magnitude * MathF.Sin(inst.Params.X)); // newAngle
                     break;
-                }
                 case AccelerationInstruction.Ops.AddAcceleration:
-                {
                     movement.Acceleration += inst.Params; // newAcceleration
                     break;
-                }
                 case AccelerationInstruction.Ops.AddMagnitude:
-                {
-                    var magnitude = movement.Acceleration.Length();
-                    movement.Acceleration = movement.Acceleration / magnitude * (magnitude + inst.Params.X); // magnitudeDelta
+                    var mag2 = movement.Acceleration.Length();
+                    movement.Acceleration = movement.Acceleration / mag2 * (mag2 + inst.Params.X); // magnitudeDelta
                     break;
-                }
                 case AccelerationInstruction.Ops.AddAngle:
-                {
-                    var magnitude = movement.Acceleration.Length();
+                    var mag3 = movement.Acceleration.Length();
                     var angle = MathF.Atan2(movement.Acceleration.Y, movement.Acceleration.X) + inst.Params.X; // angleDelta
-                    movement.Acceleration = new Vector2(
-                        magnitude * MathF.Cos(angle),
-                        magnitude * MathF.Sin(angle));
+                    movement.Acceleration = new Vector2(mag3 * MathF.Cos(angle), mag3 * MathF.Sin(angle));
                     break;
-                }
             }
         }
     }
 
-    private static void UpdateCurveMovement(ref BulletController ctrl, ushort currentFrame, ref Movement movement)
+    private static void UpdateCurveMovement(ref CurveController ctrl, ushort currentFrame, ref Movement movement)
     {
-        var insts = ctrl.CurveInstructions;
+        var insts = ctrl.Instructions;
         // handle instruction advance
-        while (ctrl.CurveIndex < insts.Length - 1 &&
-               currentFrame >= insts.UnsafeAt(ctrl.CurveIndex + 1).TriggerFrame)
-        {
-            ctrl.CurveIndex++;
-        }
+        while (ctrl.Index < insts.Length - 1 && currentFrame >= insts.UnsafeAt(ctrl.Index + 1).TriggerFrame)
+            ctrl.Index++;
 
-        var currentAngularVelocity = insts.UnsafeAt(ctrl.CurveIndex).AngularVelocity;
-
-        // rotate velocity based on angular velocity
-        if (currentAngularVelocity != 0f)
+        if (ctrl.Index >= 0)
         {
-            var sin = MathF.Sin(currentAngularVelocity);
-            var cos = MathF.Cos(currentAngularVelocity);
-            var x = movement.Velocity.X;
-            var y = movement.Velocity.Y;
-            movement.Velocity.X = x * cos - y * sin;
-            movement.Velocity.Y = x * sin + y * cos;
+            var currentAngularVelocity = insts.UnsafeAt(ctrl.Index).AngularVelocity;
+            // rotate velocity based on angular velocity
+            if (currentAngularVelocity != 0f)
+            {
+                var sin = MathF.Sin(currentAngularVelocity);
+                var cos = MathF.Cos(currentAngularVelocity);
+                var x = movement.Velocity.X;
+                var y = movement.Velocity.Y;
+                movement.Velocity.X = x * cos - y * sin;
+                movement.Velocity.Y = x * sin + y * cos;
+            }
         }
     }
 
@@ -317,39 +276,6 @@ public sealed class BulletSystem(World world)
             spawnAnim.Counter++;
             return;
         }
-
         velocityMultiplier = 1f;
-    }
-
-    private static void UpdateBasicBullet(Archetype archetype)
-    {
-        foreach (ref var chunk in archetype.GetChunksSpan())
-        {
-            chunk.GetFilledComponentSpan<Transform, Movement, Lifetime, SpawnAnimation>(
-                out var transforms, out var movements, out var lifetimes, out var spawnAnims);
-
-            for (int i = 0; i < chunk.EntityCount; i++)
-            {
-                ref var transform = ref transforms.UnsafeAt(i);
-                ref var movement = ref movements.UnsafeAt(i);
-                ref var lifetime = ref lifetimes.UnsafeAt(i);
-                ref var spawnAnim = ref spawnAnims.UnsafeAt(i);
-
-                var oldPosition = transform.Position;
-
-                movement.Velocity += movement.Acceleration;
-
-                UpdateSpawnAnimation(ref spawnAnim, lifetime.AliveFrames, out var velocityMultiplier);
-
-                transform.Position += movement.Velocity * velocityMultiplier;
-
-                var newPosition = transform.Position;
-                var delta = newPosition - oldPosition;
-                if (movement.SyncTransformRotation && delta.Length() >= float.Epsilon)
-                    transform.Rotation = MathF.Atan2(delta.Y, delta.X);
-
-                lifetime.AliveFrames++;
-            }
-        }
     }
 }

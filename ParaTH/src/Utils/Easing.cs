@@ -97,7 +97,49 @@ public static class Easing
     public static EasingFunction Get(EaseType type) => Functions.UnsafeAt((byte)type);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float Evaluate(EaseType type, float t) => Functions.UnsafeAt((byte)type)(t);
+    public static float Evaluate(EaseType type, float t) => type switch
+    {
+        EaseType.Linear => Linear(t),
+        EaseType.InQuad => InQuad(t),
+        EaseType.OutQuad => OutQuad(t),
+        EaseType.InOutQuad => InOutQuad(t),
+        EaseType.OutInQuad => OutInQuad(t),
+        EaseType.InCubic => InCubic(t),
+        EaseType.OutCubic => OutCubic(t),
+        EaseType.InOutCubic => InOutCubic(t),
+        EaseType.OutInCubic => OutInCubic(t),
+        EaseType.InQuart => InQuart(t),
+        EaseType.OutQuart => OutQuart(t),
+        EaseType.InOutQuart => InOutQuart(t),
+        EaseType.OutInQuart => OutInQuart(t),
+        EaseType.InQuint => InQuint(t),
+        EaseType.OutQuint => OutQuint(t),
+        EaseType.InOutQuint => InOutQuint(t),
+        EaseType.OutInQuint => OutInQuint(t),
+        EaseType.InExpo => InExpo(t),
+        EaseType.OutExpo => OutExpo(t),
+        EaseType.InOutExpo => InOutExpo(t),
+        EaseType.OutInExpo => OutInExpo(t),
+        EaseType.InInverse => InInverse(t),
+        EaseType.OutInverse => OutInverse(t),
+        EaseType.InOutInverse => InOutInverse(t),
+        EaseType.OutInInverse => OutInInverse(t),
+        EaseType.InCirc => InCirc(t),
+        EaseType.OutCirc => OutCirc(t),
+        EaseType.InOutCirc => InOutCirc(t),
+        EaseType.InElastic => InElastic(t),
+        EaseType.OutElastic => OutElastic(t),
+        EaseType.InOutElastic => InOutElastic(t),
+        EaseType.InBack => InBack(t),
+        EaseType.OutBack => OutBack(t),
+        EaseType.InOutBack => InOutBack(t),
+        EaseType.InBounce => InBounce(t),
+        EaseType.OutBounce => OutBounce(t),
+        EaseType.InOutBounce => InOutBounce(t),
+        EaseType.SmoothStep => SmoothStep(t),
+        EaseType.QuintSmoothStep => QuintSmoothStep(t),
+        _ => throw new IndexOutOfRangeException(),
+    };
 
     public static float Linear(float t) => t;
 

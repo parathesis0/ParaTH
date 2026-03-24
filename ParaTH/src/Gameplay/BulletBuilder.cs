@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ParaTH;
 
-
 // todos:
 // group spawning in spread/circle/fan etc
 // collision, managed despawning
@@ -17,7 +16,6 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     private SpriteRenderer spriteRenderer;
     private Lifetime lifetime;
     private SpawnAnimation spawnAnimation;
-    private BulletController controller;
 
     private ushort currentFrame = 0;
     private readonly List<PositionInstruction> positionInstructions = [];
@@ -460,35 +458,44 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
     #endregion
 
+    // todo: make this t4 template generated
     public Entity Build()
     {
-        bool needController = positionInstructions.Count > 0 ||
-                              velocityInstructions.Count > 0 ||
-                              accelerationInstructions.Count > 0 ||
-                              curveInstructions.Count > 0;
+        byte mask = 0;
+        if (positionInstructions.Count > 0) mask |= 1;
+        if (velocityInstructions.Count > 0) mask |= 2;
+        if (accelerationInstructions.Count > 0) mask |= 4;
+        if (curveInstructions.Count > 0) mask |= 8;
 
-        if (needController)
+        PositionController pc = default;
+        VelocityController vc = default;
+        AccelerationController ac = default;
+        CurveController cc = default;
+
+        if ((mask & 1) != 0) pc = new PositionController { Instructions = [.. positionInstructions], Index = -1 };
+        if ((mask & 2) != 0) vc = new VelocityController { Instructions = [.. velocityInstructions], Index = -1 };
+        if ((mask & 4) != 0) ac = new AccelerationController { Instructions = [.. accelerationInstructions], Index = -1 };
+        if ((mask & 8) != 0) cc = new CurveController { Instructions = [.. curveInstructions], Index = -1 };
+
+        return mask switch
         {
-            var posInsts = positionInstructions.ToArray();
-            var velInsts = velocityInstructions.ToArray();
-            var accelInsts = accelerationInstructions.ToArray();
-            var curveInsts = curveInstructions.ToArray();
-
-            // index is -1 so the first instruction can get inited
-            controller.PositionInstructions = posInsts;
-            controller.PositionIndex = -1;
-            controller.VelocityInstructions = velInsts;
-            controller.VelocityIndex = -1;
-            controller.AccelerationInstructions = accelInsts;
-            controller.AccelerationIndex = -1;
-            controller.CurveInstructions = curveInsts;
-            controller.CurveIndex = -1;
-
-            return manager.World.CreateEntity(
-                transform, movement, spriteRenderer, spawnAnimation, lifetime, controller);
-        }
-
-        return manager.World.CreateEntity(
-            transform, movement, spriteRenderer, lifetime, spawnAnimation);
+            0  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation),
+            1  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc),
+            2  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, vc),
+            3  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, vc),
+            4  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, ac),
+            5  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, ac),
+            6  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, vc, ac),
+            7  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, vc, ac),
+            8  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, cc),
+            9  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, cc),
+            10 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, vc, cc),
+            11 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, vc, cc),
+            12 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, ac, cc),
+            13 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, ac, cc),
+            14 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, vc, ac, cc),
+            15 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, vc, ac, cc),
+            _  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation) // unreachable
+        };
     }
 }

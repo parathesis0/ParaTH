@@ -10,9 +10,9 @@ public sealed class TestScript(BulletManager bulletManager)
 
     public void Update()
     {
-        if (counter % 4 == 0)
+        if (counter % 1 == 0)
         {
-            float way = 40;
+            float way = 250;
             float angleOffset = counter / 10f;
             for (int i = 0; i < way; i++)
             {
@@ -207,7 +207,7 @@ public sealed class Engine : Game
 
         stgBatch.DrawString(font,
             $"Entities: {entityCount}  |  Archetypes: {archetypeCount}  |  Chunks: {chunkCount}",
-            new Vector2(8, 4), Color.White, 200, StgBlendState.Alpha);
+            new Vector2(8, 4), Color.Gray, 200, StgBlendState.Alpha);
 
         stgBatch.DrawString(font,
             $"FPS: {currentFps}",
