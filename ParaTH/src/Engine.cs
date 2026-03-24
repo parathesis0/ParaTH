@@ -12,7 +12,7 @@ public sealed class TestScript(BulletManager bulletManager)
     {
         if (counter % 4 == 0)
         {
-            float way = 32;
+            float way = 40;
             float angleOffset = counter / 10f;
             for (int i = 0; i < way; i++)
             {
@@ -25,7 +25,7 @@ public sealed class TestScript(BulletManager bulletManager)
                 bulletManager.SpawnBullet()
                     .SetPosition(new Vector2(200, 200))
                     .SetSprite("heart_pink", Color.White, 100, StgBlendState.Additive)
-                    .SetSpawnAnimation("heart_pink", (Half)2, (Half)0, (Half)0, 11, EaseType.Linear)
+                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .LerpAddPosition(delta, 120, EaseType.OutQuad)
                     .LerpAddPosition(-delta, 120, EaseType.InQuad)
                     .SetVelocity(delta / 30f)
@@ -36,7 +36,7 @@ public sealed class TestScript(BulletManager bulletManager)
                 bulletManager.SpawnBullet()
                     .SetPosition(new Vector2(640, 360))
                     .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetSpawnAnimation("heart_pink", (Half)2, (Half)0, (Half)0, 11, EaseType.Linear)
+                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .SetVelocity(2f, angle).AutoSyncTransformRotation()
                     .Delay(60)
                     .SetVelocity(Vector2.UnitY * 2).Delay(10)
@@ -57,7 +57,7 @@ public sealed class TestScript(BulletManager bulletManager)
                 bulletManager.SpawnBullet()
                     .SetPosition(new Vector2(640, 360))
                     .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetSpawnAnimation("heart_pink", (Half)2, (Half)0, (Half)0, 11, EaseType.Linear)
+                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .SetVelocity(2f, angle).AutoSyncTransformRotation()
                     .Delay(60)
                     .SetAcceleration(Vector2.UnitY * 0.05f)
@@ -67,7 +67,7 @@ public sealed class TestScript(BulletManager bulletManager)
                 bulletManager.SpawnBullet()
                     .SetPosition(new Vector2(640, 360))
                     .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetSpawnAnimation("heart_pink", (Half)2, (Half)0, (Half)0, 11, EaseType.Linear)
+                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .SetVelocity(2f, angle).AutoSyncTransformRotation()
                     .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
                     .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
@@ -81,7 +81,7 @@ public sealed class TestScript(BulletManager bulletManager)
                 // spawnAnimation test
                 bulletManager.SpawnBullet()
                     .SetPosition(new Vector2(640, 360))
-                    .SetSpawnAnimation("heart_pink", (Half)2, (Half)0, (Half)0, 11, EaseType.Linear)
+                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                     .SetVelocity(2f, angle).AutoSyncTransformRotation()
                     .Build();
@@ -176,7 +176,8 @@ public sealed class Engine : Game
 
         if (!isPaused || shouldAdvance)
         {
-            script.Update();
+            if (currentFps > 55)
+                script.Update();
             bulletSystem.Update();
         }
 

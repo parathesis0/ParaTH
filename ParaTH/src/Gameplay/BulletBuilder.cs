@@ -3,7 +3,11 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ParaTH;
 
-// todo: group spawning in spread/circle/fan etc
+
+// todos:
+// group spawning in spread/circle/fan etc
+// collision, managed despawning
+// reusing built instructions
 public ref struct BulletBuilder(BulletManager bulletManager)
 {
     private readonly BulletManager manager = bulletManager;
@@ -11,6 +15,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     private Transform transform = new(Vector2.Zero, Vector2.One, 0);
     private Movement movement;
     private SpriteRenderer spriteRenderer;
+    private Lifetime lifetime;
     private SpawnAnimation spawnAnimation;
     private BulletController controller;
 
@@ -361,7 +366,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetMovement(float velocityMagnitude, float angle, float acceleration)
+    public ref BulletBuilder SetMovement(float velocityMagnitude, float angle, float accelerationMagnitude)
     {
         var cos = MathF.Cos(angle);
         var sin = MathF.Sin(angle);
@@ -369,8 +374,8 @@ public ref struct BulletBuilder(BulletManager bulletManager)
             velocityMagnitude * cos,
             velocityMagnitude * sin);
         var accelerationVector = new Vector2(
-            acceleration * cos,
-            acceleration * sin);
+            accelerationMagnitude * cos,
+            accelerationMagnitude * sin);
         SetVelocity(velocityVector);
         SetAcceleration(accelerationVector);
         return ref this;
@@ -411,6 +416,15 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
     #endregion
 
+    #region Lifetime
+    [UnscopedRef]
+    public ref BulletBuilder SetOffscreenLifeTime(short frames)
+    {
+        lifetime.OffscreenFramesToLive = frames;
+        return ref this;
+    }
+    #endregion
+
     #region Visual WIP
     [UnscopedRef]
     public ref BulletBuilder SetSprite(string spriteName, Color color, byte layer, StgBlendState blendState)
@@ -426,15 +440,19 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetSpawnAnimation(string spriteName, Half startScaleMultiplier, Half startAlphaMultiplier,
-                                               Half spawningSpeedMultiplier, byte duration, EaseType easeType)
+    public ref BulletBuilder SetSpawnAnimation(string spriteName, float startScaleMultiplier, float startAlphaMultiplier,
+                                               float spawningVelocityMultiplier, byte duration, EaseType easeType)
     {
         var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
 
         spawnAnimation.Sprite = sprite;
-        spawnAnimation.StartScaleMultiplier = startScaleMultiplier;
-        spawnAnimation.StartAlphaMultiplier = startAlphaMultiplier;
-        spawnAnimation.SpawningVelocityMultiplier = spawningSpeedMultiplier;
+        spawnAnimation.StartScaleMultiplier = (Half)startScaleMultiplier;
+        spawnAnimation.StartAlphaMultiplier = (Half)startAlphaMultiplier;
+
+        spawnAnimation.SpawningVelocityMultiplierFixed = spawningVelocityMultiplier == 0f
+            ? (byte)0
+            : (byte)(SpawnAnimation.FixedPointScale / spawningVelocityMultiplier);
+
         spawnAnimation.Duration = duration;
         spawnAnimation.Type = easeType;
 
@@ -466,9 +484,11 @@ public ref struct BulletBuilder(BulletManager bulletManager)
             controller.CurveInstructions = curveInsts;
             controller.CurveIndex = -1;
 
-            return manager.World.CreateEntity(transform, movement, spriteRenderer, spawnAnimation, controller);
+            return manager.World.CreateEntity(
+                transform, movement, spriteRenderer, spawnAnimation, lifetime, controller);
         }
 
-        return manager.World.CreateEntity(transform, movement, spriteRenderer, spawnAnimation);
+        return manager.World.CreateEntity(
+            transform, movement, spriteRenderer, lifetime, spawnAnimation);
     }
 }

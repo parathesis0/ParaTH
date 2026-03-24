@@ -5,7 +5,7 @@ namespace ParaTH;
 public sealed class BulletSystem(World world)
 {
     private QueryDescriptor query = new QueryDescriptor()
-        .WithAll<Transform, Movement, SpawnAnimation>();
+        .WithAll<Transform, Movement, Lifetime, SpawnAnimation>();
 
     public void Update()
     {
@@ -24,33 +24,36 @@ public sealed class BulletSystem(World world)
     {
         foreach (ref var chunk in archetype.GetChunksSpan())
         {
-            chunk.GetFilledComponentSpan<Transform, Movement, SpawnAnimation, BulletController>(
-                out var transforms, out var movements, out var spawnAnims, out var controllers);
+            chunk.GetFilledComponentSpan<Transform, Movement, Lifetime, SpawnAnimation, BulletController>(
+                out var transforms, out var movements, out var lifetimes, out var spawnAnims, out var controllers);
 
             for (int i = 0; i < chunk.EntityCount; i++)
             {
                 ref var transform = ref transforms.UnsafeAt(i);
                 ref var movement = ref movements.UnsafeAt(i);
+                ref var lifetime = ref lifetimes.UnsafeAt(i);
                 ref var spawnAnim = ref spawnAnims.UnsafeAt(i);
                 ref var controller = ref controllers.UnsafeAt(i);
 
                 var oldPosition = transform.Position;
 
+                var currentFrame = lifetime.AliveFrames;
+
                 if (controller.AccelerationInstructions.Length != 0)
-                    UpdateAccelerationController(ref controller, ref movement);
+                    UpdateAccelerationController(ref controller, currentFrame, ref movement);
 
                 movement.Velocity += movement.Acceleration;
 
                 if (controller.CurveInstructions.Length != 0)
-                    UpdateCurveMovement(ref controller, ref movement);
+                    UpdateCurveMovement(ref controller, currentFrame, ref movement);
 
                 if (controller.VelocityInstructions.Length != 0)
-                    UpdateVelocityController(ref controller, ref movement);
+                    UpdateVelocityController(ref controller, currentFrame, ref movement);
 
                 if (controller.PositionInstructions.Length != 0)
-                    UpdatePositionController(ref controller, ref transform);
+                    UpdatePositionController(ref controller, currentFrame, ref transform);
 
-                UpdateSpawnAnimation(ref spawnAnim, out var velocityMultiplier);
+                UpdateSpawnAnimation(ref spawnAnim, currentFrame, out var velocityMultiplier);
 
                 transform.Position += movement.Velocity * velocityMultiplier;
 
@@ -59,17 +62,17 @@ public sealed class BulletSystem(World world)
                 if (movement.SyncTransformRotation && delta.Length() >= float.Epsilon)
                     transform.Rotation = MathF.Atan2(delta.Y, delta.X);
 
-                controller.CurrentFrame++;
+                lifetime.AliveFrames++;
             }
         }
     }
 
-    private static void UpdatePositionController(ref BulletController ctrl, ref Transform transform)
+    private static void UpdatePositionController(ref BulletController ctrl, ushort currentFrame, ref Transform transform)
     {
         // handle instruction advance
         var insts = ctrl.PositionInstructions;
         while (ctrl.PositionIndex < insts.Length - 1 &&
-               ctrl.CurrentFrame >= insts.UnsafeAt(ctrl.PositionIndex + 1).TriggerFrame)
+               currentFrame >= insts.UnsafeAt(ctrl.PositionIndex + 1).TriggerFrame)
         {
             // reached new instruction, init it
             ctrl.PositionIndex++;
@@ -99,7 +102,7 @@ public sealed class BulletSystem(World world)
         if (ctrl.PositionIndex >= 0)
         {
             var inst = ctrl.PositionInstructions.UnsafeAt(ctrl.PositionIndex);
-            int relativeTick = ctrl.CurrentFrame - inst.TriggerFrame;
+            int relativeTick = currentFrame - inst.TriggerFrame;
             if (relativeTick < inst.Duration)
             {
                 var t = (float)(relativeTick + 1) / inst.Duration;
@@ -109,12 +112,12 @@ public sealed class BulletSystem(World world)
         }
     }
 
-    private static void UpdateVelocityController(ref BulletController ctrl, ref Movement movement)
+    private static void UpdateVelocityController(ref BulletController ctrl, ushort currentFrame, ref Movement movement)
     {
         // handle instruction advance
         var insts = ctrl.VelocityInstructions;
         while (ctrl.VelocityIndex < insts.Length - 1 &&
-               ctrl.CurrentFrame >= insts.UnsafeAt(ctrl.VelocityIndex + 1).TriggerFrame)
+               currentFrame >= insts.UnsafeAt(ctrl.VelocityIndex + 1).TriggerFrame)
         {
             // reached new instruction, init it
             ctrl.VelocityIndex++;
@@ -201,7 +204,7 @@ public sealed class BulletSystem(World world)
         if (ctrl.VelocityIndex >= 0)
         {
             var inst = ctrl.VelocityInstructions.UnsafeAt(ctrl.VelocityIndex);
-            int relativeTick = ctrl.CurrentFrame - inst.TriggerFrame;
+            int relativeTick = currentFrame - inst.TriggerFrame;
             if (relativeTick < inst.Duration)
             {
                 // duration won't be zero here for it is handled in the while loop
@@ -226,11 +229,11 @@ public sealed class BulletSystem(World world)
         }
     }
 
-    private static void UpdateAccelerationController(ref BulletController ctrl, ref Movement movement)
+    private static void UpdateAccelerationController(ref BulletController ctrl, ushort currentFrame, ref Movement movement)
     {
         var insts = ctrl.AccelerationInstructions;
         while (ctrl.AccelerationIndex < insts.Length - 1 &&
-               ctrl.CurrentFrame >= insts.UnsafeAt(ctrl.AccelerationIndex + 1).TriggerFrame)
+               currentFrame >= insts.UnsafeAt(ctrl.AccelerationIndex + 1).TriggerFrame)
         {
             ctrl.AccelerationIndex++;
             var inst = insts.UnsafeAt(ctrl.AccelerationIndex);
@@ -281,12 +284,12 @@ public sealed class BulletSystem(World world)
         }
     }
 
-    private static void UpdateCurveMovement(ref BulletController ctrl, ref Movement movement)
+    private static void UpdateCurveMovement(ref BulletController ctrl, ushort currentFrame, ref Movement movement)
     {
         var insts = ctrl.CurveInstructions;
         // handle instruction advance
         while (ctrl.CurveIndex < insts.Length - 1 &&
-               ctrl.CurrentFrame >= insts.UnsafeAt(ctrl.CurveIndex + 1).TriggerFrame)
+               currentFrame >= insts.UnsafeAt(ctrl.CurveIndex + 1).TriggerFrame)
         {
             ctrl.CurveIndex++;
         }
@@ -305,13 +308,13 @@ public sealed class BulletSystem(World world)
         }
     }
 
-    private static void UpdateSpawnAnimation(ref SpawnAnimation spawnAnim, out float velocityMultiplier)
+    private static void UpdateSpawnAnimation(ref SpawnAnimation spawnAnim, ushort currentFrame, out float velocityMultiplier)
     {
-        bool playingSpawnAnimation = spawnAnim.Counter < spawnAnim.Duration;
+        bool playingSpawnAnimation = currentFrame < spawnAnim.Duration;
         if (playingSpawnAnimation)
         {
+            velocityMultiplier = spawnAnim.SpawningVelocityMultiplier;
             spawnAnim.Counter++;
-            velocityMultiplier = (float)spawnAnim.SpawningVelocityMultiplier;
             return;
         }
 
@@ -322,20 +325,21 @@ public sealed class BulletSystem(World world)
     {
         foreach (ref var chunk in archetype.GetChunksSpan())
         {
-            chunk.GetFilledComponentSpan<Transform, Movement, SpawnAnimation>(
-                out var transforms, out var movements, out var spawnAnims);
+            chunk.GetFilledComponentSpan<Transform, Movement, Lifetime, SpawnAnimation>(
+                out var transforms, out var movements, out var lifetimes, out var spawnAnims);
 
             for (int i = 0; i < chunk.EntityCount; i++)
             {
                 ref var transform = ref transforms.UnsafeAt(i);
                 ref var movement = ref movements.UnsafeAt(i);
+                ref var lifetime = ref lifetimes.UnsafeAt(i);
                 ref var spawnAnim = ref spawnAnims.UnsafeAt(i);
 
                 var oldPosition = transform.Position;
 
                 movement.Velocity += movement.Acceleration;
 
-                UpdateSpawnAnimation(ref spawnAnim, out var velocityMultiplier);
+                UpdateSpawnAnimation(ref spawnAnim, lifetime.AliveFrames, out var velocityMultiplier);
 
                 transform.Position += movement.Velocity * velocityMultiplier;
 
@@ -343,6 +347,8 @@ public sealed class BulletSystem(World world)
                 var delta = newPosition - oldPosition;
                 if (movement.SyncTransformRotation && delta.Length() >= float.Epsilon)
                     transform.Rotation = MathF.Atan2(delta.Y, delta.X);
+
+                lifetime.AliveFrames++;
             }
         }
     }

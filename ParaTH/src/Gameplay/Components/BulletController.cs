@@ -55,7 +55,6 @@ public struct AccelerationInstruction(ushort triggerFrame, Vector2 @params,
 }
 
 // 8 bytes
-// todo: impl AddAngleVelocity? Is it even possible without a field tracking the current AV or keep the instruction within 8 bytes?
 public struct CurveInstruction(ushort triggerFrame, float angularVelocity)
 {
     public float AngularVelocity = angularVelocity; // 4
@@ -86,7 +85,5 @@ public struct BulletController
     public sbyte AccelerationIndex; // 1
     public sbyte PositionIndex;     // 1
     public sbyte CurveIndex;        // 1
-
-    public ushort CurrentFrame;     // 2 TODO: PUT THIS IN LIFETIME COMPONENT GOD DAMNIT
-                                    // 2 padding
+                                    // 4 padding
 }
