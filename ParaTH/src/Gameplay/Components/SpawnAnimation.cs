@@ -14,5 +14,7 @@ public struct SpawnAnimation(SpriteAsset sprite, Vector2 startScale, Half startA
     public EaseType TypeY = easeTypeY;              // 1
     public byte Duration = duration;                // 1
     public byte Counter = 0;                        // 1
+
+    public readonly bool IsPlaying => Counter < Duration;
 }
 

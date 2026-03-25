@@ -12,7 +12,7 @@ public sealed class TestScript(BulletManager bulletManager)
     {
         if (counter % 4 == 0)
         {
-            float way = 6;
+            float way = 5;
             float angleOffset = counter / 10f;
             for (int i = 0; i < way; i++)
             {
@@ -21,62 +21,62 @@ public sealed class TestScript(BulletManager bulletManager)
                     100f * MathF.Cos(angle),
                     100f * MathF.Sin(angle));
 
-                //// position test
-                //bulletManager.SpawnBullet()
-                //    .SetPosition(new Vector2(200, 200))
-                //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Additive)
-                //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                //    .LerpAddPosition(delta, 120, EaseType.OutQuad)
-                //    .LerpAddPosition(-delta, 120, EaseType.InQuad)
-                //    .SetVelocity(delta / 30f)
-                //    .AutoSyncRenderStateRotation()
-                //    .Build();
+                // position test
+                bulletManager.SpawnBullet()
+                    .SetPosition(new Vector2(200, 200))
+                    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Additive)
+                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    .LerpAddPosition(delta, 120, EaseType.OutQuad)
+                    .LerpAddPosition(-delta, 120, EaseType.InQuad)
+                    .SetVelocity(delta / 30f)
+                    .AutoSyncRenderStateRotation()
+                    .Build();
 
-                //// velocity test
-                //bulletManager.SpawnBullet()
-                //    .SetPosition(new Vector2(640, 360))
-                //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                //    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
-                //    .Delay(60)
-                //    .SetVelocity(Vector2.UnitY * 2).Delay(10)
-                //    .AddVelocity(Vector2.UnitY * 2).Delay(10)
-                //    .LerpToVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad).Delay(10)
-                //    .LerpAddVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad).Delay(10)
-                //    .SetVelocityMagnitude(4f).Delay(10)
-                //    .AddVelocityMagnitude(4f).Delay(10)
-                //    .LerpToVelocityMagnitude(4f, 30, EaseType.InQuad).Delay(10)
-                //    .LerpAddVelocityMagnitude(4f, 30, EaseType.InQuad).Delay(10)
-                //    .SetVelocityAngle(0).Delay(10)
-                //    .AddVelocityAngle(MathHelper.PiOver2).Delay(10)
-                //    .LerpToVelocityAngle(0, 30, EaseType.InQuad).Delay(10)
-                //    .LerpAddVelocityAngle(MathHelper.PiOver2, 30, EaseType.InQuad).Delay(10)
-                //    .Build();
+                // velocity test
+                bulletManager.SpawnBullet()
+                    .SetPosition(new Vector2(640, 360))
+                    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
+                    .Delay(60)
+                    .SetVelocity(Vector2.UnitY * 2).Delay(10)
+                    .AddVelocity(Vector2.UnitY * 2).Delay(10)
+                    .LerpToVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad).Delay(10)
+                    .LerpAddVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad).Delay(10)
+                    .SetVelocityMagnitude(4f).Delay(10)
+                    .AddVelocityMagnitude(4f).Delay(10)
+                    .LerpToVelocityMagnitude(4f, 30, EaseType.InQuad).Delay(10)
+                    .LerpAddVelocityMagnitude(4f, 30, EaseType.InQuad).Delay(10)
+                    .SetVelocityAngle(0).Delay(10)
+                    .AddVelocityAngle(MathHelper.PiOver2).Delay(10)
+                    .LerpToVelocityAngle(0, 30, EaseType.InQuad).Delay(10)
+                    .LerpAddVelocityAngle(MathHelper.PiOver2, 30, EaseType.InQuad).Delay(10)
+                    .Build();
 
-                //// acceleration test
-                //bulletManager.SpawnBullet()
-                //    .SetPosition(new Vector2(640, 360))
-                //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                //    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
-                //    .Delay(60)
-                //    .SetAcceleration(Vector2.UnitY * 0.05f)
-                //    .Build();
+                // acceleration test
+                bulletManager.SpawnBullet()
+                    .SetPosition(new Vector2(640, 360))
+                    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
+                    .Delay(60)
+                    .SetAcceleration(Vector2.UnitY * 0.05f)
+                    .Build();
 
-                //// curve Test
-                //bulletManager.SpawnBullet()
-                //    .SetPosition(new Vector2(640, 360))
-                //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
-                //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                //    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
-                //    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
-                //    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
-                //    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
-                //    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
-                //    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
-                //    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
-                //    .SetAngularVelocity(0)
-                //    .Build();
+                // curve Test
+                bulletManager.SpawnBullet()
+                    .SetPosition(new Vector2(640, 360))
+                    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
+                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
+                    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
+                    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
+                    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
+                    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
+                    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
+                    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
+                    .SetAngularVelocity(0)
+                    .Build();
 
                 // spawnAnimation test
                 bulletManager.SpawnBullet()
@@ -84,7 +84,7 @@ public sealed class TestScript(BulletManager bulletManager)
                     .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                     .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
-                    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
+                    .SetVelocity(2f, angle).LerpAddVelocityMagnitude(12f, 120, EaseType.Linear).AutoSyncRenderStateRotation()
                     .Build();
             }
         }
@@ -103,6 +103,7 @@ public sealed class Engine : Game
     private BulletManager bulletManager = null!;
 
     private BulletSystem bulletSystem = null!;
+    private AnimationSystem animationSystem = null!;
     private RenderSystem renderSystem = null!;
 
     private TestScript script = null!;
@@ -157,6 +158,7 @@ public sealed class Engine : Game
         bulletManager = new BulletManager(world, assetManager);
 
         bulletSystem = new BulletSystem(world);
+        animationSystem = new AnimationSystem(world);
         renderSystem = new RenderSystem(world, stgBatch);
 
         script = new(bulletManager);
@@ -183,6 +185,7 @@ public sealed class Engine : Game
             if (currentFps > 55)
                 script.Update();
             bulletSystem.Update();
+            animationSystem.Update();
         }
 
         shouldAdvance = false;

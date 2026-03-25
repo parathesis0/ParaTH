@@ -1,176 +1,118 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-// todos:
-// refactor once there's more renderers, use modifier pattern maybe
 public sealed class RenderSystem(World world, StgBatch batch)
 {
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, RenderState>()
-        .WithAny<SpriteRenderer, AnimationRenderer>(); // remember to add more renderers here
+        .WithAny<SpriteRenderer, AnimationRenderer>();
 
-    // todo: unbearable, refactor
+    private struct DrawParams
+    {
+        public Texture2D Texture;
+        public Rectangle SourceRect;
+        public Vector2 Anchor;
+        public Vector2 Scale;
+        public Color Color;
+    }
+
     public void Update()
     {
         var q = world.GetOrCreateQuery(descriptor);
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
-            if (archetype.Has<SpawnAnimation>())
+            bool useSpriteRenderer = archetype.Has<SpriteRenderer>();
+            bool hasSpawnAnim = archetype.Has<SpawnAnimation>();
+            // bool hasDeathAnim  = archetype.Has<DeathAnimation>();
+            // bool hasDamageFlash = archetype.Has<DamageFlash>();
+
+            foreach (ref var chunk in archetype.GetChunksSpan())
             {
-                if (archetype.Has<SpriteRenderer>())
+                var transforms = chunk.GetFilledComponentSpan<Transform>();
+                var states = chunk.GetFilledComponentSpan<RenderState>();
+
+                var spriteRenderers = useSpriteRenderer ?
+                    chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
+                var animRenderers = !useSpriteRenderer ?
+                    chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
+                var spawnAnims = hasSpawnAnim ?
+                    chunk.GetFilledComponentSpan<SpawnAnimation>() : default;
+
+                for (int i = 0; i < chunk.EntityCount; i++)
                 {
-                    foreach (ref var chunk in archetype.GetChunksSpan())
+                    ref var transform = ref transforms.UnsafeAt(i);
+                    ref var state = ref states.UnsafeAt(i);
+
+                    var dp = new DrawParams
                     {
-                        chunk.GetFilledComponentSpan<Transform, RenderState, SpriteRenderer, SpawnAnimation>(
-                            out var transforms, out var states, out var renderers, out var spawnAnims);
+                        Scale = state.Scale,
+                        Color = state.Color,
+                    };
 
-                        for (int i = 0; i < chunk.EntityCount; i++)
-                        {
-                            var spawnAnim = spawnAnims.UnsafeAt(i);
-                            var transform = transforms.UnsafeAt(i);
-                            var state = states.UnsafeAt(i);
-                            var renderer = renderers.UnsafeAt(i);
+                    if (useSpriteRenderer)
+                        ResolveSprite(ref spriteRenderers.UnsafeAt(i), ref dp);
+                    else
+                        ResolveAnimation(ref animRenderers.UnsafeAt(i), ref dp);
 
-                            var sprite = renderer.Sprite;
-                            var scaleX = state.Scale.X;
-                            var scaleY = state.Scale.Y;
-                            var color = state.Color;
+                    if (hasSpawnAnim)
+                        ApplySpawnAnimation(ref spawnAnims.UnsafeAt(i), in state, ref dp);
 
-                            if (spawnAnim.Counter < spawnAnim.Duration)
-                            {
-                                sprite = spawnAnim.Sprite;
-                                var t = (float)(spawnAnim.Counter + 1) / spawnAnim.Duration;
-                                var tX = Easing.Evaluate(spawnAnim.TypeX, t);
-                                var tY = Easing.Evaluate(spawnAnim.TypeY, t);
-                                var startScale = spawnAnim.StartScale;
-                                var startA = (float)spawnAnim.StartAlpha * 255;
-                                scaleX = MathHelper.Lerp(startScale.X, state.Scale.X, tX);
-                                scaleY = MathHelper.Lerp(startScale.Y, state.Scale.Y, tY);
-                                color.A = (byte)MathHelper.Lerp(startA, state.Color.A, t);
-                            }
+                    // if (hasDeathAnim)
+                    //     ApplyDeathAnimation(ref deathAnims.UnsafeAt(i), in state, ref dp);
+                    // if (hasDamageFlash)
+                    //     ApplyDamageFlash(ref flashes.UnsafeAt(i), in state, ref dp);
 
-                            batch.Draw(
-                                sprite.Texture,
-                                transform.Position,
-                                sprite.SourceRect,
-                                color,
-                                state.Rotation,
-                                sprite.Anchor,
-                                new Vector2(scaleX, scaleY),
-                                SpriteEffects.None,
-                                state.Layer,
-                                state.BlendState);
-                        }
-                    }
-                }
-                else if (archetype.Has<AnimationRenderer>())
-                {
-                    foreach (ref var chunk in archetype.GetChunksSpan())
-                    {
-                        chunk.GetFilledComponentSpan<Transform, RenderState, AnimationRenderer, SpawnAnimation>(
-                            out var transforms, out var states, out var renderers, out var spawnAnims);
-
-                        for (int i = 0; i < chunk.EntityCount; i++)
-                        {
-                            var spawnAnim = spawnAnims.UnsafeAt(i);
-                            var transform = transforms.UnsafeAt(i);
-                            var state = states.UnsafeAt(i);
-                            var renderer = renderers.UnsafeAt(i);
-
-                            var texture = renderer.Animation.Texture;
-                            var rect = renderer.CurrentFrame.SourceRect;
-                            var anchor = renderer.CurrentFrame.Anchor;
-                            var scaleX = state.Scale.X;
-                            var scaleY = state.Scale.Y;
-                            var color = state.Color;
-
-                            if (spawnAnim.Counter < spawnAnim.Duration)
-                            {
-                                texture = spawnAnim.Sprite.Texture;
-                                rect = spawnAnim.Sprite.SourceRect;
-                                anchor = spawnAnim.Sprite.Anchor;
-                                var t = (float)(spawnAnim.Counter + 1) / spawnAnim.Duration;
-                                var tX = Easing.Evaluate(spawnAnim.TypeX, t);
-                                var tY = Easing.Evaluate(spawnAnim.TypeY, t);
-                                var startScale = spawnAnim.StartScale;
-                                var startA = (float)spawnAnim.StartAlpha * 255;
-                                scaleX = MathHelper.Lerp(startScale.X, state.Scale.X, tX);
-                                scaleY = MathHelper.Lerp(startScale.Y, state.Scale.Y, tY);
-                                color.A = (byte)MathHelper.Lerp(startA, state.Color.A, t);
-                            }
-
-                            batch.Draw(
-                                texture,
-                                transform.Position,
-                                rect,
-                                color,
-                                state.Rotation,
-                                anchor,
-                                new Vector2(scaleX, scaleY),
-                                SpriteEffects.None,
-                                state.Layer,
-                                state.BlendState);
-                        }
-                    }
-                }
-            }
-            else if (archetype.Has<SpriteRenderer>())
-            {
-                foreach (ref var chunk in archetype.GetChunksSpan())
-                {
-                    chunk.GetFilledComponentSpan<Transform, RenderState, SpriteRenderer>(
-                        out var transforms, out var states, out var renderers);
-
-                    for (int i = 0; i < chunk.EntityCount; i++)
-                    {
-                        var transform = transforms.UnsafeAt(i);
-                        var state = states.UnsafeAt(i);
-                        var renderer = renderers.UnsafeAt(i);
-
-                        batch.Draw(
-                            renderer.Sprite.Texture,
-                            transform.Position,
-                            renderer.Sprite.SourceRect,
-                            state.Color,
-                            transform.Rotation,
-                            renderer.Sprite.Anchor,
-                            state.Scale,
-                            SpriteEffects.None,
-                            state.Layer,
-                            state.BlendState);
-                    }
-                }
-            }
-            else if (archetype.Has<AnimationRenderer>())
-            {
-                foreach (ref var chunk in archetype.GetChunksSpan())
-                {
-                    chunk.GetFilledComponentSpan<Transform, RenderState, AnimationRenderer>(
-                        out var transforms, out var states, out var renderers);
-
-                    for (int i = 0; i < chunk.EntityCount; i++)
-                    {
-                        var transform = transforms.UnsafeAt(i);
-                        var state = states.UnsafeAt(i);
-                        var renderer = renderers.UnsafeAt(i);
-
-                        batch.Draw(
-                            renderer.Animation.Texture,
-                            transform.Position,
-                            renderer.CurrentFrame.SourceRect,
-                            state.Color,
-                            state.Rotation,
-                            renderer.CurrentFrame.Anchor,
-                            state.Scale,
-                            SpriteEffects.None,
-                            state.Layer,
-                            state.BlendState);
-                    }
+                    batch.Draw(
+                        dp.Texture, transform.Position, dp.SourceRect, dp.Color,
+                        state.Rotation, dp.Anchor, dp.Scale,
+                        SpriteEffects.None, state.Layer, state.BlendState);
                 }
             }
         }
+    }
+
+    // ────────────────── Renderers ──────────────────
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ResolveSprite(ref SpriteRenderer r, ref DrawParams dp)
+    {
+        dp.Texture = r.Sprite.Texture;
+        dp.SourceRect = r.Sprite.SourceRect;
+        dp.Anchor = r.Sprite.Anchor;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ResolveAnimation(ref AnimationRenderer r, ref DrawParams dp)
+    {
+        dp.Texture = r.Animation.Texture;
+        dp.SourceRect = r.CurrentFrame.SourceRect;
+        dp.Anchor = r.CurrentFrame.Anchor;
+    }
+
+    // ────────────────── Effects ──────────────────
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ApplySpawnAnimation(
+#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+        ref SpawnAnimation anim, in RenderState state, ref DrawParams dp)
+#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
+    {
+        if (anim.Counter >= anim.Duration) return;
+
+        dp.Texture = anim.Sprite.Texture;
+        dp.SourceRect = anim.Sprite.SourceRect;
+        dp.Anchor = anim.Sprite.Anchor;
+
+        float t = (float)(anim.Counter + 1) / anim.Duration;
+        dp.Scale.X = MathHelper.Lerp(
+            anim.StartScale.X, state.Scale.X, Easing.Evaluate(anim.TypeX, t));
+        dp.Scale.Y = MathHelper.Lerp(
+            anim.StartScale.Y, state.Scale.Y, Easing.Evaluate(anim.TypeY, t));
+        dp.Color.A = (byte)MathHelper.Lerp(
+            (float)anim.StartAlpha * 255f, state.Color.A, t);
     }
 }

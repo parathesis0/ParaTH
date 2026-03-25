@@ -170,6 +170,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>World.SetComponentValue.cs</LastGenOutput>
     </None>
+    <None Update="src\Gameplay\BulletBuilder.Build.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>BulletBuilder.Build.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -311,6 +315,11 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>World.SetComponentValue.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\Gameplay\BulletBuilder.Build.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>BulletBuilder.Build.tt</DependentUpon>
     </Compile>
   </ItemGroup>
 </Project>

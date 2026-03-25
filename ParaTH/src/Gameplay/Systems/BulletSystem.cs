@@ -7,7 +7,7 @@ namespace ParaTH;
 public sealed class BulletSystem(World world)
 {
     private QueryDescriptor descriptor = new QueryDescriptor()
-        .WithAll<Transform, Movement, Lifetime, SpawnAnimation>();
+        .WithAll<Transform, Movement, Lifetime>();
 
     public void Update()
     {
@@ -20,28 +20,26 @@ public sealed class BulletSystem(World world)
             bool hasAcc = archetype.Has<AccelerationController>();
             bool hasCur = archetype.Has<CurveController>();
             bool hasRen = archetype.Has<RenderState>();
-
-            bool hasAni = archetype.Has<AnimationRenderer>(); // todo: extract to animation system maybe?
+            bool hasSpw = archetype.Has<SpawnAnimation>();    // this one has to stay here, spawnAnimation affects velocity speed
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
-                chunk.GetFilledComponentSpan<Transform, Movement, Lifetime, SpawnAnimation>(
-                    out var transforms, out var movements, out var lifetimes, out var spawnAnims);
+                chunk.GetFilledComponentSpan<Transform, Movement, Lifetime>(
+                    out var transforms, out var movements, out var lifetimes);
 
                 var posSpan = hasPos ? chunk.GetFilledComponentSpan<PositionController>() : default;
                 var velSpan = hasVel ? chunk.GetFilledComponentSpan<VelocityController>() : default;
                 var accSpan = hasAcc ? chunk.GetFilledComponentSpan<AccelerationController>() : default;
                 var curSpan = hasCur ? chunk.GetFilledComponentSpan<CurveController>() : default;
                 var renSpan = hasRen ? chunk.GetFilledComponentSpan<RenderState>() : default;
+                var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnAnimation>() : default;
 
-                var aniSpan = hasAni ? chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
                     ref var transform = ref transforms.UnsafeAt(i);
                     ref var movement = ref movements.UnsafeAt(i);
                     ref var lifetime = ref lifetimes.UnsafeAt(i);
-                    ref var spawnAnim = ref spawnAnims.UnsafeAt(i);
 
                     var currentFrame = lifetime.AliveFrames;
                     var oldPosition = transform.Position;
@@ -60,9 +58,12 @@ public sealed class BulletSystem(World world)
                     if (hasPos)
                         UpdatePositionController(ref posSpan.UnsafeAt(i), currentFrame, ref transform);
 
-                    UpdateSpawnAnimation(ref spawnAnim, out var velocityMultiplier);
-                    if (hasAni)
-                        UpdateAnimation(ref aniSpan.UnsafeAt(i));
+                    var velocityMultiplier = 1.0f;
+                    if (hasSpw)
+                    {
+                        ref var spw = ref spwSpan.UnsafeAt(i);
+                        velocityMultiplier = spw.IsPlaying ? (float)spw.VelocityMultiplier : 1.0f;
+                    }
 
                     transform.Position += movement.Velocity * velocityMultiplier;
 
@@ -289,93 +290,5 @@ public sealed class BulletSystem(World world)
                 movement.Velocity.Y = x * sin + y * cos;
             }
         }
-    }
-
-    private static void UpdateSpawnAnimation(ref SpawnAnimation spawnAnim, out float velocityMultiplier)
-    {
-        bool playingSpawnAnimation = spawnAnim.Counter < spawnAnim.Duration;
-        if (playingSpawnAnimation)
-        {
-            velocityMultiplier = (float)spawnAnim.VelocityMultiplier;
-            spawnAnim.Counter++;
-            return;
-        }
-        velocityMultiplier = 1f;
-    }
-
-    private static void UpdateAnimation(ref AnimationRenderer anim)
-    {
-        if (!anim.IsPlaying)
-            return;
-
-        var frames = anim.Animation.Frames;
-        int len = frames.Length;
-        int frameIndex = anim.FrameIndex;
-        int counter = anim.Counter;
-
-        if (!anim.IsReverse)
-        {
-            counter++;
-            while (counter >= frames.UnsafeAt(frameIndex).FrameDuration)
-            {
-                frameIndex++;
-                if (frameIndex >= len) break;
-                counter = 0;
-            }
-
-            if (frameIndex >= len)
-            {
-                switch (anim.Animation.Type)
-                {
-                    case PlayType.Hold:
-                        anim.IsPlaying = false;
-                        frameIndex = len - 1;
-                        break;
-                    case PlayType.Loop:
-                        frameIndex = 0;
-                        counter = 0;
-                        break;
-                    case PlayType.PingPong:
-                        anim.IsReverse = true;
-                        frameIndex = Math.Max(len - 2, 0);
-                        counter = frames.UnsafeAt(frameIndex).FrameDuration;
-                        break;
-                }
-            }
-        }
-        else
-        {
-            counter--;
-            while (counter <= 0)
-            {
-                frameIndex--;
-                if (frameIndex < 0) break;
-                counter = frames.UnsafeAt(frameIndex).FrameDuration;
-            }
-
-            if (frameIndex < 0)
-            {
-                switch (anim.Animation.Type)
-                {
-                    case PlayType.Hold:
-                        anim.IsPlaying = false;
-                        frameIndex = 0;
-                        counter = 0;
-                        break;
-                    case PlayType.Loop:
-                        frameIndex = len - 1;
-                        counter = frames.UnsafeAt(frameIndex).FrameDuration;
-                        break;
-                    case PlayType.PingPong:
-                        anim.IsReverse = false;
-                        frameIndex = Math.Min(1, len - 1);
-                        counter = 0;
-                        break;
-                }
-            }
-        }
-
-        anim.FrameIndex = (ushort)frameIndex;
-        anim.Counter = counter;
     }
 }

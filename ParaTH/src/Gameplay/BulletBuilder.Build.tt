@@ -1,0 +1,74 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+<#
+    var renderers = new[]
+    {
+        new { Name = "None", FixedArgs = "transform, movement, lifetime" },
+        new { Name = "SpriteRenderer", FixedArgs = "transform, movement, renderState, spriteRenderer, lifetime" },
+        new { Name = "AnimationRenderer", FixedArgs = "transform, movement, renderState, animationRenderer, lifetime" }
+    };
+
+    var optionalComponents = new[]
+    {
+        new { Bit = 1, Name = "pc" },
+        new { Bit = 2, Name = "vc" },
+        new { Bit = 4, Name = "ac" },
+        new { Bit = 8, Name = "cc" },
+        new { Bit = 16, Name = "spawnAnimation" }
+    };
+#>
+using System.Runtime.CompilerServices;
+
+namespace ParaTH;
+
+public ref partial struct BulletBuilder
+{
+    [SkipLocalsInit]
+    public Entity Build()
+    {
+        byte mask = 0;
+        if (positionInstructions.Count > 0)     mask |= 1;
+        if (velocityInstructions.Count > 0)     mask |= 2;
+        if (accelerationInstructions.Count > 0) mask |= 4;
+        if (curveInstructions.Count > 0)        mask |= 8;
+        if (spawnAnimation.Duration > 0)        mask |= 16;
+
+        PositionController pc = default;
+        VelocityController vc = default;
+        AccelerationController ac = default;
+        CurveController cc = default;
+
+        if ((mask & 1) != 0) pc = new PositionController { Instructions = [.. positionInstructions], Index = -1 };
+        if ((mask & 2) != 0) vc = new VelocityController { Instructions = [.. velocityInstructions], Index = -1 };
+        if ((mask & 4) != 0) ac = new AccelerationController { Instructions = [.. accelerationInstructions], Index = -1 };
+        if ((mask & 8) != 0) cc = new CurveController { Instructions = [.. curveInstructions], Index = -1 };
+
+        return activeRenderer switch
+        {
+<# foreach (var renderer in renderers) { #>
+            RendererType.<#= renderer.Name #> => mask switch
+            {
+<#
+                for (int i = 0; i < 32; i++)
+                {
+                    var activeComps = optionalComponents
+                        .Where(c => (i & c.Bit) != 0)
+                        .Select(c => c.Name);
+
+                    string allArgs = renderer.FixedArgs;
+                    if (activeComps.Any())
+                        allArgs += ", " + string.Join(", ", activeComps);
+#>
+                <#= i.ToString().PadRight(2) #> => manager.World.CreateEntity(<#= allArgs #>),
+<#              } #>
+                _  => default // unreachable
+            },
+<# } #>
+            _ => default // unreachable
+        };
+    }
+}
