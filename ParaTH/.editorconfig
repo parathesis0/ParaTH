@@ -18,3 +18,12 @@ csharp_new_line_before_else = true
 csharp_new_line_before_catch = true
 csharp_new_line_before_finally = true
 csharp_space_between_method_declaration_name_and_open_parenthesis = false
+
+# IDE0130: 命名空间与文件夹结构不匹配
+dotnet_diagnostic.IDE0130.severity = silent
+
+# IDE0048: 为清楚起见，请添加括号
+dotnet_diagnostic.IDE0048.severity = silent
+
+# RCS1123: Add parentheses when necessary
+dotnet_diagnostic.RCS1123.severity = silent

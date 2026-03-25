@@ -1,19 +1,18 @@
+using Microsoft.Xna.Framework;
+
 namespace ParaTH;
 
-// 16 bytes
-public struct SpawnAnimation(SpriteAsset sprite, Half startSizeMultiplier, Half startAlphaMultiplier,
-                             byte velocityFactor, byte duration, EaseType easeType)
+// 24 bytes
+public struct SpawnAnimation(SpriteAsset sprite, Vector2 startScale, Half startAlpha,
+                             Half multiplier, byte duration, EaseType easeTypeX, EaseType easeTypeY)
 {
-    public SpriteAsset Sprite = sprite;                             // 8
-    public Half StartScaleMultiplier = startSizeMultiplier;         // 2
-    public Half StartAlphaMultiplier = startAlphaMultiplier;        // 2
-    public byte SpawningVelocityMultiplierFixed = velocityFactor;   // 1 fixed point
-    public byte Duration = duration;                                // 1
-    public byte Counter = 0;                                        // 1
-    public EaseType Type = easeType;                                // 1
-
-    public const float FixedPointScale = 16f;
-    public const float FixedPointInv = 1f / FixedPointScale;
-    public readonly float SpawningVelocityMultiplier => SpawningVelocityMultiplierFixed * FixedPointInv;
+    public SpriteAsset Sprite = sprite;             // 8
+    public Vector2 StartScale = startScale;         // 8
+    public Half StartAlpha = startAlpha;            // 4
+    public Half VelocityMultiplier = multiplier;    // 4
+    public EaseType TypeX = easeTypeX;              // 1
+    public EaseType TypeY = easeTypeY;              // 1
+    public byte Duration = duration;                // 1
+    public byte Counter = 0;                        // 1
 }
 

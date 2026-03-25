@@ -22,7 +22,8 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     private Transform transform = new(Vector2.Zero, Vector2.One, 0);
     private Movement movement;
     private Lifetime lifetime;
-    private SpawnAnimation spawnAnimation;
+    private RenderState renderState;
+    private SpawnAnimation spawnAnimation; // todo: make this optional?
 
     private SpriteRenderer spriteRenderer;
     private AnimationRenderer animationRenderer;
@@ -33,7 +34,6 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     private readonly List<VelocityInstruction> velocityInstructions = [];
     private readonly List<AccelerationInstruction> accelerationInstructions = [];
     private readonly List<CurveInstruction> curveInstructions = [];
-    private float currentAngularVelocity = 0f; // todo: put this inside CurveController now that we have extra space?
 
     #region Delay
     [UnscopedRef]
@@ -401,9 +401,9 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder AutoSyncTransformRotation()
+    public ref BulletBuilder AutoSyncRenderStateRotation()
     {
-        movement.SyncTransformRotation = true;
+        movement.SyncRenderStateRotation = true;
         return ref this;
     }
     #endregion
@@ -413,16 +413,16 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     [UnscopedRef]
     public ref BulletBuilder SetAngularVelocity(float newAngularVelocity)
     {
-        currentAngularVelocity = newAngularVelocity;
-        curveInstructions.Add(new(currentFrame, newAngularVelocity));
+        curveInstructions.Add(new(currentFrame,
+            newAngularVelocity, CurveInstruction.Ops.Set));
         return ref this;
     }
 
     [UnscopedRef]
     public ref BulletBuilder AddAngularVelocity(float angularVelocityDelta)
     {
-        currentAngularVelocity += angularVelocityDelta;
-        curveInstructions.Add(new(currentFrame, currentAngularVelocity));
+        curveInstructions.Add(new(currentFrame,
+            angularVelocityDelta, CurveInstruction.Ops.Add));
         return ref this;
     }
     #endregion
@@ -442,9 +442,11 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     {
         var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
         spriteRenderer.Sprite = sprite;
-        spriteRenderer.Color = color;
-        spriteRenderer.Layer = layer;
-        spriteRenderer.BlendState = blendState;
+        renderState.Color = color;
+        renderState.Layer = layer;
+        renderState.BlendState = blendState;
+
+        renderState.Scale = Vector2.One; // todo: add this to params?
 
         activeRenderer = RendererType.SpriteRenderer;
         return ref this;
@@ -453,34 +455,40 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     [UnscopedRef]
     public ref BulletBuilder SetAnimation(string animationName, Color color, byte layer, StgBlendState blendState)
     {
-        var sprite = manager.AssetManager.Get<AnimationAsset>(animationName);
-        animationRenderer.Animation = sprite;
-        animationRenderer.Color = color;
-        animationRenderer.Layer = layer;
-        animationRenderer.BlendState = blendState;
+        var animation = manager.AssetManager.Get<AnimationAsset>(animationName);
+        animationRenderer.Animation = animation;
         animationRenderer.IsPlaying = true;
+        renderState.Color = color;
+        renderState.Layer = layer;
+        renderState.BlendState = blendState;
+
+        renderState.Scale = Vector2.One; // todo: add this to params?
 
         activeRenderer = RendererType.AnimationRenderer;
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetSpawnAnimation(string spriteName, float startScaleMultiplier, float startAlphaMultiplier,
-                                               float spawningVelocityMultiplier, byte duration, EaseType easeType)
+    public ref BulletBuilder SetSpawnAnimation(string spriteName, Vector2 startScale, float startAlpha,
+                                               float spawningVelocityMultiplier, byte duration, EaseType easeX, EaseType easeY)
     {
         var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
-
         spawnAnimation.Sprite = sprite;
-        spawnAnimation.StartScaleMultiplier = (Half)startScaleMultiplier;
-        spawnAnimation.StartAlphaMultiplier = (Half)startAlphaMultiplier;
-
-        spawnAnimation.SpawningVelocityMultiplierFixed = spawningVelocityMultiplier == 0f
-            ? (byte)0
-            : (byte)(SpawnAnimation.FixedPointScale / spawningVelocityMultiplier);
-
+        spawnAnimation.StartScale = startScale;
+        spawnAnimation.StartAlpha = (Half)startAlpha;
+        spawnAnimation.VelocityMultiplier = (Half)spawningVelocityMultiplier;
         spawnAnimation.Duration = duration;
-        spawnAnimation.Type = easeType;
+        spawnAnimation.TypeX = easeX;
+        spawnAnimation.TypeY = easeY;
 
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetSpawnAnimation(string spriteName, float startScale, float startAlpha,
+                                               float spawningVelocityMultiplier, byte duration, EaseType ease)
+    {
+        SetSpawnAnimation(spriteName, new Vector2(startScale, startScale), startAlpha, spawningVelocityMultiplier, duration, ease, ease);
         return ref this;
     }
     #endregion
@@ -529,42 +537,42 @@ public ref struct BulletBuilder(BulletManager bulletManager)
             },
             RendererType.SpriteRenderer => mask switch
             {
-                0  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation),
-                1  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc),
-                2  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, vc),
-                3  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, vc),
-                4  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, ac),
-                5  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, ac),
-                6  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, vc, ac),
-                7  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, vc, ac),
-                8  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, cc),
-                9  => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, cc),
-                10 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, vc, cc),
-                11 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, vc, cc),
-                12 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, ac, cc),
-                13 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, ac, cc),
-                14 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, vc, ac, cc),
-                15 => manager.World.CreateEntity(transform, movement, spriteRenderer, lifetime, spawnAnimation, pc, vc, ac, cc),
+                0  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation),
+                1  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, pc),
+                2  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, vc),
+                3  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, pc, vc),
+                4  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, ac),
+                5  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, pc, ac),
+                6  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, vc, ac),
+                7  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, pc, vc, ac),
+                8  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, cc),
+                9  => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, pc, cc),
+                10 => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, vc, cc),
+                11 => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, pc, vc, cc),
+                12 => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, ac, cc),
+                13 => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, pc, ac, cc),
+                14 => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, vc, ac, cc),
+                15 => manager.World.CreateEntity(transform, movement, renderState, spriteRenderer, lifetime, spawnAnimation, pc, vc, ac, cc),
                 _  => default // unreachable
             },
             RendererType.AnimationRenderer => mask switch
             {
-                0  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation),
-                1  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, pc),
-                2  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, vc),
-                3  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, pc, vc),
-                4  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, ac),
-                5  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, pc, ac),
-                6  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, vc, ac),
-                7  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, pc, vc, ac),
-                8  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, cc),
-                9  => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, pc, cc),
-                10 => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, vc, cc),
-                11 => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, pc, vc, cc),
-                12 => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, ac, cc),
-                13 => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, pc, ac, cc),
-                14 => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, vc, ac, cc),
-                15 => manager.World.CreateEntity(transform, movement, animationRenderer, lifetime, spawnAnimation, pc, vc, ac, cc),
+                0  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation),
+                1  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, pc),
+                2  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, vc),
+                3  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, pc, vc),
+                4  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, ac),
+                5  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, pc, ac),
+                6  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, vc, ac),
+                7  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, pc, vc, ac),
+                8  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, cc),
+                9  => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, pc, cc),
+                10 => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, vc, cc),
+                11 => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, pc, vc, cc),
+                12 => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, ac, cc),
+                13 => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, pc, ac, cc),
+                14 => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, vc, ac, cc),
+                15 => manager.World.CreateEntity(transform, movement, renderState, animationRenderer, lifetime, spawnAnimation, pc, vc, ac, cc),
                 _  => default // unreachable
             },
             _ => default // unreachable

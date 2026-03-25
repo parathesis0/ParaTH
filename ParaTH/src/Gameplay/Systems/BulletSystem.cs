@@ -19,8 +19,9 @@ public sealed class BulletSystem(World world)
             bool hasVel = archetype.Has<VelocityController>();
             bool hasAcc = archetype.Has<AccelerationController>();
             bool hasCur = archetype.Has<CurveController>();
+            bool hasRen = archetype.Has<RenderState>();
 
-            bool hasAni = archetype.Has<AnimationRenderer>();
+            bool hasAni = archetype.Has<AnimationRenderer>(); // todo: extract to animation system maybe?
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -31,6 +32,7 @@ public sealed class BulletSystem(World world)
                 var velSpan = hasVel ? chunk.GetFilledComponentSpan<VelocityController>() : default;
                 var accSpan = hasAcc ? chunk.GetFilledComponentSpan<AccelerationController>() : default;
                 var curSpan = hasCur ? chunk.GetFilledComponentSpan<CurveController>() : default;
+                var renSpan = hasRen ? chunk.GetFilledComponentSpan<RenderState>() : default;
 
                 var aniSpan = hasAni ? chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
 
@@ -66,8 +68,11 @@ public sealed class BulletSystem(World world)
 
                     var newPosition = transform.Position;
                     var delta = newPosition - oldPosition;
-                    if (movement.SyncTransformRotation && delta.LengthSquared() >= float.Epsilon)
-                        transform.Rotation = MathF.Atan2(delta.Y, delta.X);
+                    if (movement.SyncRenderStateRotation && delta.LengthSquared() >= float.Epsilon)
+                    {
+                        ref var ren = ref renSpan.UnsafeAt(i);
+                        ren.Rotation = MathF.Atan2(delta.Y, delta.X);
+                    }
 
                     lifetime.AliveFrames++;
                 }
@@ -256,11 +261,23 @@ public sealed class BulletSystem(World world)
         var insts = ctrl.Instructions;
         // handle instruction advance
         while (ctrl.Index < insts.Length - 1 && currentFrame >= insts.UnsafeAt(ctrl.Index + 1).TriggerFrame)
+        {
             ctrl.Index++;
+            var inst = insts.UnsafeAt(ctrl.Index);
+            switch (inst.Op)
+            {
+                case CurveInstruction.Ops.Set:
+                    ctrl.CurrentAngularVelocity = inst.AngularVelocity;
+                    break;
+                case CurveInstruction.Ops.Add:
+                    ctrl.CurrentAngularVelocity += inst.AngularVelocity;
+                    break;
+            }
+        }
 
         if (ctrl.Index >= 0)
         {
-            var currentAngularVelocity = insts.UnsafeAt(ctrl.Index).AngularVelocity;
+            var currentAngularVelocity = ctrl.CurrentAngularVelocity;
             // rotate velocity based on angular velocity
             if (currentAngularVelocity != 0f)
             {
@@ -279,7 +296,7 @@ public sealed class BulletSystem(World world)
         bool playingSpawnAnimation = spawnAnim.Counter < spawnAnim.Duration;
         if (playingSpawnAnimation)
         {
-            velocityMultiplier = spawnAnim.SpawningVelocityMultiplier;
+            velocityMultiplier = (float)spawnAnim.VelocityMultiplier;
             spawnAnim.Counter++;
             return;
         }
