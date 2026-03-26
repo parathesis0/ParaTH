@@ -24,6 +24,8 @@ public readonly record struct ScopedPooledArray<T>(T[] Array, int Length) : IDis
 
     public void Dispose()
     {
+        if (Array is null)
+            return;
         ArrayPool<T>.Shared.Return(Array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
     }
 }

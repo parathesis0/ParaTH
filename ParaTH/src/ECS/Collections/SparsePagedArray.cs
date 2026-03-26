@@ -60,7 +60,7 @@ public sealed class SparsePagedArray<T>
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool IsSet(int index)
+        public readonly bool IsSet(int index)
         {
             return (Occupied.UnsafeAt(index >> 6) & (1UL << (index & 0x3F))) != 0;
         }

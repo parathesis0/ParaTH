@@ -48,6 +48,17 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
     // optional
     private SpawnAnimation spawnAnimation;
 
+    // spawn settings
+    private int way = 1;
+    private int layer = 1;
+    private float layerVelocityDelta = 0;
+    private float layerAccelerationDelta = 0;
+    private float layerAngleOffset = 0;
+    private float distanceToCenter = 0;
+    private float totalSpread = 0;
+    private float spreadDelta = 0;
+    private SpawningType spawningType = SpawningType.None;
+
     #region Delay
     [UnscopedRef]
     public ref BulletBuilder Delay(ushort frames)
@@ -447,6 +458,84 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
         lifetime.OffscreenFramesToLive = frames;
         return ref this;
     }
+    #endregion
+
+    #region Spawning Control
+    [UnscopedRef]
+    public ref BulletBuilder SetSpawningNone(
+        int layer = 1,
+        float layerVelocityDelta = 0,
+        float layerAccelerationDelta = 0,
+        float distanceToCenter = 0)
+    {
+        this.spawningType = SpawningType.None;
+        this.way = 1;
+        this.layer = layer;
+        this.layerVelocityDelta = layerVelocityDelta;
+        this.layerAccelerationDelta = layerAccelerationDelta;
+        this.distanceToCenter = distanceToCenter;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetSpawningCircle(
+        int way,
+        int layer = 1,
+        float layerVelocityDelta = 0,
+        float layerAccelerationDelta = 0,
+        float layerAngleOffset = 0,
+        float distanceToCenter = 0)
+    {
+        this.spawningType = SpawningType.Circle;
+        this.way = way;
+        this.layer = layer;
+        this.layerVelocityDelta = layerVelocityDelta;
+        this.layerAccelerationDelta = layerAccelerationDelta;
+        this.layerAngleOffset = layerAngleOffset;
+        this.distanceToCenter = distanceToCenter;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetSpawningSpreadByTotal(
+        int way,
+        float totalSpread,
+        int layer = 1,
+        float layerVelocityDelta = 0,
+        float layerAccelerationDelta = 0,
+        float distanceToCenter = 0)
+    {
+        this.spawningType = SpawningType.Spread;
+        this.way = way;
+        this.totalSpread = totalSpread;
+        this.spreadDelta = 0;
+        this.layer = layer;
+        this.layerVelocityDelta = layerVelocityDelta;
+        this.layerAccelerationDelta = layerAccelerationDelta;
+        this.distanceToCenter = distanceToCenter;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetSpawningSpreadByDelta(
+        int way,
+        float spreadDelta,
+        int layer = 1,
+        float layerVelocityDelta = 0,
+        float layerAccelerationDelta = 0,
+        float distanceToCenter = 0)
+    {
+        this.spawningType = SpawningType.Spread;
+        this.way = way;
+        this.totalSpread = 0;
+        this.spreadDelta = spreadDelta;
+        this.layer = layer;
+        this.layerVelocityDelta = layerVelocityDelta;
+        this.layerAccelerationDelta = layerAccelerationDelta;
+        this.distanceToCenter = distanceToCenter;
+        return ref this;
+    }
+
     #endregion
 
     #region Visual WIP
