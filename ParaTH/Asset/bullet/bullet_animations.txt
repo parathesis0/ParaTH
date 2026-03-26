@@ -1,0 +1,56 @@
+@animations
+
+texture bullet/bullet.png
+
+animation fireball_red loop
+# x	y	w	h	ax	ay	dur
+224	176	32	32	16	16	3
+256	176	32	32	16	16	3
+288	176	32	32	16	16	3
+320	176	32	32	16	16	3
+
+animation fireball_lightpink loop
+# x	y	w	h	ax	ay	dur
+352	176	32	32	16	16	3
+384	176	32	32	16	16	3
+416	176	32	32	16	16	3
+448	176	32	32	16	16	3
+
+animation fireball_darkpink loop
+# x	y	w	h	ax	ay	dur
+480	176	32	32	16	16	3
+512	176	32	32	16	16	3
+544	176	32	32	16	16	3
+576	176	32	32	16	16	3
+
+animation fireball_orange loop
+# x	y	w	h	ax	ay	dur
+608	176	32	32	16	16	3
+640	176	32	32	16	16	3
+672	176	32	32	16	16	3
+704	176	32	32	16	16	3
+
+animation note_red loop
+# x	y	w	h	ax	ay	dur
+736	208	32	32	16	16	3
+768	208	32	32	16	16	3
+800	208	32	32	16	16	3
+
+animation note_blue loop
+# x	y	w	h	ax	ay	dur
+832	208	32	32	16	16	3
+864	208	32	32	16	16	3
+896	208	32	32	16	16	3
+
+animation note_yellow loop
+# x	y	w	h	ax	ay	dur
+928	208	32	32	16	16	3
+960	208	32	32	16	16	3
+992	208	32	32	16	16	3
+
+animation note_pink loop
+# x	y	w	h	ax	ay	dur
+0	272	32	32	16	16	3
+32	272	32	32	16	16	3
+64	272	32	32	16	16	3
+

@@ -11,10 +11,11 @@ public sealed class TestScript(BulletManager bulletManager)
 
     public void Update()
     {
+        float angleOffset = counter / 10f;
+
         if (counter % 4 == 0)
         {
             float way = 5;
-            float angleOffset = counter / 10f;
             for (int i = 0; i < way; i++)
             {
                 var angle = angleOffset + (MathHelper.TwoPi / way * i);
@@ -35,7 +36,7 @@ public sealed class TestScript(BulletManager bulletManager)
 
                 //// velocity test
                 //bulletManager.SpawnBullet()
-                //    .SetPosition(new Vector2(640, 360))
+                //    .SetPosition(new Vector2(320, 240))
                 //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                 //    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
@@ -56,7 +57,7 @@ public sealed class TestScript(BulletManager bulletManager)
 
                 //// acceleration test
                 //bulletManager.SpawnBullet()
-                //    .SetPosition(new Vector2(640, 360))
+                //    .SetPosition(new Vector2(320, 240))
                 //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                 //    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
@@ -66,7 +67,7 @@ public sealed class TestScript(BulletManager bulletManager)
 
                 //// curve Test
                 //bulletManager.SpawnBullet()
-                //    .SetPosition(new Vector2(640, 360))
+                //    .SetPosition(new Vector2(320, 240))
                 //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                 //    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
@@ -81,7 +82,7 @@ public sealed class TestScript(BulletManager bulletManager)
 
                 //// spawnAnimation test
                 //bulletManager.SpawnBullet()
-                //    .SetPosition(new Vector2(640, 360))
+                //    .SetPosition(new Vector2(320, 240))
                 //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                 //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
@@ -90,18 +91,28 @@ public sealed class TestScript(BulletManager bulletManager)
             }
         }
 
-        if (counter % 20 == 0)
+        if (counter % 1 == 0)
         {
-            // spawn control test
+            //    // spawn control test
+            //    bulletManager.SpawnBullet()
+            //        .SetPosition(new Vector2(320, 240))
+            //        .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+            //        .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+            //        .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
+            //        .SetVelocity(2f, 0)
+            //        .SetSpawningCircle(8, 4, 0.5f, 0, 0.01f, 100)
+            //        .SetSpawningSpreadByDelta(9, MathHelper.Pi / 8, 3)
+            //        .SetSpawningSpreadByTotal(9, MathHelper.Pi, 3, 0.1f)
+            //        .Build();
+
+            // spawnAnimation test
             bulletManager.SpawnBullet()
-                .SetPosition(new Vector2(640, 360))
-                .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
-                .SetVelocity(2f, 0)
-                // .SetSpawningCircle(8, 4, 0.5f, 0, 0.01f, 100)
-                //.SetSpawningSpreadByDelta(9, MathHelper.Pi / 8, 3)
-                .SetSpawningSpreadByTotal(9, MathHelper.Pi, 3, 0.1f)
+                .SetPosition(new Vector2(320, 240))
+                .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
+                .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
+                //.SetAnimation("fireball_ref", Color.White, 100, StgBlendState.Alpha)
+                .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
+                .LerpAddVelocityMagnitude(4f, 120, EaseType.Linear)//.SyncRenderStateRotation()
                 .Build();
         }
 
@@ -137,8 +148,8 @@ public sealed class Engine : Game
     public Engine()
     {
         var gdm = new GraphicsDeviceManager(this);
-        gdm.PreferredBackBufferWidth = 1280;
-        gdm.PreferredBackBufferHeight = 720;
+        gdm.PreferredBackBufferWidth = 640;
+        gdm.PreferredBackBufferHeight = 480;
         gdm.SynchronizeWithVerticalRetrace = false;
         gdm.GraphicsProfile = GraphicsProfile.HiDef;
         IsFixedTimeStep = true;
@@ -158,12 +169,12 @@ public sealed class Engine : Game
         assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "heart_pink");
         assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "arrow_pink");
 
-        assetManager.Load<AnimationAsset>("bullet/fire_animations.txt", "fireball_red");
+        assetManager.Load<AnimationAsset>("bullet/bullet_animations.txt", "fireball_red");
 
         debugFontAsset = assetManager.Load<FontAsset>("fonts/mspgothic.ttf", "touhou_font");
 
         stgBatch = new StgBatch(GraphicsDevice);
-        projection = Matrix.CreateOrthographicOffCenter(0, 1280, 720, 0, 0, 1);
+        projection = Matrix.CreateOrthographicOffCenter(0, 640, 480, 0, 0, 1);
 
         world = new World(
             baseChunkByteSize: 16384,
@@ -198,10 +209,10 @@ public sealed class Engine : Game
 
         if (!isPaused || shouldAdvance)
         {
-            if (currentFps > 55)
+            if (currentFps > 58)
                 script.Update();
-            bulletSystem.Update();
             animationSystem.Update();
+            bulletSystem.Update();
         }
 
         shouldAdvance = false;
@@ -234,7 +245,7 @@ public sealed class Engine : Game
 
         stgBatch.DrawString(font,
             $"FPS: {currentFps}",
-            new Vector2(1190, 4), fpsColor, 200, StgBlendState.Alpha);
+            new Vector2(572, 4), fpsColor, 200, StgBlendState.Alpha);
 
         stgBatch.End();
         base.Draw(gameTime);

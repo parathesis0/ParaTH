@@ -425,7 +425,7 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder AutoSyncRenderStateRotation()
+    public ref BulletBuilder SyncRenderStateRotation()
     {
         movement.SyncRenderStateRotation = true;
         return ref this;
@@ -548,7 +548,9 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
         renderState.Layer = layer;
         renderState.BlendState = blendState;
 
-        renderState.Scale = Vector2.One; // todo: add this to params?
+        // todo: add these to params?
+        renderState.Rotation = MathHelper.PiOver2;
+        renderState.Scale = Vector2.One;
 
         activeRenderer = RendererType.SpriteRenderer;
         return ref this;
@@ -564,7 +566,9 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
         renderState.Layer = layer;
         renderState.BlendState = blendState;
 
-        renderState.Scale = Vector2.One; // todo: add this to params?
+        // todo: add these to params?
+        renderState.Rotation = MathHelper.PiOver2;
+        renderState.Scale = Vector2.One;
 
         activeRenderer = RendererType.AnimationRenderer;
         return ref this;

@@ -32,7 +32,6 @@ public sealed class MovementSystem(World world)
                 var renSpan = hasRen ? chunk.GetFilledComponentSpan<RenderState>() : default;
                 var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnAnimation>() : default;
 
-
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
                     ref var transform = ref transforms.UnsafeAt(i);
