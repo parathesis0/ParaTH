@@ -10,6 +10,6 @@ public struct RenderState(Vector2 scale, float rotation, Color color, byte layer
     public Color Color = color;                     // 4
     public byte Layer = layer;                      // 1
     public StgBlendState BlendState = blendState;   // 1
-                                                    // 2 padding
+                                                    // 2 padding, todo: put RendererType here?
 }
 

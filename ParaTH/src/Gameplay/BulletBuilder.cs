@@ -10,6 +10,13 @@ public enum RendererType : byte
     AnimationRenderer,
 }
 
+public enum SpawningType : byte
+{
+    None,
+    Circle,
+    Spread
+}
+
 // todos:
 // group spawning in spread/circle/fan etc
 // collision
@@ -19,21 +26,26 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
 {
     private readonly BulletManager manager = bulletManager;
 
+    // mandatory components
     private Transform transform = new(Vector2.Zero, Vector2.One, 0);
     private Movement movement;
     private Lifetime lifetime;
-    private RenderState renderState;
 
+    // optional component, won't be added if RendererType.None
+    private RenderState renderState;
+    private RendererType activeRenderer = RendererType.None;
+    // optional components, can only be one of the following
     private SpriteRenderer spriteRenderer;
     private AnimationRenderer animationRenderer;
-    private RendererType activeRenderer = RendererType.None;
 
+    // optional component, instruction is shared
     private ushort currentFrame = 0;
     private readonly List<PositionInstruction> positionInstructions = [];
     private readonly List<VelocityInstruction> velocityInstructions = [];
     private readonly List<AccelerationInstruction> accelerationInstructions = [];
     private readonly List<CurveInstruction> curveInstructions = [];
 
+    // optional
     private SpawnAnimation spawnAnimation;
 
     #region Delay
@@ -494,7 +506,7 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
     }
     #endregion
 
-    // we have to create entities all components at once to avoid the structual changes of adding a component during creation
+    // see BulletBuilder.Build.tt template
     //public Entity Build()
     //{
     //}

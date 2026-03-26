@@ -4,6 +4,7 @@ namespace ParaTH;
 
 public ref partial struct BulletBuilder
 {
+    // we have to create entities with all components at once to avoid the structual changes of adding components during creation
     [SkipLocalsInit]
     public Entity Build()
     {

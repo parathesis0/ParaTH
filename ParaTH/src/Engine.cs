@@ -102,7 +102,7 @@ public sealed class Engine : Game
 
     private BulletManager bulletManager = null!;
 
-    private BulletSystem bulletSystem = null!;
+    private MovementSystem bulletSystem = null!;
     private AnimationSystem animationSystem = null!;
     private RenderSystem renderSystem = null!;
 
@@ -157,7 +157,7 @@ public sealed class Engine : Game
 
         bulletManager = new BulletManager(world, assetManager);
 
-        bulletSystem = new BulletSystem(world);
+        bulletSystem = new MovementSystem(world);
         animationSystem = new AnimationSystem(world);
         renderSystem = new RenderSystem(world, stgBatch);
 

@@ -1,10 +1,8 @@
 using Microsoft.Xna.Framework;
 
-using static ParaTH.AnimationAsset;
-
 namespace ParaTH;
 
-public sealed class BulletSystem(World world)
+public sealed class MovementSystem(World world)
 {
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Movement, Lifetime>();
@@ -19,8 +17,8 @@ public sealed class BulletSystem(World world)
             bool hasVel = archetype.Has<VelocityController>();
             bool hasAcc = archetype.Has<AccelerationController>();
             bool hasCur = archetype.Has<CurveController>();
-            bool hasRen = archetype.Has<RenderState>();
-            bool hasSpw = archetype.Has<SpawnAnimation>();    // this one has to stay here, spawnAnimation affects velocity speed
+            bool hasRen = archetype.Has<RenderState>();     // for syncing rotation
+            bool hasSpw = archetype.Has<SpawnAnimation>();  // this one has to stay here, spawnAnimation affects velocity speed
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {

@@ -13,8 +13,8 @@ public sealed class AnimationSystem(World world)
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
-            bool hasAni = archetype.Has<AnimationRenderer>(); // todo: extract to animation system maybe?
-            bool hasSpw = archetype.Has<SpawnAnimation>();    // this one has to stay here, spawnAnimation affects velocity speed
+            bool hasAni = archetype.Has<AnimationRenderer>();
+            bool hasSpw = archetype.Has<SpawnAnimation>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
