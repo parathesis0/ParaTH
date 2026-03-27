@@ -78,6 +78,26 @@ public sealed partial class World : IDisposable
     }
 
     [SkipLocalsInit]
+    public void ReserveEntityBulk(Span<Entity> entityBuffer, ComponentTypeInfo[] types,
+                                  out Archetype archetype, out Slot start, out Slot end)
+    {
+        var amount = entityBuffer.Length;
+
+        archetype = GetOrCreateArchetypeWithCapacity(types, amount);
+
+        using var entityDataBuffer = ScopedPooledArray<EntityData>.Rent(amount);
+        var entityDataBufferSpan = entityDataBuffer.AsSpan();
+
+        RecycleOrCreateEntityBulk(archetype, entityBuffer, entityDataBufferSpan);
+
+        start = Slot.GetNextFor(archetype.CurrentSlot, archetype.EntitiesPerChunk);
+        archetype.ReserveBulk(entityBuffer);
+        end = archetype.CurrentSlot;
+
+        AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
+    }
+
+    [SkipLocalsInit]
     public void DestroyEntity(Entity entity)
     {
         Debug.Assert(IsAlive(entity));

@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace ParaTH;
 
 public sealed partial class Archetype : IDisposable
@@ -248,6 +250,41 @@ public sealed partial class Archetype : IDisposable
         return EntitiesPerChunk;
     }
 
+    // literally just AddBulk without copying components
+    // ensure capacity before this
+    public void ReserveBulk(Span<Entity> entities)
+    {
+        var totalAmount = entities.Length;
+        var created = 0;
+
+        for (int i = CurrentChunkIndex; i < chunks.Count; i++)
+        {
+            ref var chunk = ref chunks[i];
+            var chunkEntityCount = chunk.EntityCount;
+            var chunkCapacity = chunk.EntityCapacity;
+
+            var fillAmount = Math.Min(chunkCapacity - chunkEntityCount, totalAmount - created);
+
+            // copy entities
+            var src = entities.Slice(created, fillAmount);
+            var dst = chunk.Entities.AsSpan(chunkEntityCount, fillAmount);
+            src.CopyTo(dst);
+
+            chunkEntityCount += fillAmount;
+            created += fillAmount;
+
+            chunk.EntityCount = chunkEntityCount;
+
+            if (created >= totalAmount)
+            {
+                this.CurrentChunkIndex = i;
+                break;
+            }
+        }
+
+        this.EntityCount += totalAmount;
+    }
+
     // swap and pop with the last chunk's last entity
     // returns the moved entity's id
     public int Remove(Slot slot)
@@ -296,6 +333,42 @@ public sealed partial class Archetype : IDisposable
         // fill the last
         ref var lastChunk = ref chunks[endSlot.ChunkIndex];
         Chunk.Fill<T0>(ref lastChunk, 0, endSlot.Index + 1, component);
+    }
+
+    // SetRangeBulk but with span copyto
+    public void SetRangeWithSpanBulk<T0>(Slot startSlot, Slot endSlot, Span<T0> components)
+    {
+        Debug.Assert(Has<T0>() && components.Length != 0);
+
+        int offset = 0;
+
+        if (startSlot.ChunkIndex == endSlot.ChunkIndex)
+        {
+            var len = endSlot.Index + 1 - startSlot.Index;
+            var src = components.Slice(offset, len);
+            Chunk.FillWithSpan<T0>(ref chunks[startSlot.ChunkIndex], startSlot.Index, len, src);
+            return;
+        }
+
+        // handle the first
+        ref var firstChunk = ref chunks[startSlot.ChunkIndex];
+        var lenTilEnd = firstChunk.EntityCapacity - startSlot.Index;
+        Chunk.FillWithSpan<T0>(ref firstChunk, startSlot.Index, lenTilEnd, components.Slice(offset, lenTilEnd));
+        offset += lenTilEnd;
+
+        // handle the middle
+        for (int i = startSlot.ChunkIndex + 1; i <= endSlot.ChunkIndex - 1; i++)
+        {
+            ref var chunk = ref chunks[i];
+            var chunkCap = chunk.EntityCapacity;
+            Chunk.FillWithSpan<T0>(ref chunk, 0, chunkCap, components.Slice(offset, chunkCap));
+            offset += chunkCap;
+        }
+
+        // handle the last
+        ref var lastChunk = ref chunks[endSlot.ChunkIndex];
+        var lastLen = endSlot.Index + 1;
+        Chunk.FillWithSpan<T0>(ref lastChunk, 0, lastLen, components.Slice(offset, lastLen));
     }
 
     public ref T0 Get<T0>(Slot slot)

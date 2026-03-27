@@ -1,0 +1,51 @@
+<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+namespace ParaTH;
+
+public sealed partial class Archetype
+{
+<#
+    for (int n = 2; n <= 16; n++)
+    {
+        var range = Enumerable.Range(0, n);
+        var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
+        var pArgs = string.Join(", ", range.Select(i => $"Span<T{i}> s{i}"));
+
+        Func<string, string> getSliceArgs = (lenVar) =>
+            string.Join(", ", range.Select(i => $"s{i}.Slice(offset, {lenVar})"));
+#>
+    public void SetRangeWithSpanBulk<<#= tArgs #>>(Slot startSlot, Slot endSlot, <#= pArgs #>)
+    {
+        int offset = 0;
+
+        if (startSlot.ChunkIndex == endSlot.ChunkIndex)
+        {
+            var len = endSlot.Index + 1 - startSlot.Index;
+            Chunk.FillWithSpan<<#= tArgs #>>(ref chunks[startSlot.ChunkIndex], startSlot.Index, len, <#= getSliceArgs("len") #>);
+            return;
+        }
+
+        ref var firstChunk = ref chunks[startSlot.ChunkIndex];
+        var lenTilEnd = firstChunk.EntityCapacity - startSlot.Index;
+        Chunk.FillWithSpan<<#= tArgs #>>(ref firstChunk, startSlot.Index, lenTilEnd, <#= getSliceArgs("lenTilEnd") #>);
+        offset += lenTilEnd;
+
+        for (int i = startSlot.ChunkIndex + 1; i <= endSlot.ChunkIndex - 1; i++)
+        {
+            ref var chunk = ref chunks[i];
+            var chunkCap = chunk.EntityCapacity;
+            Chunk.FillWithSpan<<#= tArgs #>>(ref chunk, 0, chunkCap, <#= getSliceArgs("chunkCap") #>);
+            offset += chunkCap;
+        }
+
+        ref var lastChunk = ref chunks[endSlot.ChunkIndex];
+        var lastLen = endSlot.Index + 1;
+        Chunk.FillWithSpan<<#= tArgs #>>(ref lastChunk, 0, lastLen, <#= getSliceArgs("lastLen") #>);
+    }
+
+<# } #>
+}

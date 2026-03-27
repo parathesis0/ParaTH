@@ -86,6 +86,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Archetype.SetRangeBulk.cs</LastGenOutput>
     </None>
+    <None Update="src\ECS\Variadic\Archetype.SetRangeWithSpanBulk.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Archetype.SetRangeWithSpanBulk.cs</LastGenOutput>
+    </None>
     <None Update="src\ECS\Variadic\Chunk.Add.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Chunk.Add.cs</LastGenOutput>
@@ -93,6 +97,10 @@
     <None Update="src\ECS\Variadic\Chunk.FIll.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Chunk.FIll.cs</LastGenOutput>
+    </None>
+    <None Update="src\ECS\Variadic\Chunk.FillWithSpan.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Chunk.FillWithSpan.cs</LastGenOutput>
     </None>
     <None Update="src\ECS\Variadic\Chunk.Get.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
@@ -170,10 +178,6 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>World.SetComponentValue.cs</LastGenOutput>
     </None>
-    <None Update="src\Gameplay\BulletBuilder.Build.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>BulletBuilder.Build.cs</LastGenOutput>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -211,6 +215,11 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Archetype.SetRangeBulk.tt</DependentUpon>
     </Compile>
+    <Compile Update="src\ECS\Variadic\Archetype.SetRangeWithSpanBulk.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Archetype.SetRangeWithSpanBulk.tt</DependentUpon>
+    </Compile>
     <Compile Update="src\ECS\Variadic\Chunk.Add.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
@@ -220,6 +229,11 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Chunk.FIll.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\ECS\Variadic\Chunk.FillWithSpan.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Chunk.FillWithSpan.tt</DependentUpon>
     </Compile>
     <Compile Update="src\ECS\Variadic\Chunk.Get.cs">
       <DesignTime>True</DesignTime>
@@ -315,11 +329,6 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>World.SetComponentValue.tt</DependentUpon>
-    </Compile>
-    <Compile Update="src\Gameplay\BulletBuilder.Build.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>BulletBuilder.Build.tt</DependentUpon>
     </Compile>
   </ItemGroup>
 </Project>

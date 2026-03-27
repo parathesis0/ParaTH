@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -161,5 +162,13 @@ public partial struct Chunk
     {
         chunk.GetFullComponentSpan<T0>(out var span);
         span.Slice(startIndex, length).Fill(component);
+    }
+
+    public static void FillWithSpan<T0>(ref Chunk chunk, int startIndex, int length, Span<T0> componentSlice)
+    {
+        Debug.Assert(length == componentSlice.Length);
+
+        chunk.GetFullComponentSpan<T0>(out var span);
+        componentSlice.CopyTo(span.Slice(startIndex, length));
     }
 }

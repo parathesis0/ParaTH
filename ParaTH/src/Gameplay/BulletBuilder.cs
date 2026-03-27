@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
@@ -599,8 +601,146 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
     }
     #endregion
 
-    // see BulletBuilder.Build.tt template
-    //public Entity Build()
-    //{
-    //}
+    [SkipLocalsInit]
+    public void Build(Span<Entity> outputEntities = default)
+    {
+        int amount = way * layer;
+        if (amount <= 0)
+            return;
+
+        bool hasRds = activeRenderer != RendererType.None;
+        bool hasSpr = activeRenderer == RendererType.SpriteRenderer;
+        bool hasAni = activeRenderer == RendererType.AnimationRenderer;
+
+        bool hasPos = positionInstructions.Count > 0;
+        bool hasVel = velocityInstructions.Count > 0;
+        bool hasAcc = accelerationInstructions.Count > 0;
+        bool hasCur = curveInstructions.Count > 0;
+        bool hasSpw = spawnAnimation.Duration > 0;
+
+        int typeCount = 3 + (hasRds ? 1 : 0)
+                          + (hasSpr ? 1 : 0)
+                          + (hasAni ? 1 : 0)
+                          + (hasPos ? 1 : 0)
+                          + (hasVel ? 1 : 0)
+                          + (hasAcc ? 1 : 0)
+                          + (hasCur ? 1 : 0)
+                          + (hasSpw ? 1 : 0);
+
+        var types = new ComponentTypeInfo[typeCount];
+        int tIdx = 0;
+        types[tIdx++] = Component<Transform>.TypeInfo;
+        types[tIdx++] = Component<Movement>.TypeInfo;
+        types[tIdx++] = Component<Lifetime>.TypeInfo;
+
+        if (hasRds) types[tIdx++] = Component<RenderState>.TypeInfo;
+        if (hasSpr) types[tIdx++] = Component<SpriteRenderer>.TypeInfo;
+        if (hasAni) types[tIdx++] = Component<AnimationRenderer>.TypeInfo;
+        if (hasPos) types[tIdx++] = Component<PositionController>.TypeInfo;
+        if (hasVel) types[tIdx++] = Component<VelocityController>.TypeInfo;
+        if (hasAcc) types[tIdx++] = Component<AccelerationController>.TypeInfo;
+        if (hasCur) types[tIdx++] = Component<CurveController>.TypeInfo;
+        if (hasSpw) types[tIdx++] = Component<SpawnAnimation>.TypeInfo;
+
+        using var pooledEntities = ScopedPooledArray<Entity>.Rent(amount);
+        Span<Entity> entities = pooledEntities.AsSpan();
+
+        using var pooledTransforms = ScopedPooledArray<Transform>.Rent(amount);
+        Span<Transform> transforms = pooledTransforms.AsSpan();
+
+        using var pooledMovements = ScopedPooledArray<Movement>.Rent(amount);
+        Span<Movement> movements = pooledMovements.AsSpan();
+
+        using var pooledLifetimes = ScopedPooledArray<Lifetime>.Rent(amount);
+        Span<Lifetime> lifetimes = pooledLifetimes.AsSpan();
+
+        using var pooledRenderStates = hasRds ? ScopedPooledArray<RenderState>.Rent(amount) : default;
+        Span<RenderState> rss = hasRds ? pooledRenderStates.AsSpan() : default;
+
+        using var pooledSpriteRenderers = hasSpr ? ScopedPooledArray<SpriteRenderer>.Rent(amount) : default;
+        Span<SpriteRenderer> srs = hasSpr ? pooledSpriteRenderers.AsSpan() : default;
+
+        using var pooledAnimationRenderers = hasAni ? ScopedPooledArray<AnimationRenderer>.Rent(amount) : default;
+        Span<AnimationRenderer> ars = hasAni ? pooledAnimationRenderers.AsSpan() : default;
+
+        using var pooledPcs = hasPos ? ScopedPooledArray<PositionController>.Rent(amount) : default;
+        Span<PositionController> pcs = hasPos ? pooledPcs.AsSpan() : default;
+
+        using var pooledVcs = hasVel ? ScopedPooledArray<VelocityController>.Rent(amount) : default;
+        Span<VelocityController> vcs = hasVel ? pooledVcs.AsSpan() : default;
+
+        using var pooledAcs = hasAcc ? ScopedPooledArray<AccelerationController>.Rent(amount) : default;
+        Span<AccelerationController> acs = hasAcc ? pooledAcs.AsSpan() : default;
+
+        using var pooledCcs = hasCur ? ScopedPooledArray<CurveController>.Rent(amount) : default;
+        Span<CurveController> ccs = hasCur ? pooledCcs.AsSpan() : default;
+
+        using var pooledSas = hasSpw ? ScopedPooledArray<SpawnAnimation>.Rent(amount) : default;
+        Span<SpawnAnimation> sas = hasSpw ? pooledSas.AsSpan() : default;
+
+        float baseVcMag = movement.Velocity.Length();
+        float baseVcAngle = baseVcMag > 0 ? MathF.Atan2(movement.Velocity.Y, movement.Velocity.X) : 0;
+        float baseAccMag = movement.Acceleration.Length();
+        float baseAccAngle = baseAccMag > 0 ? MathF.Atan2(movement.Acceleration.Y, movement.Acceleration.X) : baseVcAngle;
+
+        var sharedPcs = hasPos ? positionInstructions.ToArray() : null;
+        var sharedVcs = hasVel ? velocityInstructions.ToArray() : null;
+        var sharedAcs = hasAcc ? accelerationInstructions.ToArray() : null;
+        var sharedCcs = hasCur ? curveInstructions.ToArray() : null;
+
+        for (int i = 0; i < amount; i++)
+        {
+            int l = i / way;
+            int w = i % way;
+
+            float angle = baseVcAngle;
+            if (spawningType == SpawningType.Circle)
+            {
+                angle += (MathF.PI * 2f / way) * w + l * layerAngleOffset;
+            }
+            else if (spawningType == SpawningType.Spread && way > 1)
+            {
+                float total = totalSpread > 0 ? totalSpread : spreadDelta * (way - 1);
+                float delta = total / (way - 1);
+                angle += -total / 2f + delta * w;
+            }
+
+            float currentMag = baseVcMag + l * layerVelocityDelta;
+            float currentAccMag = baseAccMag + l * layerAccelerationDelta;
+            float currentAccAngle = baseAccAngle + (angle - baseVcAngle);
+
+            var dir = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+            var accDir = new Vector2(MathF.Cos(currentAccAngle), MathF.Sin(currentAccAngle));
+
+            transforms[i] = new Transform(transform.Position + dir * distanceToCenter, transform.Scale, transform.Rotation);
+            movements[i] = new Movement { Velocity = dir * currentMag, Acceleration = accDir * currentAccMag, SyncRenderStateRotation = movement.SyncRenderStateRotation };
+            lifetimes[i] = lifetime;
+
+            if (hasRds) rss[i] = renderState;
+            if (hasSpr) srs[i] = spriteRenderer;
+            if (hasAni) ars[i] = animationRenderer;
+
+            if (hasPos) pcs[i] = new PositionController { Instructions = sharedPcs!, Index = -1 };
+            if (hasVel) vcs[i] = new VelocityController { Instructions = sharedVcs!, Index = -1 };
+            if (hasAcc) acs[i] = new AccelerationController { Instructions = sharedAcs!, Index = -1 };
+            if (hasCur) ccs[i] = new CurveController { Instructions = sharedCcs!, Index = -1 };
+            if (hasSpw) sas[i] = spawnAnimation;
+        }
+
+        manager.World.ReserveEntityBulk(entities, types, out Archetype archetype, out Slot start, out Slot end);
+
+        archetype.SetRangeWithSpanBulk(start, end, transforms, movements, lifetimes);
+
+        if (hasRds) archetype.SetRangeWithSpanBulk(start, end, rss);
+        if (hasSpr) archetype.SetRangeWithSpanBulk(start, end, srs);
+        if (hasAni) archetype.SetRangeWithSpanBulk(start, end, ars);
+        if (hasPos) archetype.SetRangeWithSpanBulk(start, end, pcs);
+        if (hasVel) archetype.SetRangeWithSpanBulk(start, end, vcs);
+        if (hasAcc) archetype.SetRangeWithSpanBulk(start, end, acs);
+        if (hasCur) archetype.SetRangeWithSpanBulk(start, end, ccs);
+        if (hasSpw) archetype.SetRangeWithSpanBulk(start, end, sas);
+
+        if (!outputEntities.IsEmpty)
+            entities.CopyTo(outputEntities);
+    }
 }
