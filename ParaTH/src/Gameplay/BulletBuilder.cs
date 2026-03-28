@@ -20,10 +20,8 @@ public enum SpawningType : byte
 }
 
 // todos:
-// group spawning in spread/circle/fan etc
 // collision
-// managed despawning
-// reusing built instructions
+// lifetime management
 public ref partial struct BulletBuilder(BulletManager bulletManager)
 {
     private readonly BulletManager manager = bulletManager;
@@ -49,6 +47,7 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
 
     // optional
     private SpawnAnimation spawnAnimation;
+    private Collider collider;
 
     // spawn settings
     private int way = 1;
@@ -462,6 +461,98 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
     }
     #endregion
 
+    #region Visual WIP
+    [UnscopedRef]
+    public ref BulletBuilder SetSprite(string spriteName, Color color, byte layer, StgBlendState blendState)
+    {
+        var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
+        spriteRenderer.Sprite = sprite;
+        renderState.Color = color;
+        renderState.Layer = layer;
+        renderState.BlendState = blendState;
+
+        // todo: add these to params?
+        renderState.Rotation = MathHelper.PiOver2;
+        renderState.Scale = Vector2.One;
+
+        activeRenderer = RendererType.SpriteRenderer;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetAnimation(string animationName, Color color, byte layer, StgBlendState blendState)
+    {
+        var animation = manager.AssetManager.Get<AnimationAsset>(animationName);
+        animationRenderer.Animation = animation;
+        animationRenderer.IsPlaying = true;
+        renderState.Color = color;
+        renderState.Layer = layer;
+        renderState.BlendState = blendState;
+
+        // todo: add these to params?
+        renderState.Rotation = MathHelper.PiOver2;
+        renderState.Scale = Vector2.One;
+
+        activeRenderer = RendererType.AnimationRenderer;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetSpawnAnimation(string spriteName, Vector2 startScale, float startAlpha,
+                                               float spawningVelocityMultiplier, byte duration, EaseType easeX, EaseType easeY)
+    {
+        var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
+        spawnAnimation.Sprite = sprite;
+        spawnAnimation.StartScale = startScale;
+        spawnAnimation.StartAlpha = (Half)startAlpha;
+        spawnAnimation.VelocityMultiplier = (Half)spawningVelocityMultiplier;
+        spawnAnimation.Duration = duration;
+        spawnAnimation.TypeX = easeX;
+        spawnAnimation.TypeY = easeY;
+
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetSpawnAnimation(string spriteName, float startScale, float startAlpha,
+                                               float spawningVelocityMultiplier, byte duration, EaseType ease)
+    {
+        SetSpawnAnimation(spriteName, new Vector2(startScale, startScale), startAlpha, spawningVelocityMultiplier, duration, ease, ease);
+        return ref this;
+    }
+    #endregion
+
+    #region Collider
+    [UnscopedRef]
+    public ref BulletBuilder SetObbCollider(Vector2 halfSize, float rotation = 0f)
+    {
+        collider.ShapeType = ShapeType.ObbRect;
+        collider.ObbRect.HalfSize = halfSize;
+        collider.ObbRect.Rotation = rotation;
+
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetCircleCollider(float radius)
+    {
+        collider.ShapeType = ShapeType.Circle;
+        collider.Circle.Radius = radius;
+
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetEllipseCollider(Vector2 halfSize, float rotation = 0f)
+    {
+        collider.ShapeType = ShapeType.Ellipse;
+        collider.ObbRect.HalfSize = halfSize;
+        collider.ObbRect.Rotation = rotation;
+
+        return ref this;
+    }
+    #endregion
+
     #region Spawning Control
     [UnscopedRef]
     public ref BulletBuilder SetSpawningNone(
@@ -540,67 +631,6 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
 
     #endregion
 
-    #region Visual WIP
-    [UnscopedRef]
-    public ref BulletBuilder SetSprite(string spriteName, Color color, byte layer, StgBlendState blendState)
-    {
-        var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
-        spriteRenderer.Sprite = sprite;
-        renderState.Color = color;
-        renderState.Layer = layer;
-        renderState.BlendState = blendState;
-
-        // todo: add these to params?
-        renderState.Rotation = MathHelper.PiOver2;
-        renderState.Scale = Vector2.One;
-
-        activeRenderer = RendererType.SpriteRenderer;
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref BulletBuilder SetAnimation(string animationName, Color color, byte layer, StgBlendState blendState)
-    {
-        var animation = manager.AssetManager.Get<AnimationAsset>(animationName);
-        animationRenderer.Animation = animation;
-        animationRenderer.IsPlaying = true;
-        renderState.Color = color;
-        renderState.Layer = layer;
-        renderState.BlendState = blendState;
-
-        // todo: add these to params?
-        renderState.Rotation = MathHelper.PiOver2;
-        renderState.Scale = Vector2.One;
-
-        activeRenderer = RendererType.AnimationRenderer;
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref BulletBuilder SetSpawnAnimation(string spriteName, Vector2 startScale, float startAlpha,
-                                               float spawningVelocityMultiplier, byte duration, EaseType easeX, EaseType easeY)
-    {
-        var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
-        spawnAnimation.Sprite = sprite;
-        spawnAnimation.StartScale = startScale;
-        spawnAnimation.StartAlpha = (Half)startAlpha;
-        spawnAnimation.VelocityMultiplier = (Half)spawningVelocityMultiplier;
-        spawnAnimation.Duration = duration;
-        spawnAnimation.TypeX = easeX;
-        spawnAnimation.TypeY = easeY;
-
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref BulletBuilder SetSpawnAnimation(string spriteName, float startScale, float startAlpha,
-                                               float spawningVelocityMultiplier, byte duration, EaseType ease)
-    {
-        SetSpawnAnimation(spriteName, new Vector2(startScale, startScale), startAlpha, spawningVelocityMultiplier, duration, ease, ease);
-        return ref this;
-    }
-    #endregion
-
     [SkipLocalsInit]
     public void Build(Span<Entity> outputEntities = default)
     {
@@ -617,15 +647,17 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
         bool hasAcc = accelerationInstructions.Count > 0;
         bool hasCur = curveInstructions.Count > 0;
         bool hasSpw = spawnAnimation.Duration > 0;
+        bool hasCol = collider.ShapeType != ShapeType.None;
 
-        int typeCount = 3 + (hasRds ? 1 : 0)
-                          + (hasSpr ? 1 : 0)
-                          + (hasAni ? 1 : 0)
-                          + (hasPos ? 1 : 0)
-                          + (hasVel ? 1 : 0)
-                          + (hasAcc ? 1 : 0)
-                          + (hasCur ? 1 : 0)
-                          + (hasSpw ? 1 : 0);
+        int typeCount = 3 + Unsafe.As<bool, byte>(ref hasRds)
+                          + Unsafe.As<bool, byte>(ref hasSpr)
+                          + Unsafe.As<bool, byte>(ref hasAni)
+                          + Unsafe.As<bool, byte>(ref hasPos)
+                          + Unsafe.As<bool, byte>(ref hasVel)
+                          + Unsafe.As<bool, byte>(ref hasAcc)
+                          + Unsafe.As<bool, byte>(ref hasCur)
+                          + Unsafe.As<bool, byte>(ref hasSpw)
+                          + Unsafe.As<bool, byte>(ref hasCol);
 
         var types = new ComponentTypeInfo[typeCount];
         int tIdx = 0;
@@ -641,18 +673,19 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
         if (hasAcc) types[tIdx++] = Component<AccelerationController>.TypeInfo;
         if (hasCur) types[tIdx++] = Component<CurveController>.TypeInfo;
         if (hasSpw) types[tIdx++] = Component<SpawnAnimation>.TypeInfo;
+        if (hasCol) types[tIdx++] = Component<Collider>.TypeInfo;
 
         using var pooledEntities = ScopedPooledArray<Entity>.Rent(amount);
         Span<Entity> entities = pooledEntities.AsSpan();
 
         using var pooledTransforms = ScopedPooledArray<Transform>.Rent(amount);
-        Span<Transform> transforms = pooledTransforms.AsSpan();
+        Span<Transform> tfs = pooledTransforms.AsSpan();
 
         using var pooledMovements = ScopedPooledArray<Movement>.Rent(amount);
-        Span<Movement> movements = pooledMovements.AsSpan();
+        Span<Movement> mvs = pooledMovements.AsSpan();
 
         using var pooledLifetimes = ScopedPooledArray<Lifetime>.Rent(amount);
-        Span<Lifetime> lifetimes = pooledLifetimes.AsSpan();
+        Span<Lifetime> lts = pooledLifetimes.AsSpan();
 
         using var pooledRenderStates = hasRds ? ScopedPooledArray<RenderState>.Rent(amount) : default;
         Span<RenderState> rss = hasRds ? pooledRenderStates.AsSpan() : default;
@@ -677,6 +710,9 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
 
         using var pooledSas = hasSpw ? ScopedPooledArray<SpawnAnimation>.Rent(amount) : default;
         Span<SpawnAnimation> sas = hasSpw ? pooledSas.AsSpan() : default;
+
+        using var pooledCls = hasCol ? ScopedPooledArray<Collider>.Rent(amount) : default;
+        Span<Collider> cls = hasCol ? pooledCls.AsSpan() : default;
 
         float baseVcMag = movement.Velocity.Length();
         float baseVcAngle = baseVcMag > 0 ? MathF.Atan2(movement.Velocity.Y, movement.Velocity.X) : 0;
@@ -712,9 +748,9 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
             var dir = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
             var accDir = new Vector2(MathF.Cos(currentAccAngle), MathF.Sin(currentAccAngle));
 
-            transforms[i] = new Transform(transform.Position + dir * distanceToCenter, transform.Scale, transform.Rotation);
-            movements[i] = new Movement { Velocity = dir * currentMag, Acceleration = accDir * currentAccMag, SyncRenderStateRotation = movement.SyncRenderStateRotation };
-            lifetimes[i] = lifetime;
+            tfs[i] = new Transform(transform.Position + dir * distanceToCenter, transform.Scale, transform.Rotation);
+            mvs[i] = new Movement { Velocity = dir * currentMag, Acceleration = accDir * currentAccMag, SyncRenderStateRotation = movement.SyncRenderStateRotation };
+            lts[i] = lifetime;
 
             if (hasRds) rss[i] = renderState;
             if (hasSpr) srs[i] = spriteRenderer;
@@ -725,11 +761,12 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
             if (hasAcc) acs[i] = new AccelerationController { Instructions = sharedAcs!, Index = -1 };
             if (hasCur) ccs[i] = new CurveController { Instructions = sharedCcs!, Index = -1 };
             if (hasSpw) sas[i] = spawnAnimation;
+            if (hasCol) cls[i] = collider;
         }
 
         manager.World.ReserveEntityBulk(entities, types, out Archetype archetype, out Slot start, out Slot end);
 
-        archetype.SetRangeWithSpanBulk(start, end, transforms, movements, lifetimes);
+        archetype.SetRangeWithSpanBulk(start, end, tfs, mvs, lts);
 
         if (hasRds) archetype.SetRangeWithSpanBulk(start, end, rss);
         if (hasSpr) archetype.SetRangeWithSpanBulk(start, end, srs);
@@ -739,6 +776,7 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
         if (hasAcc) archetype.SetRangeWithSpanBulk(start, end, acs);
         if (hasCur) archetype.SetRangeWithSpanBulk(start, end, ccs);
         if (hasSpw) archetype.SetRangeWithSpanBulk(start, end, sas);
+        if (hasCol) archetype.SetRangeWithSpanBulk(start, end, cls);
 
         if (!outputEntities.IsEmpty)
             entities.CopyTo(outputEntities);

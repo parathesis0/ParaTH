@@ -129,9 +129,10 @@ public sealed class Engine : Game
 
     private BulletManager bulletManager = null!;
 
-    private MovementSystem bulletSystem = null!;
+    private MovementSystem movementSystem = null!;
     private AnimationSystem animationSystem = null!;
     private RenderSystem renderSystem = null!;
+    private CollisionSystem collisionSystem = null!;
 
     private TestScript script = null!;
 
@@ -184,9 +185,10 @@ public sealed class Engine : Game
 
         bulletManager = new BulletManager(world, assetManager);
 
-        bulletSystem = new MovementSystem(world);
+        movementSystem = new MovementSystem(world);
         animationSystem = new AnimationSystem(world);
         renderSystem = new RenderSystem(world, stgBatch);
+        collisionSystem = new CollisionSystem(world);
 
         script = new(bulletManager);
     }
@@ -212,7 +214,7 @@ public sealed class Engine : Game
             if (currentFps > 58)
                 script.Update();
             animationSystem.Update();
-            bulletSystem.Update();
+            movementSystem.Update();
         }
 
         shouldAdvance = false;

@@ -1,5 +1,3 @@
-using Microsoft.Xna.Framework;
-
 using static ParaTH.AnimationAsset;
 
 namespace ParaTH;

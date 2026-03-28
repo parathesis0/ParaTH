@@ -66,10 +66,22 @@ public sealed class RenderSystem(World world, StgBatch batch)
                     // if (hasDamageFlash)
                     //     ApplyDamageFlash(ref flashes.UnsafeAt(i), in state, ref dp);
 
-                    batch.Draw(
-                        dp.Texture, transform.Position, dp.SourceRect, dp.Color,
-                        state.Rotation, dp.Anchor, dp.Scale,
-                        SpriteEffects.None, state.Layer, state.BlendState);
+                    // TODO: PLACEHOLDER
+                    float halfW = dp.SourceRect.Width * 0.5f;
+                    float halfH = dp.SourceRect.Height * 0.5f;
+                    float radius = (halfW > halfH ? halfW : halfH) * 1.415f;
+
+                    float px = transform.Position.X;
+                    float py = transform.Position.Y;
+
+                    if (px + radius > 0 && px - radius < 500 &&
+                        py + radius > 0 && py - radius < 400)
+                    {
+                        batch.Draw(
+                            dp.Texture, transform.Position, dp.SourceRect, dp.Color,
+                            state.Rotation, dp.Anchor, dp.Scale,
+                            SpriteEffects.None, state.Layer, state.BlendState);
+                    }
                 }
             }
         }
