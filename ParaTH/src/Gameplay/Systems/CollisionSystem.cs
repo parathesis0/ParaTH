@@ -6,7 +6,7 @@ using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace ParaTH;
 
-public sealed class CollisionSystem
+public sealed class CollisionSystem : IDisposable
 {
     private readonly World world;
 
@@ -21,15 +21,15 @@ public sealed class CollisionSystem
         public Entity Entity;
     }
 
-    private readonly List<CollisionNode>[] groupLists;
+    private readonly UnsafePooledList<CollisionNode>[] groupLists;
     private readonly byte[] groupTargetUnions;
 
     public CollisionSystem(World world)
     {
-        groupLists = new List<CollisionNode>[Collider.MaxGroups];
+        groupLists = new UnsafePooledList<CollisionNode>[Collider.MaxGroups];
         groupTargetUnions = new byte[Collider.MaxGroups];
         for (int i = 0; i < Collider.MaxGroups; i++)
-            groupLists.UnsafeAt(i) = new List<CollisionNode>(128);
+            groupLists.UnsafeAt(i) = new UnsafePooledList<CollisionNode>(128);
 
         this.world = world;
     }
@@ -43,7 +43,7 @@ public sealed class CollisionSystem
         // clean up
         for (int i = 0; i < Collider.MaxGroups; i++)
         {
-            gl.UnsafeAt(i).Clear();
+            gl.UnsafeAt(i).Clear(false);
             gtu.UnsafeAt(i) = 0;
         }
 
@@ -81,25 +81,25 @@ public sealed class CollisionSystem
         // cross group collision detection
         for (int i = 0; i < Collider.MaxGroups; i++)
         {
-            var listA = gl[i];
+            var listA = gl.UnsafeAt(i);
             if (listA.Count == 0)
                 continue;
 
-            byte unionI = gtu[i];
+            byte unionI = gtu.UnsafeAt(i);
 
             for (int j = i + 1; j < Collider.MaxGroups; j++)
             {
-                var listB = gl[j];
+                var listB = gl.UnsafeAt(j);
                 if (listB.Count == 0)
                     continue;
 
                 bool iTargetsJ = (unionI & (1 << j)) != 0;
-                bool jTargetsI = (gtu[j] & (1 << i)) != 0;
+                bool jTargetsI = (gtu.UnsafeAt(j) & (1 << i)) != 0;
                 if (!iTargetsJ && !jTargetsI)
                     continue;
 
-                var spanA = CollectionsMarshal.AsSpan(listA);
-                var spanB = CollectionsMarshal.AsSpan(listB);
+                var spanA = listA.AsSpan();
+                var spanB = listB.AsSpan();
                 ref var baseA = ref MemoryMarshal.GetReference(spanA);
                 ref var baseB = ref MemoryMarshal.GetReference(spanB);
                 nint countA = spanA.Length;
@@ -116,12 +116,12 @@ public sealed class CollisionSystem
                         float dy = nodeA.Position.Y - nodeB.Position.Y;
                         float radiusSum = nodeA.BoundingRadius + nodeB.BoundingRadius;
                         if (dx * dx + dy * dy > radiusSum * radiusSum)
-                            return;
+                            continue;
 
                         // accurate collision check
                         if (Collider.Intersects(nodeA.Collider, nodeA.Position, nodeB.Collider, nodeB.Position))
                         {
-                            //Console.WriteLine($"Entity {nodeA.Entity.Id} hit Entity {nodeB.Entity.Id}!");
+                            Console.WriteLine($"Entity {nodeA.Entity.Id} hit Entity {nodeB.Entity.Id}!");
                         }
                     }
                 }
@@ -140,5 +140,11 @@ public sealed class CollisionSystem
             ShapeType.Ellipse => MathF.Max(c.Ellipse.HalfSize.X, c.Ellipse.HalfSize.Y),
         };
 #pragma warning restore CS8509 // The switch expression does not handle all possible values.
+    }
+
+    public void Dispose()
+    {
+        foreach (var list in groupLists)
+            list.Dispose();
     }
 }

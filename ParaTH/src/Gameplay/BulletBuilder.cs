@@ -39,10 +39,10 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
     // optional component, instruction is shared
     private ushort currentFrame = 0;
-    private readonly List<PositionInstruction> positionInstructions = [];
-    private readonly List<VelocityInstruction> velocityInstructions = [];
-    private readonly List<AccelerationInstruction> accelerationInstructions = [];
-    private readonly List<CurveInstruction> curveInstructions = [];
+    private readonly UnsafePooledList<PositionInstruction> positionInstructions = new(4);
+    private readonly UnsafePooledList<VelocityInstruction> velocityInstructions = new(4);
+    private readonly UnsafePooledList<AccelerationInstruction> accelerationInstructions = new(4);
+    private readonly UnsafePooledList<CurveInstruction> curveInstructions = new(4);
 
     // optional
     private SpawnAnimation spawnAnimation;
@@ -794,5 +794,10 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
         if (!outputEntities.IsEmpty)
             entities.CopyTo(outputEntities);
+
+        positionInstructions.Dispose();
+        velocityInstructions.Dispose();
+        accelerationInstructions.Dispose();
+        curveInstructions.Dispose();
     }
 }
