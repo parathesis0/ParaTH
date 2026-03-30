@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -20,16 +21,45 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
         public Color Color;
     }
 
+    private struct DeferredDrawData
+    {
+        public Texture2D Texture;
+        public Rectangle SourceRect;
+        public Vector2 Position;
+        public Vector2 Anchor;
+        public Vector2 Scale;
+        public Color Color;
+        public float Rotation;
+        public byte Layer;
+        public StgBlendState BlendState;
+    }
+
+    private struct DrawSortKey : IComparable<DrawSortKey>
+    {
+        public uint SpawnId;
+        public int Index;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly int CompareTo(DrawSortKey other)
+        {
+            return SpawnId.CompareTo(other.SpawnId);
+        }
+    }
+
+    private readonly UnsafePooledList<DeferredDrawData> deferredDraws = new(16384);
+    private readonly UnsafePooledList<DrawSortKey> sortKeys = new(16384);
+
     public void Update()
     {
+        deferredDraws.Clear(false);
+        sortKeys.Clear(false);
+
         var q = world.GetOrCreateQuery(descriptor);
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
             bool useSpriteRenderer = archetype.Has<SpriteRenderer>();
             bool hasSpawnAnim = archetype.Has<SpawnAnimation>();
-            // bool hasDeathAnim  = archetype.Has<DeathAnimation>();
-            // bool hasDamageFlash = archetype.Has<DamageFlash>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -62,12 +92,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
                     if (hasSpawnAnim)
                         ApplySpawnAnimation(ref spawnAnims.UnsafeAt(i), in state, ref dp);
 
-                    // if (hasDeathAnim)
-                    //     ApplyDeathAnimation(ref deathAnims.UnsafeAt(i), in state, ref dp);
-                    // if (hasDamageFlash)
-                    //     ApplyDamageFlash(ref flashes.UnsafeAt(i), in state, ref dp);
-
-                    // TODO: PLACEHOLDER
                     float halfW = dp.SourceRect.Width * 0.5f;
                     float halfH = dp.SourceRect.Height * 0.5f;
                     float radius = (halfW > halfH ? halfW : halfH) * 1.415f;
@@ -80,13 +104,44 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
                     if (px + radius > bounds.Left && px - radius < bounds.Right &&
                         py + radius > bounds.Top && py - radius < bounds.Bottom)
                     {
-                        batch.Draw(
-                            dp.Texture, transform.Position, dp.SourceRect, dp.Color,
-                            state.Rotation, dp.Anchor, dp.Scale,
-                            SpriteEffects.None, state.Layer, state.BlendState);
+                        int currentIndex = deferredDraws.Count;
+
+                        deferredDraws.Add(new DeferredDrawData
+                        {
+                            Texture = dp.Texture,
+                            SourceRect = dp.SourceRect,
+                            Position = transform.Position,
+                            Anchor = dp.Anchor,
+                            Scale = dp.Scale,
+                            Color = dp.Color,
+                            Rotation = state.Rotation,
+                            Layer = state.Layer,
+                            BlendState = state.BlendState
+                        });
+
+                        sortKeys.Add(new DrawSortKey
+                        {
+                            SpawnId = state.SpawnId,
+                            Index = currentIndex
+                        });
                     }
                 }
             }
+        }
+
+        var keysSpan = sortKeys.AsSpan();
+        var dataSpan = deferredDraws.AsSpan();
+
+        if (keysSpan.Length > 1)
+            keysSpan.Sort();
+
+        for (int i = 0; i < keysSpan.Length; i++)
+        {
+            ref var d = ref dataSpan[keysSpan[i].Index];
+            batch.Draw(
+                d.Texture, d.Position, d.SourceRect, d.Color,
+                d.Rotation, d.Anchor, d.Scale,
+                SpriteEffects.None, d.Layer, d.BlendState);
         }
     }
 
@@ -112,9 +167,9 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ApplySpawnAnimation(
-#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+#pragma warning disable RCS1242
         ref SpawnAnimation anim, in RenderState state, ref DrawParams dp)
-#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
+#pragma warning restore RCS1242
     {
         if (anim.Counter >= anim.Duration) return;
 

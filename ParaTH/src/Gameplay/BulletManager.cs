@@ -8,6 +8,8 @@ public sealed class BulletManager(World world, AssetManager asset)
 
     public AssetManager AssetManager { get; } = asset;
 
+    public uint GlobalSpawnCounter = 0;
+
     public BulletBuilder SpawnBullet()
     {
         return new BulletBuilder(this);

@@ -2,15 +2,15 @@ using Microsoft.Xna.Framework;
 
 namespace ParaTH;
 
-// 20 bytes
+// 24 bytes
 public struct RenderState(Vector2 scale, float rotation, Color color, byte layer, StgBlendState blendState)
 {
     public Vector2 Scale = scale;                   // 8
     public float Rotation = rotation;               // 4
     public Color Color = color;                     // 4
+    public uint SpawnId = 0;                        // 4
     public byte Layer = layer;                      // 1
     public StgBlendState BlendState = blendState;   // 1
     public bool IsVisible = true;                   // 1
                                                     // 1 padding, todo: put RendererType here?
 }
-

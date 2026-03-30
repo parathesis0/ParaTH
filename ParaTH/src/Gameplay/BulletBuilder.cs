@@ -738,6 +738,9 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         var sharedAcs = hasAcc ? accelerationInstructions.ToArray() : null;
         var sharedCcs = hasCur ? curveInstructions.ToArray() : null;
 
+        uint baseSpawnId = manager.GlobalSpawnCounter;
+        manager.GlobalSpawnCounter += (uint)amount;
+
         for (int i = 0; i < amount; i++)
         {
             int l = i / way;
@@ -766,7 +769,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
             mvs[i] = new Movement { Velocity = dir * currentMag, Acceleration = accDir * currentAccMag, SyncRenderStateRotation = movement.SyncRenderStateRotation };
             lts[i] = lifetime;
 
-            if (hasRds) rss[i] = renderState;
+            if (hasRds) { rss[i] = renderState; rss[i].SpawnId = baseSpawnId + (uint)i; }
             if (hasSpr) srs[i] = spriteRenderer;
             if (hasAni) ars[i] = animationRenderer;
 
