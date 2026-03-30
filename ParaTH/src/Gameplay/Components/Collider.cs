@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 namespace ParaTH;
 
 // 16 bytes
+// todo: more groups? entity binding? cache AABB for perfiltering?
 // colliders can have only one Group but and multiple TargetGroups. TargetGroups cannot contain self.
 [StructLayout(LayoutKind.Explicit)]
 public struct Collider

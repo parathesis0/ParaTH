@@ -142,6 +142,9 @@ public sealed class Engine : Game
     private AnimationSystem animationSystem = null!;
     private RenderSystem renderSystem = null!;
     private CollisionSystem collisionSystem = null!;
+    private LifetimeSystem lifetimeSystem = null!;
+
+    private Rectangle gameBounds = new(0, 0, 640, 480); // new(640 / 4, 480 / 4, 640 / 2, 480 / 2);
 
     private TestScript script = null!;
 
@@ -196,8 +199,9 @@ public sealed class Engine : Game
 
         movementSystem = new MovementSystem(world);
         animationSystem = new AnimationSystem(world);
-        renderSystem = new RenderSystem(world, stgBatch);
+        renderSystem = new RenderSystem(world, stgBatch, gameBounds);
         collisionSystem = new CollisionSystem(world);
+        lifetimeSystem = new LifetimeSystem(world, gameBounds);
 
         script = new(bulletManager);
     }
@@ -224,6 +228,7 @@ public sealed class Engine : Game
                 script.Update();
             animationSystem.Update();
             movementSystem.Update();
+            lifetimeSystem.Update();
             collisionSystem.Update();
         }
 

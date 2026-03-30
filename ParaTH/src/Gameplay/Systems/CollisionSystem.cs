@@ -121,7 +121,7 @@ public sealed class CollisionSystem : IDisposable
                         // accurate collision check
                         if (Collider.Intersects(nodeA.Collider, nodeA.Position, nodeB.Collider, nodeB.Position))
                         {
-                            Console.WriteLine($"Entity {nodeA.Entity.Id} hit Entity {nodeB.Entity.Id}!");
+                            // todo: trigger entity's callback?
                         }
                     }
                 }

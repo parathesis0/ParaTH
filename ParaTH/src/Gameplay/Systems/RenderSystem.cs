@@ -4,8 +4,9 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-public sealed class RenderSystem(World world, StgBatch batch)
+public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
 {
+    private Rectangle bounds = bounds;
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, RenderState>()
         .WithAny<SpriteRenderer, AnimationRenderer>();
@@ -74,8 +75,10 @@ public sealed class RenderSystem(World world, StgBatch batch)
                     float px = transform.Position.X;
                     float py = transform.Position.Y;
 
-                    if (px + radius > 0 && px - radius < 500 &&
-                        py + radius > 0 && py - radius < 400)
+                    var bounds = this.bounds;
+
+                    if (px + radius > bounds.Left && px - radius < bounds.Right &&
+                        py + radius > bounds.Top && py - radius < bounds.Bottom)
                     {
                         batch.Draw(
                             dp.Texture, transform.Position, dp.SourceRect, dp.Color,
