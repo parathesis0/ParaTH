@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
@@ -22,7 +21,7 @@ public enum SpawningType : byte
 // todos:
 // collision
 // lifetime management
-public ref partial struct BulletBuilder(BulletManager bulletManager)
+public ref struct BulletBuilder(BulletManager bulletManager)
 {
     private readonly BulletManager manager = bulletManager;
 
@@ -47,7 +46,7 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
 
     // optional
     private SpawnAnimation spawnAnimation;
-    private Collider collider;
+    private Collider collider = new() { IsActive = true };
 
     // spawn settings
     private int way = 1;
@@ -524,6 +523,21 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
 
     #region Collider
     [UnscopedRef]
+    public ref BulletBuilder SetCollisionGroup(byte groupMask)
+    {
+        collider.GroupMask = groupMask;
+
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetTargetGroup(byte targetMask)
+    {
+        collider.TargetGroupMask = targetMask;
+
+        return ref this;
+    }
+    [UnscopedRef]
     public ref BulletBuilder SetObbCollider(Vector2 halfSize, float rotation = 0f)
     {
         collider.ShapeType = ShapeType.ObbRect;
@@ -546,8 +560,8 @@ public ref partial struct BulletBuilder(BulletManager bulletManager)
     public ref BulletBuilder SetEllipseCollider(Vector2 halfSize, float rotation = 0f)
     {
         collider.ShapeType = ShapeType.Ellipse;
-        collider.ObbRect.HalfSize = halfSize;
-        collider.ObbRect.Rotation = rotation;
+        collider.Ellipse.HalfSize = halfSize;
+        collider.Ellipse.Rotation = rotation;
 
         return ref this;
     }

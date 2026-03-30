@@ -91,6 +91,15 @@ public sealed class TestScript(BulletManager bulletManager)
             }
         }
 
+        if (counter == 10)
+        {
+            bulletManager.SpawnBullet()
+                .SetPosition(new Vector2(400, 400))
+                .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive)
+                .SetCircleCollider(16f).SetCollisionGroup(0b0000_0001).SetTargetGroup(0b0000_0010)
+                .Build();
+        }
+
         if (counter % 1 == 0)
         {
             //    // spawn control test
@@ -110,9 +119,9 @@ public sealed class TestScript(BulletManager bulletManager)
                 .SetPosition(new Vector2(320, 240))
                 .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
                 .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
-                //.SetAnimation("fireball_ref", Color.White, 100, StgBlendState.Alpha)
                 .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
-                .LerpAddVelocityMagnitude(4f, 120, EaseType.Linear)//.SyncRenderStateRotation()
+                .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRenderStateRotation()
+                .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
                 .Build();
         }
 
@@ -215,6 +224,7 @@ public sealed class Engine : Game
                 script.Update();
             animationSystem.Update();
             movementSystem.Update();
+            collisionSystem.Update();
         }
 
         shouldAdvance = false;

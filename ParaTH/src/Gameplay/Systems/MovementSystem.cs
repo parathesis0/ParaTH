@@ -18,7 +18,7 @@ public sealed class MovementSystem(World world)
             bool hasAcc = archetype.Has<AccelerationController>();
             bool hasCur = archetype.Has<CurveController>();
             bool hasRen = archetype.Has<RenderState>();     // for syncing rotation
-            bool hasSpw = archetype.Has<SpawnAnimation>();  // this one has to stay here, spawnAnimation affects velocity speed
+            bool hasSpw = archetype.Has<SpawnAnimation>();  // this one has to stay here, spawnAnimation affects velocity
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
