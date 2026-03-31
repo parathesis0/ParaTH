@@ -13,7 +13,7 @@ public sealed class UnsafePooledList<T> : IDisposable
 
     public UnsafePooledList(int capacity = 4)
     {
-        items = capacity == 0 ? [] : ArrayPool<T>.Shared.Rent(capacity);
+        items = capacity <= 0 ? [] : ArrayPool<T>.Shared.Rent(capacity);
         count = 0;
     }
 
@@ -25,7 +25,7 @@ public sealed class UnsafePooledList<T> : IDisposable
 
         if ((uint)count < (uint)items.Length)
         {
-            items[count] = item;
+            items.UnsafeAt(count) = item;
             this.count = count + 1;
         }
         else
@@ -40,7 +40,7 @@ public sealed class UnsafePooledList<T> : IDisposable
         int newCapacity = items.Length == 0 ? 4 : items.Length * 2;
         Resize(newCapacity);
 
-        items[count++] = item;
+        items.UnsafeAt(count++) = item;
     }
 
 

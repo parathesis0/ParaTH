@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
@@ -156,10 +157,11 @@ public sealed class Engine : Game
     private int fpsCounter;
     private int currentFps;
 
+    private bool laserStop = false;
+    private int laserMovementCounter;
     private SpriteAsset testLaserSprite = null!;
-    private Queue<Vector2> laserNodeQueue = new();
+    private UnsafePooledQueue<Vector2> laserNodeQueue = new();
     private int maxNodes = 64;
-    private Vector2[] renderNodeArray = [];
 
     private FontAsset debugFontAsset = null!;
 
@@ -170,6 +172,7 @@ public sealed class Engine : Game
         gdm.PreferredBackBufferHeight = 480;
         gdm.SynchronizeWithVerticalRetrace = false;
         gdm.GraphicsProfile = GraphicsProfile.HiDef;
+        IsMouseVisible = false;
         IsFixedTimeStep = true;
         TargetElapsedTime = TimeSpan.FromTicks(166667);
         Content.RootDirectory = "Content";
@@ -210,7 +213,8 @@ public sealed class Engine : Game
 
         script = new(bulletManager);
 
-        testLaserSprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_blue");
+        testLaserSprite = assetManager.Load<SpriteAsset>("bullet/laser_sprites.txt", "curvelaser_lime");
+        //testLaserSprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_blue");
     }
 
     protected override void Update(GameTime gameTime)
@@ -221,6 +225,9 @@ public sealed class Engine : Game
         if (Input.IsKeyPressed(Keys.K))
             shouldAdvance = true;
 
+        if (Input.IsKeyPressed(Keys.L))
+            laserStop = !laserStop;
+
         fpsTimer += gameTime.ElapsedGameTime.TotalSeconds;
         if (fpsTimer >= 1.0)
         {
@@ -229,23 +236,33 @@ public sealed class Engine : Game
             fpsTimer -= 1.0;
         }
 
-        if (!isPaused)
+        // curvy laser test
+        if (!isPaused || shouldAdvance)
         {
             var ms = Mouse.GetState();
             Vector2 currentEmitterPos = new Vector2(ms.X, ms.Y);
+
+            //if (!laserStop)
+            //    laserMovementCounter++;
+            //float angle = laserMovementCounter / 40f;
+            //float radius = 100f + 50 * MathF.Sin(laserMovementCounter / 5f);
+            //Vector2 center = new(320, 240);
+            //Vector2 currentEmitterPos = center + new Vector2(
+            //    radius * MathF.Cos(angle),
+            //    radius * MathF.Sin(angle));
 
             laserNodeQueue.Enqueue(currentEmitterPos);
 
             while (laserNodeQueue.Count > maxNodes)
                 laserNodeQueue.Dequeue();
-
-            renderNodeArray = laserNodeQueue.ToArray();
         }
 
         if (!isPaused || shouldAdvance)
         {
             if (currentFps > 58)
+            {
                 //script.Update();
+            }
             animationSystem.Update();
             movementSystem.Update();
             lifetimeSystem.Update();
@@ -258,6 +275,7 @@ public sealed class Engine : Game
         base.Update(gameTime);
     }
 
+    [SkipLocalsInit]
     protected override void Draw(GameTime gameTime)
     {
         fpsCounter++;
@@ -276,19 +294,30 @@ public sealed class Engine : Game
 
         Color fpsColor = currentFps < 58 ? Color.Red : Color.LimeGreen;
 
-        if (renderNodeArray.Length >= 2)
+        laserNodeQueue.AsSpans(out var first, out var second);
+
+        Span<Vector2> renderNodeSpan = stackalloc Vector2[laserNodeQueue.Count];
+
+        if (second == Span<Vector2>.Empty)
         {
-            stgBatch.DrawCurveLaser(
-                texture: testLaserSprite.Texture,
-                sourceRectangle: testLaserSprite.SourceRect,
-                textureRotation: 0f,
-                nodes: renderNodeArray,
-                halfThickness: 16f,
-                color: Color.White,
-                layerDepth: 150,
-                blendState: StgBlendState.Alpha
-            );
+            renderNodeSpan = first;
         }
+        else
+        {
+            first.CopyTo(renderNodeSpan);
+            second.CopyTo(renderNodeSpan.Slice(first.Length));
+        }
+
+        stgBatch.DrawCurvyLaser(
+            testLaserSprite.Texture,
+            testLaserSprite.SourceRect,
+            MathHelper.Pi,
+            renderNodeSpan,
+            16,
+            Color.White,
+            150,
+            StgBlendState.Alpha
+        );
 
         stgBatch.DrawString(font,
             $"Entities: {entityCount}  |  Archetypes: {archetypeCount}  |  Chunks: {chunkCount}",

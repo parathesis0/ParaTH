@@ -18,9 +18,6 @@ public enum SpawningType : byte
     Spread
 }
 
-// todos:
-// collision
-// lifetime management
 public ref struct BulletBuilder(BulletManager bulletManager)
 {
     private readonly BulletManager manager = bulletManager;

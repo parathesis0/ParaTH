@@ -114,7 +114,7 @@ public sealed unsafe class StgBatch : IDisposable
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
         using var stream = assembly.GetManifestResourceStream("StgSpriteEffect");
         if (stream is null)
-            Throw("StgSpriteEffect not found.");
+            HelperThrow("StgSpriteEffect not found.");
         byte[] effectCode = new byte[stream.Length];
         stream.ReadExactly(effectCode, 0, effectCode.Length);
 
@@ -174,7 +174,7 @@ public sealed unsafe class StgBatch : IDisposable
         Matrix transformMatrix)
     {
         if (hasBegun)
-            Throw("Begin called before calling End.");
+            HelperThrow("Begin called before calling End.");
         hasBegun = true;
 
         this.samplerState = samplerState;
@@ -189,7 +189,7 @@ public sealed unsafe class StgBatch : IDisposable
     public void End()
     {
         if (!hasBegun)
-            Throw("End called before calling Begin.");
+            HelperThrow("End called before calling Begin.");
         hasBegun = false;
 
         FlushBatch();
@@ -212,7 +212,7 @@ public sealed unsafe class StgBatch : IDisposable
         StgBlendState blendState)
     {
         if (!hasBegun)
-            Throw("Draw called before Begin.");
+            HelperThrow("Draw called before Begin.");
 
         if (vertexCount + 4 > rawVertices.Length ||
             indexCount + 6 > rawIndices.Length)
@@ -343,7 +343,7 @@ public sealed unsafe class StgBatch : IDisposable
         StgBlendState blendState)
     {
         if (!hasBegun)
-            Throw("Draw called before Begin.");
+            HelperThrow("Draw called before Begin.");
 
         if (vertices.Length < 3) return;
 
@@ -389,30 +389,50 @@ public sealed unsafe class StgBatch : IDisposable
         textureInfo.UnsafeAt(commandCount++) = texture;
     }
 
-    public void DrawCurveLaser(
+    public void DrawCurvyLaser(
         Texture2D texture,
         Rectangle? sourceRectangle,
         float textureRotation,
-        Vector2[] nodes,
+        ReadOnlySpan<Vector2> nodes,
         float halfThickness,
         Color color,
         byte layerDepth,
         StgBlendState blendState)
     {
         if (!hasBegun)
-            Throw("Draw called before Begin.");
+            HelperThrow("Draw called before Begin.");
 
-        if (nodes == null || nodes.Length < 2) return;
+        int rawCount = nodes.Length;
+        if (rawCount < 2)
+            return;
 
-        //  0   1   2   3
-        //  *---*---*---*... <- vCount
-        //  |  /|  /|  /|...
-        //  · / · / · / ·... <- nodes (no vertices here)
-        //  |/  |/  |/  |... <- forms a quad, therefore iCount
-        //  *---*---*---*... <- vCount
-        //  0   1   2   3
+        // filter out overlapping nodes and calculate arc length
+        const float kMinSegLen = 0.5f;
 
-        int pointsCount = nodes.Length;
+        Vector2* pts = stackalloc Vector2[rawCount];
+        float* cumArc = stackalloc float[rawCount];
+
+        pts[0] = nodes.UnsafeAt(0);
+        cumArc[0] = 0f;
+        int pointsCount = 1;
+        float totalArc = 0f;
+
+        for (int i = 1; i < rawCount; i++)
+        {
+            float d = Vector2.Distance(pts[pointsCount - 1], nodes.UnsafeAt(i));
+            if (d >= kMinSegLen)
+            {
+                totalArc += d;
+                pts[pointsCount] = nodes.UnsafeAt(i);
+                cumArc[pointsCount] = totalArc;
+                pointsCount++;
+            }
+        }
+
+        // don't draw if laser gets crushed to one point
+        if (pointsCount < 2 || totalArc < kMinSegLen)
+            return;
+
         int vCount = pointsCount * 2;
         int iCount = (pointsCount - 1) * 6;
 
@@ -445,49 +465,163 @@ public sealed unsafe class StgBatch : IDisposable
         Vector2 uvTR = new(cu + halfU * cos + halfV * sin, cv + halfU * sin - halfV * cos);
         Vector2 uvBR = new(cu + halfU * cos - halfV * sin, cv + halfU * sin + halfV * cos);
 
+        // generate vertices, use miter join for consistent width at bends
         int startVertex = vertexCount;
         int startIndex = indexCount;
 
         VertexPositionColorTexture* currVertex = vPtr + vertexCount;
+        float invTotalArc = 1f / totalArc;
 
-        // generate vertices
-        for (int i = 0; i < pointsCount; i++)
+        // head node, perpendicular
         {
-            Vector2 currentPos = nodes.UnsafeAt(i);
-            Vector2 dir;
+            Vector2 currentPos = pts[0];
+            Vector2 segDir = pts[1] - pts[0];
+            float len = segDir.Length();
+            if (len > 1e-6f) segDir /= len;
+            else segDir = Vector2.UnitX;
+            float expandX = -segDir.Y * halfThickness;
+            float expandY = segDir.X * halfThickness;
 
-            if (i == 0)
-                dir = nodes.UnsafeAt(1) - currentPos;
-            else if (i == pointsCount - 1)
-                dir = currentPos - nodes.UnsafeAt(i - 1);
-            else
-                dir = nodes.UnsafeAt(i + 1) - nodes.UnsafeAt(i - 1);
-
-            if (dir.X != 0 || dir.Y != 0)
-                dir.Normalize();
-            else
-                dir = Vector2.UnitX;
-
-            Vector2 normal = new(-dir.Y, dir.X);
-
-            float t = (float)i / (pointsCount - 1);
-
+            // uv lerp with arc length
+            float t = cumArc[0] * invTotalArc;
             Vector2 topUV = Vector2.Lerp(uvTL, uvTR, t);
             Vector2 bottomUV = Vector2.Lerp(uvBL, uvBR, t);
 
-            currVertex->Position.X = currentPos.X + normal.X * halfThickness;
-            currVertex->Position.Y = currentPos.Y + normal.Y * halfThickness;
+            currVertex->Position.X = currentPos.X + expandX;
+            currVertex->Position.Y = currentPos.Y + expandY;
             currVertex->Position.Z = 0;
             currVertex->Color = color;
             currVertex->TextureCoordinate = topUV;
             currVertex++;
 
-            currVertex->Position.X = currentPos.X - normal.X * halfThickness;
-            currVertex->Position.Y = currentPos.Y - normal.Y * halfThickness;
+            currVertex->Position.X = currentPos.X - expandX;
+            currVertex->Position.Y = currentPos.Y - expandY;
             currVertex->Position.Z = 0;
             currVertex->Color = color;
             currVertex->TextureCoordinate = bottomUV;
             currVertex++;
+        }
+
+        // middle nodes, bisector and miter join
+        for (int i = 1; i < pointsCount - 1; i++)
+        {
+            Vector2 currentPos = pts[i];
+
+            Vector2 toPrev = pts[i - 1] - currentPos;
+            Vector2 toNext = pts[i + 1] - currentPos;
+
+            float lenPrev = toPrev.Length();
+            float lenNext = toNext.Length();
+
+            Vector2 normPrev = lenPrev > 1e-6f ? toPrev / lenPrev : Vector2.UnitX;
+            Vector2 normNext = lenNext > 1e-6f ? toNext / lenNext : Vector2.UnitX;
+
+            Vector2 bisect = normPrev + normNext;
+            float bisectLen = bisect.Length();
+
+            float expandX, expandY;
+
+            if (bisectLen < 0.00002f || bisectLen > 1.99998f)
+            {
+                // u bend, just use perpendicular
+                expandX = normPrev.Y * halfThickness;
+                expandY = -normPrev.X * halfThickness;
+            }
+            else
+            {
+                bisect /= bisectLen;
+
+                float crossVal = bisect.X * normPrev.Y - bisect.Y * normPrev.X;
+                float absCross = MathF.Abs(crossVal);
+
+                if (absCross < 1e-6f)
+                {
+                    expandX = normPrev.Y * halfThickness;
+                    expandY = -normPrev.X * halfThickness;
+                }
+                else
+                {
+                    float expandDelta = halfThickness / absCross;
+                    expandX = bisect.X * expandDelta;
+                    expandY = bisect.Y * expandDelta;
+                }
+            }
+
+            // uv lerp with arc length
+            float t = cumArc[i] * invTotalArc;
+            Vector2 topUV = Vector2.Lerp(uvTL, uvTR, t);
+            Vector2 bottomUV = Vector2.Lerp(uvBL, uvBR, t);
+
+            currVertex->Position.X = currentPos.X + expandX;
+            currVertex->Position.Y = currentPos.Y + expandY;
+            currVertex->Position.Z = 0;
+            currVertex->Color = color;
+            currVertex->TextureCoordinate = topUV;
+            currVertex++;
+
+            currVertex->Position.X = currentPos.X - expandX;
+            currVertex->Position.Y = currentPos.Y - expandY;
+            currVertex->Position.Z = 0;
+            currVertex->Color = color;
+            currVertex->TextureCoordinate = bottomUV;
+            currVertex++;
+        }
+
+        // tail node, perpendicular
+        {
+            int i = pointsCount - 1;
+            Vector2 currentPos = pts[i];
+            Vector2 segDir = pts[i] - pts[i - 1];
+            float len = segDir.Length();
+            if (len > 1e-6f) segDir /= len;
+            else segDir = Vector2.UnitX;
+            float expandX = -segDir.Y * halfThickness;
+            float expandY = segDir.X * halfThickness;
+
+            // uv lerp with arc length
+            float t = cumArc[i] * invTotalArc;
+            Vector2 topUV = Vector2.Lerp(uvTL, uvTR, t);
+            Vector2 bottomUV = Vector2.Lerp(uvBL, uvBR, t);
+
+            currVertex->Position.X = currentPos.X + expandX;
+            currVertex->Position.Y = currentPos.Y + expandY;
+            currVertex->Position.Z = 0;
+            currVertex->Color = color;
+            currVertex->TextureCoordinate = topUV;
+            currVertex++;
+
+            currVertex->Position.X = currentPos.X - expandX;
+            currVertex->Position.Y = currentPos.Y - expandY;
+            currVertex->Position.Z = 0;
+            currVertex->Color = color;
+            currVertex->TextureCoordinate = bottomUV;
+            currVertex++;
+        }
+
+        // cross fix
+        VertexPositionColorTexture* baseVert = vPtr + startVertex;
+        for (int i = 0; i < pointsCount - 1; i++)
+        {
+            int tl = i * 2, bl = i * 2 + 1;
+            int tr = i * 2 + 2, br = i * 2 + 3;
+
+            float ex = baseVert[tr].Position.X - baseVert[tl].Position.X;
+            float ey = baseVert[tr].Position.Y - baseVert[tl].Position.Y;
+            float fx = baseVert[br].Position.X - baseVert[bl].Position.X;
+            float fy = baseVert[br].Position.Y - baseVert[bl].Position.Y;
+            float dot1 = ex * fx + ey * fy;
+
+            float gx = baseVert[br].Position.X - baseVert[tl].Position.X;
+            float gy = baseVert[br].Position.Y - baseVert[tl].Position.Y;
+            float hx = baseVert[tr].Position.X - baseVert[bl].Position.X;
+            float hy = baseVert[tr].Position.Y - baseVert[bl].Position.Y;
+            float dot2 = gx * hx + gy * hy;
+
+            if (dot2 > dot1)
+            {
+                // cross happens, swap nodes
+                (baseVert[br].Position, baseVert[tr].Position) = (baseVert[tr].Position, baseVert[br].Position);
+            }
         }
 
         // generate indices
@@ -522,7 +656,7 @@ public sealed unsafe class StgBatch : IDisposable
     [MethodImpl(MethodImplOptions.NoInlining)]
     [DoesNotReturn]
     [StackTraceHidden]
-    private static void Throw(string? msg)
+    private static void HelperThrow(string? msg)
     {
         throw new InvalidOperationException(msg);
     }

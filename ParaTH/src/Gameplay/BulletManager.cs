@@ -1,5 +1,3 @@
-using Microsoft.Xna.Framework;
-
 namespace ParaTH;
 
 public sealed class BulletManager(World world, AssetManager asset)
