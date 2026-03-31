@@ -156,6 +156,11 @@ public sealed class Engine : Game
     private int fpsCounter;
     private int currentFps;
 
+    private SpriteAsset testLaserSprite = null!;
+    private Queue<Vector2> laserNodeQueue = new();
+    private int maxNodes = 64;
+    private Vector2[] renderNodeArray = [];
+
     private FontAsset debugFontAsset = null!;
 
     public Engine()
@@ -204,6 +209,8 @@ public sealed class Engine : Game
         lifetimeSystem = new LifetimeSystem(world, gameBounds);
 
         script = new(bulletManager);
+
+        testLaserSprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_blue");
     }
 
     protected override void Update(GameTime gameTime)
@@ -222,10 +229,23 @@ public sealed class Engine : Game
             fpsTimer -= 1.0;
         }
 
+        if (!isPaused)
+        {
+            var ms = Mouse.GetState();
+            Vector2 currentEmitterPos = new Vector2(ms.X, ms.Y);
+
+            laserNodeQueue.Enqueue(currentEmitterPos);
+
+            while (laserNodeQueue.Count > maxNodes)
+                laserNodeQueue.Dequeue();
+
+            renderNodeArray = laserNodeQueue.ToArray();
+        }
+
         if (!isPaused || shouldAdvance)
         {
             if (currentFps > 58)
-                script.Update();
+                //script.Update();
             animationSystem.Update();
             movementSystem.Update();
             lifetimeSystem.Update();
@@ -255,6 +275,20 @@ public sealed class Engine : Game
         var chunkCount = world.CountChunks(QueryDescriptor.MatchAll);
 
         Color fpsColor = currentFps < 58 ? Color.Red : Color.LimeGreen;
+
+        if (renderNodeArray.Length >= 2)
+        {
+            stgBatch.DrawCurveLaser(
+                texture: testLaserSprite.Texture,
+                sourceRectangle: testLaserSprite.SourceRect,
+                textureRotation: 0f,
+                nodes: renderNodeArray,
+                halfThickness: 16f,
+                color: Color.White,
+                layerDepth: 150,
+                blendState: StgBlendState.Alpha
+            );
+        }
 
         stgBatch.DrawString(font,
             $"Entities: {entityCount}  |  Archetypes: {archetypeCount}  |  Chunks: {chunkCount}",

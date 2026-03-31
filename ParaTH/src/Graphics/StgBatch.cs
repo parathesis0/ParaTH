@@ -1,6 +1,9 @@
-using System.Runtime.InteropServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace ParaTH;
 
@@ -109,8 +112,9 @@ public sealed unsafe class StgBatch : IDisposable
         sPtr = (short*)sHandle.AddrOfPinnedObject();
 
         var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-        using var stream = assembly.GetManifestResourceStream("StgSpriteEffect") ??
-                           throw new InvalidOperationException("StgSpriteEffect not found.");
+        using var stream = assembly.GetManifestResourceStream("StgSpriteEffect");
+        if (stream is null)
+            Throw("StgSpriteEffect not found.");
         byte[] effectCode = new byte[stream.Length];
         stream.ReadExactly(effectCode, 0, effectCode.Length);
 
@@ -170,7 +174,7 @@ public sealed unsafe class StgBatch : IDisposable
         Matrix transformMatrix)
     {
         if (hasBegun)
-            throw new InvalidOperationException("Begin called before calling End.");
+            Throw("Begin called before calling End.");
         hasBegun = true;
 
         this.samplerState = samplerState;
@@ -185,7 +189,7 @@ public sealed unsafe class StgBatch : IDisposable
     public void End()
     {
         if (!hasBegun)
-            throw new InvalidOperationException("End called before calling Begin.");
+            Throw("End called before calling Begin.");
         hasBegun = false;
 
         FlushBatch();
@@ -208,7 +212,7 @@ public sealed unsafe class StgBatch : IDisposable
         StgBlendState blendState)
     {
         if (!hasBegun)
-            throw new InvalidOperationException("Draw called before Begin.");
+            Throw("Draw called before Begin.");
 
         if (vertexCount + 4 > rawVertices.Length ||
             indexCount + 6 > rawIndices.Length)
@@ -339,7 +343,7 @@ public sealed unsafe class StgBatch : IDisposable
         StgBlendState blendState)
     {
         if (!hasBegun)
-            throw new InvalidOperationException("Draw called before Begin.");
+            Throw("Draw called before Begin.");
 
         if (vertices.Length < 3) return;
 
@@ -384,9 +388,145 @@ public sealed unsafe class StgBatch : IDisposable
         buckets.UnsafeAt(layerDepth).Add(new DrawCommand(commandCount, startIndex, iCount, blendState));
         textureInfo.UnsafeAt(commandCount++) = texture;
     }
+
+    public void DrawCurveLaser(
+        Texture2D texture,
+        Rectangle? sourceRectangle,
+        float textureRotation,
+        Vector2[] nodes,
+        float halfThickness,
+        Color color,
+        byte layerDepth,
+        StgBlendState blendState)
+    {
+        if (!hasBegun)
+            Throw("Draw called before Begin.");
+
+        if (nodes == null || nodes.Length < 2) return;
+
+        //  0   1   2   3
+        //  *---*---*---*... <- vCount
+        //  |  /|  /|  /|...
+        //  · / · / · / ·... <- nodes (no vertices here)
+        //  |/  |/  |/  |... <- forms a quad, therefore iCount
+        //  *---*---*---*... <- vCount
+        //  0   1   2   3
+
+        int pointsCount = nodes.Length;
+        int vCount = pointsCount * 2;
+        int iCount = (pointsCount - 1) * 6;
+
+        if (vertexCount + vCount > MaxVertices ||
+            indexCount + iCount > MaxVertices * 3)
+        {
+            FlushBatch();
+        }
+
+        // transform uv
+        Rectangle source = sourceRectangle ?? new Rectangle(0, 0, texture.Width, texture.Height);
+        float invTexWidth = 1f / texture.Width;
+        float invTexHeight = 1f / texture.Height;
+
+        float u0 = source.X * invTexWidth;
+        float v0 = source.Y * invTexHeight;
+        float u1 = (source.X + source.Width) * invTexWidth;
+        float v1 = (source.Y + source.Height) * invTexHeight;
+
+        float cu = (u0 + u1) * 0.5f;
+        float cv = (v0 + v1) * 0.5f;
+        float halfU = (u1 - u0) * 0.5f;
+        float halfV = (v1 - v0) * 0.5f;
+
+        float cos = MathF.Cos(textureRotation);
+        float sin = MathF.Sin(textureRotation);
+
+        Vector2 uvTL = new(cu - halfU * cos + halfV * sin, cv - halfU * sin - halfV * cos);
+        Vector2 uvBL = new(cu - halfU * cos - halfV * sin, cv - halfU * sin + halfV * cos);
+        Vector2 uvTR = new(cu + halfU * cos + halfV * sin, cv + halfU * sin - halfV * cos);
+        Vector2 uvBR = new(cu + halfU * cos - halfV * sin, cv + halfU * sin + halfV * cos);
+
+        int startVertex = vertexCount;
+        int startIndex = indexCount;
+
+        VertexPositionColorTexture* currVertex = vPtr + vertexCount;
+
+        // generate vertices
+        for (int i = 0; i < pointsCount; i++)
+        {
+            Vector2 currentPos = nodes.UnsafeAt(i);
+            Vector2 dir;
+
+            if (i == 0)
+                dir = nodes.UnsafeAt(1) - currentPos;
+            else if (i == pointsCount - 1)
+                dir = currentPos - nodes.UnsafeAt(i - 1);
+            else
+                dir = nodes.UnsafeAt(i + 1) - nodes.UnsafeAt(i - 1);
+
+            if (dir.X != 0 || dir.Y != 0)
+                dir.Normalize();
+            else
+                dir = Vector2.UnitX;
+
+            Vector2 normal = new(-dir.Y, dir.X);
+
+            float t = (float)i / (pointsCount - 1);
+
+            Vector2 topUV = Vector2.Lerp(uvTL, uvTR, t);
+            Vector2 bottomUV = Vector2.Lerp(uvBL, uvBR, t);
+
+            currVertex->Position.X = currentPos.X + normal.X * halfThickness;
+            currVertex->Position.Y = currentPos.Y + normal.Y * halfThickness;
+            currVertex->Position.Z = 0;
+            currVertex->Color = color;
+            currVertex->TextureCoordinate = topUV;
+            currVertex++;
+
+            currVertex->Position.X = currentPos.X - normal.X * halfThickness;
+            currVertex->Position.Y = currentPos.Y - normal.Y * halfThickness;
+            currVertex->Position.Z = 0;
+            currVertex->Color = color;
+            currVertex->TextureCoordinate = bottomUV;
+            currVertex++;
+        }
+
+        // generate indices
+        short* currIndex = iPtr + indexCount;
+        short baseV = (short)startVertex;
+
+        for (int i = 0; i < pointsCount - 1; i++)
+        {
+            short t0 = (short)(baseV + i * 2);
+            short b0 = (short)(baseV + i * 2 + 1);
+            short t1 = (short)(baseV + i * 2 + 2);
+            short b1 = (short)(baseV + i * 2 + 3);
+
+            *(currIndex++) = t0;
+            *(currIndex++) = b0;
+            *(currIndex++) = t1;
+
+            *(currIndex++) = b0;
+            *(currIndex++) = b1;
+            *(currIndex++) = t1;
+        }
+
+        vertexCount += vCount;
+        indexCount += iCount;
+
+        buckets.UnsafeAt(layerDepth).Add(new DrawCommand(commandCount, startIndex, iCount, blendState));
+        textureInfo.UnsafeAt(commandCount++) = texture;
+    }
     #endregion
 
     #region Private Methods
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    [DoesNotReturn]
+    [StackTraceHidden]
+    private static void Throw(string? msg)
+    {
+        throw new InvalidOperationException(msg);
+    }
+
     private void FlushBatch()
     {
         if (vertexCount == 0) return;
