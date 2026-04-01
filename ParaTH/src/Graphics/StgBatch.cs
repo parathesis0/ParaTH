@@ -389,15 +389,16 @@ public sealed unsafe class StgBatch : IDisposable
         textureInfo.UnsafeAt(commandCount++) = texture;
     }
 
+    // this looks good enough, do not modify unless it lags really really bad
     public void DrawCurvyLaser(
-        Texture2D texture,
-        Rectangle? sourceRectangle,
-        float textureRotation,
-        ReadOnlySpan<Vector2> nodes,
-        float halfThickness,
-        Color color,
-        byte layerDepth,
-        StgBlendState blendState)
+            Texture2D texture,
+            Rectangle? sourceRectangle,
+            float textureRotation,
+            ReadOnlySpan<Vector2> nodes,
+            float halfThickness,
+            Color color,
+            byte layerDepth,
+            StgBlendState blendState)
     {
         if (!hasBegun)
             HelperThrow("Draw called before Begin.");
@@ -465,28 +466,36 @@ public sealed unsafe class StgBatch : IDisposable
         Vector2 uvTR = new(cu + halfU * cos + halfV * sin, cv + halfU * sin - halfV * cos);
         Vector2 uvBR = new(cu + halfU * cos - halfV * sin, cv + halfU * sin + halfV * cos);
 
-        // generate vertices, use miter join for consistent width at bends
+        // generate vertices — consistent normal-based miter, no cross fix needed
         int startVertex = vertexCount;
         int startIndex = indexCount;
 
         VertexPositionColorTexture* currVertex = vPtr + vertexCount;
         float invTotalArc = 1f / totalArc;
 
-        // head node, perpendicular
+        // miter limit: max expand = halfThickness / kMiterMinDot
+        // 0.25 → max 4x, handles bends up to ~150°
+        const float kMiterMinDot = 0.25f;
+
+        // head node
         {
             Vector2 currentPos = pts[0];
-            Vector2 segDir = pts[1] - pts[0];
-            float len = segDir.Length();
-            if (len > 1e-6f) segDir /= len;
-            else segDir = Vector2.UnitX;
-            float expandX = -segDir.Y * halfThickness;
-            float expandY = segDir.X * halfThickness;
+            float expandX, expandY;
 
-            // uv lerp with arc length
+            // head: outgoing perpendicular
+            Vector2 dir = pts[1] - pts[0];
+            float len = dir.Length();
+            if (len > 1e-6f) dir /= len; else dir = Vector2.UnitX;
+            // left normal = (-dir.Y, dir.X)
+            expandX = -dir.Y * halfThickness;
+            expandY = dir.X * halfThickness;
+
+            // uv
             float t = cumArc[0] * invTotalArc;
             Vector2 topUV = Vector2.Lerp(uvTL, uvTR, t);
             Vector2 bottomUV = Vector2.Lerp(uvBL, uvBR, t);
 
+            // left vertex  (+ expand)
             currVertex->Position.X = currentPos.X + expandX;
             currVertex->Position.Y = currentPos.Y + expandY;
             currVertex->Position.Z = 0;
@@ -494,6 +503,7 @@ public sealed unsafe class StgBatch : IDisposable
             currVertex->TextureCoordinate = topUV;
             currVertex++;
 
+            // right vertex (- expand)
             currVertex->Position.X = currentPos.X - expandX;
             currVertex->Position.Y = currentPos.Y - expandY;
             currVertex->Position.Z = 0;
@@ -502,56 +512,48 @@ public sealed unsafe class StgBatch : IDisposable
             currVertex++;
         }
 
-        // middle nodes, bisector and miter join
+        // middle nodes
         for (int i = 1; i < pointsCount - 1; i++)
         {
             Vector2 currentPos = pts[i];
-
-            Vector2 toPrev = pts[i - 1] - currentPos;
-            Vector2 toNext = pts[i + 1] - currentPos;
-
-            float lenPrev = toPrev.Length();
-            float lenNext = toNext.Length();
-
-            Vector2 normPrev = lenPrev > 1e-6f ? toPrev / lenPrev : Vector2.UnitX;
-            Vector2 normNext = lenNext > 1e-6f ? toNext / lenNext : Vector2.UnitX;
-
-            Vector2 bisect = normPrev + normNext;
-            float bisectLen = bisect.Length();
-
             float expandX, expandY;
 
-            if (bisectLen < 0.00002f || bisectLen > 1.99998f)
+            // middle: miter join
+            Vector2 dIn = pts[i] - pts[i - 1];  // incoming direction
+            Vector2 dOut = pts[i + 1] - pts[i]; // outgoing direction
+            float lenIn = dIn.Length();
+            float lenOut = dOut.Length();
+            if (lenIn > 1e-6f) dIn /= lenIn; else dIn = Vector2.UnitX;
+            if (lenOut > 1e-6f) dOut /= lenOut; else dOut = Vector2.UnitX;
+
+            Vector2 nIn = new(-dIn.Y, dIn.X);
+            Vector2 nOut = new(-dOut.Y, dOut.X);
+
+            Vector2 miter = nIn + nOut;
+            float miterLen = miter.Length();
+
+            if (miterLen < 1e-4f)
             {
-                // u bend, just use perpendicular
-                expandX = normPrev.Y * halfThickness;
-                expandY = -normPrev.X * halfThickness;
+                // u turn, fallback to in normal
+                expandX = nIn.X * halfThickness;
+                expandY = nIn.Y * halfThickness;
             }
             else
             {
-                bisect /= bisectLen;
-
-                float crossVal = bisect.X * normPrev.Y - bisect.Y * normPrev.X;
-                float absCross = MathF.Abs(crossVal);
-
-                if (absCross < 1e-6f)
-                {
-                    expandX = normPrev.Y * halfThickness;
-                    expandY = -normPrev.X * halfThickness;
-                }
-                else
-                {
-                    float expandDelta = halfThickness / absCross;
-                    expandX = bisect.X * expandDelta;
-                    expandY = bisect.Y * expandDelta;
-                }
+                miter /= miterLen;                              // normalize
+                float d = miter.X * nIn.X + miter.Y * nIn.Y;    // dot(miter, nIn)
+                d = MathF.Max(d, kMiterMinDot);                 // miter limit clamp
+                float scale = halfThickness / d;
+                expandX = miter.X * scale;
+                expandY = miter.Y * scale;
             }
 
-            // uv lerp with arc length
+            // uv
             float t = cumArc[i] * invTotalArc;
             Vector2 topUV = Vector2.Lerp(uvTL, uvTR, t);
             Vector2 bottomUV = Vector2.Lerp(uvBL, uvBR, t);
 
+            // left vertex  (+ expand)
             currVertex->Position.X = currentPos.X + expandX;
             currVertex->Position.Y = currentPos.Y + expandY;
             currVertex->Position.Z = 0;
@@ -559,6 +561,7 @@ public sealed unsafe class StgBatch : IDisposable
             currVertex->TextureCoordinate = topUV;
             currVertex++;
 
+            // right vertex (- expand)
             currVertex->Position.X = currentPos.X - expandX;
             currVertex->Position.Y = currentPos.Y - expandY;
             currVertex->Position.Z = 0;
@@ -567,22 +570,25 @@ public sealed unsafe class StgBatch : IDisposable
             currVertex++;
         }
 
-        // tail node, perpendicular
+        // tail node
         {
             int i = pointsCount - 1;
             Vector2 currentPos = pts[i];
-            Vector2 segDir = pts[i] - pts[i - 1];
-            float len = segDir.Length();
-            if (len > 1e-6f) segDir /= len;
-            else segDir = Vector2.UnitX;
-            float expandX = -segDir.Y * halfThickness;
-            float expandY = segDir.X * halfThickness;
+            float expandX, expandY;
 
-            // uv lerp with arc length
+            // tail: incoming perpendicular
+            Vector2 dir = pts[i] - pts[i - 1];
+            float len = dir.Length();
+            if (len > 1e-6f) dir /= len; else dir = Vector2.UnitX;
+            expandX = -dir.Y * halfThickness;
+            expandY = dir.X * halfThickness;
+
+            // uv
             float t = cumArc[i] * invTotalArc;
             Vector2 topUV = Vector2.Lerp(uvTL, uvTR, t);
             Vector2 bottomUV = Vector2.Lerp(uvBL, uvBR, t);
 
+            // left vertex  (+ expand)
             currVertex->Position.X = currentPos.X + expandX;
             currVertex->Position.Y = currentPos.Y + expandY;
             currVertex->Position.Z = 0;
@@ -590,38 +596,13 @@ public sealed unsafe class StgBatch : IDisposable
             currVertex->TextureCoordinate = topUV;
             currVertex++;
 
+            // right vertex (- expand)
             currVertex->Position.X = currentPos.X - expandX;
             currVertex->Position.Y = currentPos.Y - expandY;
             currVertex->Position.Z = 0;
             currVertex->Color = color;
             currVertex->TextureCoordinate = bottomUV;
             currVertex++;
-        }
-
-        // cross fix
-        VertexPositionColorTexture* baseVert = vPtr + startVertex;
-        for (int i = 0; i < pointsCount - 1; i++)
-        {
-            int tl = i * 2, bl = i * 2 + 1;
-            int tr = i * 2 + 2, br = i * 2 + 3;
-
-            float ex = baseVert[tr].Position.X - baseVert[tl].Position.X;
-            float ey = baseVert[tr].Position.Y - baseVert[tl].Position.Y;
-            float fx = baseVert[br].Position.X - baseVert[bl].Position.X;
-            float fy = baseVert[br].Position.Y - baseVert[bl].Position.Y;
-            float dot1 = ex * fx + ey * fy;
-
-            float gx = baseVert[br].Position.X - baseVert[tl].Position.X;
-            float gy = baseVert[br].Position.Y - baseVert[tl].Position.Y;
-            float hx = baseVert[tr].Position.X - baseVert[bl].Position.X;
-            float hy = baseVert[tr].Position.Y - baseVert[bl].Position.Y;
-            float dot2 = gx * hx + gy * hy;
-
-            if (dot2 > dot1)
-            {
-                // cross happens, swap nodes
-                (baseVert[br].Position, baseVert[tr].Position) = (baseVert[tr].Position, baseVert[br].Position);
-            }
         }
 
         // generate indices

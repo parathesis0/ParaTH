@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
@@ -75,10 +76,10 @@ public sealed class UnsafePooledList<T> : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Clear(bool clearValue)
+    public void Clear()
     {
-        if (clearValue && count > 0)
-            Array.Clear(items, 0, count);
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<T>() && count > 0)
+            AsSpan().Clear();
 
         count = 0;
     }

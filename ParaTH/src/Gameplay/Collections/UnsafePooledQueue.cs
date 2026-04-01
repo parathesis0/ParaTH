@@ -127,20 +127,21 @@ public sealed class UnsafePooledQueue<T> : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Clear(bool clearValues)
+    public void Clear()
     {
-        if (clearValues && size > 0)
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<T>() && size > 0)
         {
             if (head < tail)
             {
-                Array.Clear(items, head, size);
+                items.AsSpan(head, size).Clear();
             }
             else
             {
-                Array.Clear(items, head, items.Length - head);
-                Array.Clear(items, 0, tail);
+                items.AsSpan(head, items.Length - head).Clear();
+                items.AsSpan(0, tail).Clear();
             }
         }
+
         head = tail = size = 0;
     }
 

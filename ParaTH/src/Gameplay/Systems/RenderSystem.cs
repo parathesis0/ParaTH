@@ -51,8 +51,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
 
     public void Update()
     {
-        deferredDraws.Clear(false);
-        sortKeys.Clear(false);
+        deferredDraws.Clear();
+        sortKeys.Clear();
 
         var q = world.GetOrCreateQuery(descriptor);
 
@@ -137,7 +137,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
 
         for (int i = 0; i < keysSpan.Length; i++)
         {
-            ref var d = ref dataSpan[keysSpan[i].Index];
+            ref var d = ref dataSpan.UnsafeAt(keysSpan.UnsafeAt(i).Index);
             batch.Draw(
                 d.Texture, d.Position, d.SourceRect, d.Color,
                 d.Rotation, d.Anchor, d.Scale,

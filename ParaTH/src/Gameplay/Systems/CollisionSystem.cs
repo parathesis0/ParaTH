@@ -43,7 +43,7 @@ public sealed class CollisionSystem : IDisposable
         // clean up
         for (int i = 0; i < Collider.MaxGroups; i++)
         {
-            gl.UnsafeAt(i).Clear(false);
+            gl.UnsafeAt(i).Clear();
             gtu.UnsafeAt(i) = 0;
         }
 
