@@ -1,7 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
@@ -101,7 +100,7 @@ public sealed class TestScript(BulletManager bulletManager)
                 .Build();
         }
 
-        if (counter % 30 == 0)
+        if (counter % 1 == 0)
         {
             // spawn control test
             //bulletManager.SpawnBullet()
@@ -116,25 +115,39 @@ public sealed class TestScript(BulletManager bulletManager)
             //    .Build();
 
             // spawnAnimation test
-            //bulletManager.SpawnBullet()
-            //    .SetPosition(new Vector2(320, 240))
-            //    .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
-            //    .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
-            //    .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
-            //    .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRenderStateRotation()
-            //    .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
-            //    .Build();
-
-            // curvy laser test
             bulletManager.SpawnBullet()
                 .SetPosition(new Vector2(320, 240))
-                //.SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
-                .SetSprite("curvylaser_lime", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
-                .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(6)
-                .SetAngularVelocity(0.05f)
-                .SetCollisionGroup(0b0000_0010)
-                .MakeCurvyLaser(512, 16f)
+                .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
+                .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
+                .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
+                .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRenderStateRotation()
+                .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
                 .Build();
+
+            // curvy laser test
+            //bulletManager.SpawnBullet()
+            //    .SetPosition(new Vector2(320, 240))
+            //    //.SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
+            //    .SetSprite("curvylaser_lime", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+            //    .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(6)
+            //    .SetAngularVelocity(0.05f)
+            //    .SetCollisionGroup(0b0000_0010)
+            //    .MakeCurvyLaser(512, 16f)
+            //    .Build();
+
+            //bulletManager.SpawnBullet()
+            //    .SetPosition(new Vector2(320, 240))
+            //    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+            //    .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(60)
+            //    .AddMovementAngle(1f).Delay(20)
+            //    .AddMovementAngle(-1f).Delay(20)
+            //    .AddMovementAngle(1f).Delay(20)
+            //    .AddMovementAngle(-1f).Delay(20)
+            //    .AddMovementAngle(1f).Delay(20)
+            //    .AddMovementAngle(-1f)
+            //    .SetCollisionGroup(0b0000_0010)
+            //    .MakeCurvyLaser(128, 16f)
+            //    .Build();
         }
 
         counter++;
@@ -218,7 +231,8 @@ public sealed class Engine : Game
 
         script = new(bulletManager);
 
-        assetManager.Load<SpriteAsset>("bullet/laser_sprites.txt", "curvylaser_lime");
+        assetManager.Load<SpriteAsset>("bullet/curvylaser_sprites.txt", "curvylaser_lime");
+        assetManager.Load<AnimationAsset>("bullet/curvylaser_animations.txt", "lightning");
     }
 
     protected override void Update(GameTime gameTime)

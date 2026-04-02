@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
+public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) : IDisposable
 {
     private Rectangle bounds = bounds;
     private QueryDescriptor descriptor = new QueryDescriptor()
@@ -300,5 +300,12 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
             anim.StartScale.Y, state.Scale.Y, Easing.Evaluate(anim.TypeY, t));
         dp.Color.A = (byte)MathHelper.Lerp(
             (float)anim.StartAlpha * 255f, state.Color.A, t);
+    }
+
+    public void Dispose()
+    {
+        deferredDraws.Clear();
+        deferredCurvyLaserDraws.Clear();
+        sortKeys.Clear();
     }
 }

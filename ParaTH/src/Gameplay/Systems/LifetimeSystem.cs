@@ -3,55 +3,64 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
-// fixme: this implies that something must something to render to be properly despawned.
-// which is not the case for invisible anchor bullets. fix that.
-// todo: impl CurvyLaser. wait for all its nodes + halfwidth * 1.415 to go offscreen. manually dispose its queue.
-public sealed class LifetimeSystem(World world, Rectangle bounds)
+public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
 {
     private readonly World world = world;
     private Rectangle bounds = bounds;
 
     private QueryDescriptor descriptor = new QueryDescriptor()
-        .WithAll<Transform, Lifetime>()
-        .WithAny<SpriteRenderer, AnimationRenderer>();
+        .WithAll<Transform, Lifetime>();
+
+    private readonly UnsafePooledList<Entity> toDestroy = new(256);
+    private readonly UnsafePooledList<Entity> curvyLaserToDestroy = new(16);
 
     public void Update()
     {
         var q = world.GetOrCreateQuery(descriptor);
 
-        using var toDestroy = new UnsafePooledList<Entity>(256);
+        toDestroy.Clear();
+        curvyLaserToDestroy.Clear();
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
-            bool useSprite = archetype.Has<SpriteRenderer>();
+            bool hasSprite = archetype.Has<SpriteRenderer>();
+            bool hasAnimation = archetype.Has<AnimationRenderer>();
+            bool hasCurvyLaser = archetype.Has<CurvyLaser>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
                 var transforms = chunk.GetFilledComponentSpan<Transform>();
                 var lifetimes = chunk.GetFilledComponentSpan<Lifetime>();
 
-                var sprites = useSprite ?
-                    chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
-                var animations = !useSprite ?
-                    chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
+                var sprites = hasSprite ? chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
+                var animations = hasAnimation ? chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
+                var curvyLasers = hasCurvyLaser ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
                     ref var transform = ref transforms.UnsafeAt(i);
                     ref var lifetime = ref lifetimes.UnsafeAt(i);
 
-                    float radius = CalculatePessimisticRadius(
-                        useSprite,
-                        ref transform,
-                        ref useSprite ? ref sprites.UnsafeAt(i) : ref Unsafe.NullRef<SpriteRenderer>(),
-                        ref !useSprite ? ref animations.UnsafeAt(i) : ref Unsafe.NullRef<AnimationRenderer>()
-                    );
+                    bool isOffscreen;
 
-                    bool isOffscreen =
-                        transform.Position.X + radius < bounds.Left ||
-                        transform.Position.X - radius > bounds.Right ||
-                        transform.Position.Y + radius < bounds.Top ||
-                        transform.Position.Y - radius > bounds.Bottom;
+                    if (hasCurvyLaser)
+                    {
+                        isOffscreen = IsCurvyLaserOffscreen(ref curvyLasers.UnsafeAt(i));
+                    }
+                    else if (hasSprite)
+                    {
+                        float radius = CalculateSpriteRadius(ref transform, ref sprites.UnsafeAt(i));
+                        isOffscreen = IsCircleOffscreen(transform.Position, radius);
+                    }
+                    else if (hasAnimation)
+                    {
+                        float radius = CalculateAnimationRadius(ref transform, ref animations.UnsafeAt(i));
+                        isOffscreen = IsCircleOffscreen(transform.Position, radius);
+                    }
+                    else
+                    {
+                        isOffscreen = IsPointOffscreen(transform.Position);
+                    }
 
                     if (isOffscreen)
                     {
@@ -59,45 +68,107 @@ public sealed class LifetimeSystem(World world, Rectangle bounds)
                         {
                             lifetime.OffscreenFramesToLive--;
                             if (lifetime.OffscreenFramesToLive <= 0)
-                                toDestroy.Add(chunk.Entities.UnsafeAt(i));
+                            {
+                                if (hasCurvyLaser)
+                                    curvyLaserToDestroy.Add(chunk.Entities.UnsafeAt(i));
+                                else
+                                    toDestroy.Add(chunk.Entities.UnsafeAt(i));
+                            }
                         }
                         else
                         {
-                            toDestroy.Add(chunk.Entities.UnsafeAt(i));
+                            if (hasCurvyLaser)
+                                curvyLaserToDestroy.Add(chunk.Entities.UnsafeAt(i));
+                            else
+                                toDestroy.Add(chunk.Entities.UnsafeAt(i));
                         }
                     }
                 }
             }
         }
 
+        // hot path: regular bullets
         for (int i = 0; i < toDestroy.Count; i++)
             world.DestroyEntity(toDestroy[i]);
+
+        // cold path: curvy lasers need manual queue disposal
+        for (int i = 0; i < curvyLaserToDestroy.Count; i++)
+        {
+            var entity = curvyLaserToDestroy[i];
+            ref var laser = ref world.GetComponent<CurvyLaser>(entity);
+            laser.LaserNodes.Dispose();
+            world.DestroyEntity(entity);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float CalculatePessimisticRadius(
-        bool useSprite,
-        ref Transform tf,
-        ref SpriteRenderer sr,
-        ref AnimationRenderer ar)
+    private bool IsPointOffscreen(Vector2 position)
     {
-        float w, h;
-        if (useSprite)
+        return position.X < bounds.Left ||
+               position.X > bounds.Right ||
+               position.Y < bounds.Top ||
+               position.Y > bounds.Bottom;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool IsCircleOffscreen(Vector2 position, float radius)
+    {
+        return position.X + radius < bounds.Left ||
+               position.X - radius > bounds.Right ||
+               position.Y + radius < bounds.Top ||
+               position.Y - radius > bounds.Bottom;
+    }
+
+    private bool IsCurvyLaserOffscreen(ref CurvyLaser laser)
+    {
+        var nodes = laser.LaserNodes;
+        if (nodes == null || nodes.Count == 0)
+            return true;
+
+        float radius = laser.HalfWidth * 1.415f;
+
+        nodes.AsSpans(out var first, out var second);
+
+        int totalCount = first.Length + second.Length;
+        Span<Vector2> allNodes = stackalloc Vector2[totalCount];
+        first.CopyTo(allNodes);
+        second.CopyTo(allNodes[first.Length..]);
+
+        for (int j = 0; j < allNodes.Length; j++)
         {
-            w = sr.Sprite.SourceRect.Width;
-            h = sr.Sprite.SourceRect.Height;
-        }
-        else
-        {
-            var frame = ar.CurrentFrame;
-            w = frame.SourceRect.Width;
-            h = frame.SourceRect.Height;
+            if (!IsCircleOffscreen(allNodes[j], radius))
+                return false;
         }
 
+        return true;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float CalculateSpriteRadius(ref Transform tf, ref SpriteRenderer sr)
+    {
+        float w = sr.Sprite.SourceRect.Width;
+        float h = sr.Sprite.SourceRect.Height;
+        float baseRadius = (w > h ? w : h) * 0.5f;
+        float maxScale = tf.Scale.X > tf.Scale.Y ? tf.Scale.X : tf.Scale.Y;
+        return baseRadius * maxScale * 1.415f;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float CalculateAnimationRadius(ref Transform tf, ref AnimationRenderer ar)
+    {
+        var frame = ar.CurrentFrame;
+        float w = frame.SourceRect.Width;
+        float h = frame.SourceRect.Height;
         float baseRadius = (w > h ? w : h) * 0.5f;
         float maxScale = tf.Scale.X > tf.Scale.Y ? tf.Scale.X : tf.Scale.Y;
         return baseRadius * maxScale * 1.415f;
     }
 
     public void SetBounds(Rectangle newBounds) => bounds = newBounds;
+
+    public void Dispose()
+    {
+        toDestroy.Dispose();
+        curvyLaserToDestroy.Dispose();
+    }
 }

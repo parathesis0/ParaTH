@@ -171,6 +171,7 @@ public sealed class CollisionSystem : IDisposable
                         if (Collider.Intersects(nodeA.Collider, nodeA.Position, nodeB.Collider, nodeB.Position))
                         {
                             // todo: trigger entity's callback?
+                            //Console.WriteLine($"Entity {nodeA.Entity.Id} hit Entity {nodeB.Entity.Id}!");
                         }
                     }
                 }
@@ -211,8 +212,7 @@ public sealed class CollisionSystem : IDisposable
                     if (IntersectsLaserVsCollider(ref laser, ref node))
                     {
                         // todo: trigger entity's callback?
-                        // for some fucking reason this does not work. why
-                        Console.WriteLine($"Laser {laser.Entity.Id} hit Entity {node.Entity.Id}!");
+                        //Console.WriteLine($"Laser {laser.Entity.Id} hit Entity {node.Entity.Id}!");
                     }
                 }
             }
@@ -241,6 +241,7 @@ public sealed class CollisionSystem : IDisposable
                 if (IntersectsLaserVsLaser(ref laserA, ref laserB))
                 {
                     // todo: trigger entity's callback?
+                    //Console.WriteLine($"Laser {laserA.Entity.Id} hit Laser {laserB.Entity.Id}!");
                 }
             }
         }
