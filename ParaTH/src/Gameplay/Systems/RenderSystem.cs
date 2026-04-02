@@ -4,7 +4,6 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-// todo: impl curvy laser drawing
 public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
 {
     private Rectangle bounds = bounds;
@@ -34,10 +33,23 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
         public StgBlendState BlendState;
     }
 
+    private struct DeferredCurvyLaserDrawData
+    {
+        public Texture2D Texture;
+        public Rectangle SourceRect;
+        public float TextureRotation;
+        public UnsafePooledQueue<Vector2> LaserNodes;
+        public float HalfWidth;
+        public Color Color;
+        public byte Layer;
+        public StgBlendState BlendState;
+    }
+
     private struct DrawSortKey : IComparable<DrawSortKey>
     {
         public uint SpawnId;
         public int Index;
+        public bool IsCurvyLaser;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly int CompareTo(DrawSortKey other)
@@ -47,11 +59,14 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
     }
 
     private readonly UnsafePooledList<DeferredDrawData> deferredDraws = new(16384);
+    private readonly UnsafePooledList<DeferredCurvyLaserDrawData> deferredCurvyLaserDraws = new(256);
     private readonly UnsafePooledList<DrawSortKey> sortKeys = new(16384);
 
+    [SkipLocalsInit]
     public void Update()
     {
         deferredDraws.Clear();
+        deferredCurvyLaserDraws.Clear();
         sortKeys.Clear();
 
         var q = world.GetOrCreateQuery(descriptor);
@@ -60,6 +75,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
         {
             bool useSpriteRenderer = archetype.Has<SpriteRenderer>();
             bool hasSpawnAnim = archetype.Has<SpawnAnimation>();
+            bool hasCurvyLaser = archetype.Has<CurvyLaser>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -70,12 +86,13 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
                     chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
                 var animRenderers = !useSpriteRenderer ?
                     chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
-                var spawnAnims = hasSpawnAnim ?
+                var spawnAnims = hasSpawnAnim && !hasCurvyLaser ?
                     chunk.GetFilledComponentSpan<SpawnAnimation>() : default;
+                var curvyLasers = hasCurvyLaser ?
+                    chunk.GetFilledComponentSpan<CurvyLaser>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
-                    ref var transform = ref transforms.UnsafeAt(i);
                     ref var state = ref states.UnsafeAt(i);
 
                     var dp = new DrawParams
@@ -89,60 +106,159 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
                     else
                         ResolveAnimation(ref animRenderers.UnsafeAt(i), ref dp);
 
-                    if (hasSpawnAnim)
-                        ApplySpawnAnimation(ref spawnAnims.UnsafeAt(i), in state, ref dp);
-
-                    float halfW = dp.SourceRect.Width * 0.5f;
-                    float halfH = dp.SourceRect.Height * 0.5f;
-                    float radius = (halfW > halfH ? halfW : halfH) * 1.415f;
-
-                    float px = transform.Position.X;
-                    float py = transform.Position.Y;
-
-                    var bounds = this.bounds;
-
-                    if (px + radius > bounds.Left && px - radius < bounds.Right &&
-                        py + radius > bounds.Top && py - radius < bounds.Bottom)
+                    if (hasCurvyLaser)
                     {
-                        int currentIndex = deferredDraws.Count;
+                        ref var laser = ref curvyLasers.UnsafeAt(i);
 
-                        deferredDraws.Add(new DeferredDrawData
+                        if (IsCurvyLaserVisible(laser.LaserNodes, laser.HalfWidth))
                         {
-                            Texture = dp.Texture,
-                            SourceRect = dp.SourceRect,
-                            Position = transform.Position,
-                            Anchor = dp.Anchor,
-                            Scale = dp.Scale,
-                            Color = dp.Color,
-                            Rotation = state.Rotation,
-                            Layer = state.Layer,
-                            BlendState = state.BlendState
-                        });
+                            int currentIndex = deferredCurvyLaserDraws.Count;
 
-                        sortKeys.Add(new DrawSortKey
+                            deferredCurvyLaserDraws.Add(new DeferredCurvyLaserDrawData
+                            {
+                                Texture = dp.Texture,
+                                SourceRect = dp.SourceRect,
+                                TextureRotation = state.Rotation,
+                                LaserNodes = laser.LaserNodes,
+                                HalfWidth = laser.HalfWidth,
+                                Color = dp.Color,
+                                Layer = state.Layer,
+                                BlendState = state.BlendState,
+                            });
+
+                            sortKeys.Add(new DrawSortKey
+                            {
+                                SpawnId = state.SpawnId,
+                                Index = currentIndex,
+                                IsCurvyLaser = true,
+                            });
+                        }
+                    }
+                    else
+                    {
+                        if (hasSpawnAnim)
+                            ApplySpawnAnimation(ref spawnAnims.UnsafeAt(i), in state, ref dp);
+
+                        ref var transform = ref transforms.UnsafeAt(i);
+
+                        float halfW = dp.SourceRect.Width * 0.5f;
+                        float halfH = dp.SourceRect.Height * 0.5f;
+                        float radius = (halfW > halfH ? halfW : halfH) * 1.415f;
+
+                        float px = transform.Position.X;
+                        float py = transform.Position.Y;
+
+                        var b = this.bounds;
+
+                        if (px + radius > b.Left && px - radius < b.Right &&
+                            py + radius > b.Top && py - radius < b.Bottom)
                         {
-                            SpawnId = state.SpawnId,
-                            Index = currentIndex
-                        });
+                            int currentIndex = deferredDraws.Count;
+
+                            deferredDraws.Add(new DeferredDrawData
+                            {
+                                Texture = dp.Texture,
+                                SourceRect = dp.SourceRect,
+                                Position = transform.Position,
+                                Anchor = dp.Anchor,
+                                Scale = dp.Scale,
+                                Color = dp.Color,
+                                Rotation = state.Rotation,
+                                Layer = state.Layer,
+                                BlendState = state.BlendState
+                            });
+
+                            sortKeys.Add(new DrawSortKey
+                            {
+                                SpawnId = state.SpawnId,
+                                Index = currentIndex,
+                            });
+                        }
                     }
                 }
             }
         }
 
         var keysSpan = sortKeys.AsSpan();
-        var dataSpan = deferredDraws.AsSpan();
 
         if (keysSpan.Length > 1)
             keysSpan.Sort();
 
+        var dataSpan = deferredDraws.AsSpan();
+        var laserDataSpan = deferredCurvyLaserDraws.AsSpan();
+
         for (int i = 0; i < keysSpan.Length; i++)
         {
-            ref var d = ref dataSpan.UnsafeAt(keysSpan.UnsafeAt(i).Index);
-            batch.Draw(
-                d.Texture, d.Position, d.SourceRect, d.Color,
-                d.Rotation, d.Anchor, d.Scale,
-                SpriteEffects.None, d.Layer, d.BlendState);
+            ref var key = ref keysSpan.UnsafeAt(i);
+
+            if (key.IsCurvyLaser)
+            {
+                ref var d = ref laserDataSpan.UnsafeAt(key.Index);
+                int nodeCount = d.LaserNodes.Count;
+
+                if (nodeCount == 0) continue;
+
+                d.LaserNodes.AsSpans(out var first, out var second);
+
+                if (second.Length == 0)
+                {
+                    batch.DrawCurvyLaser(
+                        d.Texture, d.SourceRect, d.TextureRotation,
+                        first, d.HalfWidth,
+                        d.Color, d.Layer, d.BlendState);
+                }
+                else
+                {
+                    Span<Vector2> renderNodeSpan = stackalloc Vector2[nodeCount]; // hope this doesnt overflow
+                    first.CopyTo(renderNodeSpan);
+                    second.CopyTo(renderNodeSpan.Slice(first.Length));
+
+                    batch.DrawCurvyLaser(
+                        d.Texture, d.SourceRect, d.TextureRotation,
+                        renderNodeSpan, d.HalfWidth,
+                        d.Color, d.Layer, d.BlendState);
+                }
+            }
+            else
+            {
+                ref var d = ref dataSpan.UnsafeAt(key.Index);
+                batch.Draw(
+                    d.Texture, d.Position, d.SourceRect, d.Color,
+                    d.Rotation, d.Anchor, d.Scale,
+                    SpriteEffects.None, d.Layer, d.BlendState);
+            }
         }
+    }
+
+    // ────────────────── Visibility ──────────────────
+
+    private bool IsCurvyLaserVisible(UnsafePooledQueue<Vector2> nodes, float hw)
+    {
+        nodes.AsSpans(out var first, out var second);
+        var b = bounds;
+
+        if (AnyNodeInBounds(first, hw, b))
+            return true;
+
+        if (second.Length > 0 && AnyNodeInBounds(second, hw, b))
+            return true;
+
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool AnyNodeInBounds(Span<Vector2> nodes, float hw, Rectangle b)
+    {
+        for (int i = 0; i < nodes.Length; i++)
+        {
+            ref var n = ref nodes.UnsafeAt(i);
+            if (n.X + hw > b.Left && n.X - hw < b.Right &&
+                n.Y + hw > b.Top && n.Y - hw < b.Bottom)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ────────────────── Renderers ──────────────────

@@ -1,6 +1,6 @@
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Numerics;
 
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
@@ -211,6 +211,8 @@ public sealed class CollisionSystem : IDisposable
                     if (IntersectsLaserVsCollider(ref laser, ref node))
                     {
                         // todo: trigger entity's callback?
+                        // for some fucking reason this does not work. why
+                        Console.WriteLine($"Laser {laser.Entity.Id} hit Entity {node.Entity.Id}!");
                     }
                 }
             }

@@ -101,28 +101,39 @@ public sealed class TestScript(BulletManager bulletManager)
                 .Build();
         }
 
-        if (counter % 1 == 0)
+        if (counter % 30 == 0)
         {
-            //    // spawn control test
-            //    bulletManager.SpawnBullet()
-            //        .SetPosition(new Vector2(320, 240))
-            //        .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-            //        .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-            //        .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
-            //        .SetVelocity(2f, 0)
-            //        .SetSpawningCircle(8, 4, 0.5f, 0, 0.01f, 100)
-            //        .SetSpawningSpreadByDelta(9, MathHelper.Pi / 8, 3)
-            //        .SetSpawningSpreadByTotal(9, MathHelper.Pi, 3, 0.1f)
-            //        .Build();
+            // spawn control test
+            //bulletManager.SpawnBullet()
+            //    .SetPosition(new Vector2(320, 240))
+            //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+            //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+            //    .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
+            //    .SetVelocity(2f, 0)
+            //    .SetSpawningCircle(8, 4, 0.5f, 0, 0.01f, 100)
+            //    .SetSpawningSpreadByDelta(9, MathHelper.Pi / 8, 3)
+            //    .SetSpawningSpreadByTotal(9, MathHelper.Pi, 3, 0.1f)
+            //    .Build();
 
             // spawnAnimation test
+            //bulletManager.SpawnBullet()
+            //    .SetPosition(new Vector2(320, 240))
+            //    .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
+            //    .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
+            //    .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
+            //    .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRenderStateRotation()
+            //    .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
+            //    .Build();
+
+            // curvy laser test
             bulletManager.SpawnBullet()
                 .SetPosition(new Vector2(320, 240))
-                .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
-                .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
-                .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
-                .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRenderStateRotation()
-                .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
+                //.SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
+                .SetSprite("curvylaser_lime", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+                .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(6)
+                .SetAngularVelocity(0.05f)
+                .SetCollisionGroup(0b0000_0010)
+                .MakeCurvyLaser(512, 16f)
                 .Build();
         }
 
@@ -156,12 +167,6 @@ public sealed class Engine : Game
     private double fpsTimer;
     private int fpsCounter;
     private int currentFps;
-
-    private bool laserStop = false;
-    private int laserMovementCounter;
-    private SpriteAsset testLaserSprite = null!;
-    private UnsafePooledQueue<Vector2> laserNodeQueue = new();
-    private int maxNodes = 64;
 
     private FontAsset debugFontAsset = null!;
 
@@ -213,8 +218,7 @@ public sealed class Engine : Game
 
         script = new(bulletManager);
 
-        testLaserSprite = assetManager.Load<SpriteAsset>("bullet/laser_sprites.txt", "curvelaser_lime");
-        //testLaserSprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_blue");
+        assetManager.Load<SpriteAsset>("bullet/laser_sprites.txt", "curvylaser_lime");
     }
 
     protected override void Update(GameTime gameTime)
@@ -225,9 +229,6 @@ public sealed class Engine : Game
         if (Input.IsKeyPressed(Keys.K))
             shouldAdvance = true;
 
-        if (Input.IsKeyPressed(Keys.L))
-            laserStop = !laserStop;
-
         fpsTimer += gameTime.ElapsedGameTime.TotalSeconds;
         if (fpsTimer >= 1.0)
         {
@@ -236,33 +237,10 @@ public sealed class Engine : Game
             fpsTimer -= 1.0;
         }
 
-        // curvy laser test
-        if (!isPaused || shouldAdvance)
-        {
-            var ms = Mouse.GetState();
-            Vector2 currentEmitterPos = new Vector2(ms.X, ms.Y);
-
-            //if (!laserStop)
-            //    laserMovementCounter++;
-            //float angle = laserMovementCounter / 40f;
-            //float radius = 100f + 50 * MathF.Sin(laserMovementCounter / 5f);
-            //Vector2 center = new(320, 240);
-            //Vector2 currentEmitterPos = center + new Vector2(
-            //    radius * MathF.Cos(angle),
-            //    radius * MathF.Sin(angle));
-
-            laserNodeQueue.Enqueue(currentEmitterPos);
-
-            while (laserNodeQueue.Count > maxNodes)
-                laserNodeQueue.Dequeue();
-        }
-
         if (!isPaused || shouldAdvance)
         {
             if (currentFps > 58)
-            {
-                //script.Update();
-            }
+                script.Update();
             animationSystem.Update();
             movementSystem.Update();
             lifetimeSystem.Update();
@@ -293,31 +271,6 @@ public sealed class Engine : Game
         var chunkCount = world.CountChunks(QueryDescriptor.MatchAll);
 
         Color fpsColor = currentFps < 58 ? Color.Red : Color.LimeGreen;
-
-        laserNodeQueue.AsSpans(out var first, out var second);
-
-        Span<Vector2> renderNodeSpan = stackalloc Vector2[laserNodeQueue.Count];
-
-        if (second == Span<Vector2>.Empty)
-        {
-            renderNodeSpan = first;
-        }
-        else
-        {
-            first.CopyTo(renderNodeSpan);
-            second.CopyTo(renderNodeSpan.Slice(first.Length));
-        }
-
-        stgBatch.DrawCurvyLaser(
-            testLaserSprite.Texture,
-            testLaserSprite.SourceRect,
-            MathHelper.Pi,
-            renderNodeSpan,
-            16,
-            Color.White,
-            150,
-            StgBlendState.Alpha
-        );
 
         stgBatch.DrawString(font,
             $"Entities: {entityCount}  |  Archetypes: {archetypeCount}  |  Chunks: {chunkCount}",

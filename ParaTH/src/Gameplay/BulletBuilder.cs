@@ -461,7 +461,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
     #region Visual WIP
     [UnscopedRef]
-    public ref BulletBuilder SetSprite(string spriteName, Color color, byte layer, StgBlendState blendState)
+    public ref BulletBuilder SetSprite(string spriteName, Color color, byte layer, StgBlendState blendState, float rotation = MathHelper.PiOver2)
     {
         var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
         spriteRenderer.Sprite = sprite;
@@ -470,7 +470,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         renderState.BlendState = blendState;
 
         // todo: add these to params?
-        renderState.Rotation = MathHelper.PiOver2;
+        renderState.Rotation = rotation;
         renderState.Scale = Vector2.One;
 
         activeRenderer = RendererType.SpriteRenderer;
@@ -478,7 +478,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetAnimation(string animationName, Color color, byte layer, StgBlendState blendState)
+    public ref BulletBuilder SetAnimation(string animationName, Color color, byte layer, StgBlendState blendState, float rotation = MathHelper.PiOver2)
     {
         var animation = manager.AssetManager.Get<AnimationAsset>(animationName);
         animationRenderer.Animation = animation;
@@ -488,7 +488,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         renderState.BlendState = blendState;
 
         // todo: add these to params?
-        renderState.Rotation = MathHelper.PiOver2;
+        renderState.Rotation = rotation;
         renderState.Scale = Vector2.One;
 
         activeRenderer = RendererType.AnimationRenderer;
@@ -646,10 +646,11 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
     #region Curvy Laser
     [UnscopedRef]
-    public ref BulletBuilder MakeCurvyLaser(int length)
+    public ref BulletBuilder MakeCurvyLaser(int length, float halfWidth)
     {
         collider.ShapeType = ShapeType.CurvyLaser;
         curvyLaserLength = length;
+        curvyLaserHalfWidth = halfWidth;
         return ref this;
     }
     #endregion

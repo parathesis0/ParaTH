@@ -9,4 +9,3 @@ public struct CurvyLaser
     public int Length;                              // 4
     public float HalfWidth;                         // 4
 }
-

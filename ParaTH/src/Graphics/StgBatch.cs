@@ -391,14 +391,14 @@ public sealed unsafe class StgBatch : IDisposable
 
     // this looks good enough, do not modify unless it lags really really bad
     public void DrawCurvyLaser(
-            Texture2D texture,
-            Rectangle? sourceRectangle,
-            float textureRotation,
-            ReadOnlySpan<Vector2> nodes,
-            float halfThickness,
-            Color color,
-            byte layerDepth,
-            StgBlendState blendState)
+        Texture2D texture,
+        Rectangle? sourceRectangle,
+        float textureRotation,
+        ReadOnlySpan<Vector2> nodes,
+        float halfThickness,
+        Color color,
+        byte layerDepth,
+        StgBlendState blendState)
     {
         if (!hasBegun)
             HelperThrow("Draw called before Begin.");
