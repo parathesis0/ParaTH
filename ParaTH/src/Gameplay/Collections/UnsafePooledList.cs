@@ -14,7 +14,9 @@ public sealed class UnsafePooledList<T> : IDisposable
 
     public UnsafePooledList(int capacity = 4)
     {
-        items = capacity <= 0 ? [] : ArrayPool<T>.Shared.Rent(capacity);
+        capacity = (int)BitOperations.RoundUpToPowerOf2((uint)capacity);
+
+        items = ArrayPool<T>.Shared.Rent(capacity);
         count = 0;
     }
 

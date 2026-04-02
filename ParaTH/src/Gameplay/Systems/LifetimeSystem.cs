@@ -3,6 +3,9 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+// fixme: this implies that something must have SpriteRenderer or AnimationRenderer to be properly despawned.
+// which is not the case for invisible anchor bullets. fix that.
+// todo: also how the fuck do we handle CurvyLasers, only check the tip?
 public sealed class LifetimeSystem(World world, Rectangle bounds)
 {
     private readonly World world = world;

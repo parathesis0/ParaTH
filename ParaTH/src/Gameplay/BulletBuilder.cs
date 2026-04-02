@@ -44,6 +44,8 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     // optional
     private SpawnAnimation spawnAnimation;
     private Collider collider = new() { IsActive = true };
+    private int curvyLaserLength = 0;
+    private float curvyLaserHalfWidth = 0;
 
     // spawn settings
     private int way = 1;
@@ -642,6 +644,16 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
     #endregion
 
+    #region Curvy Laser
+    [UnscopedRef]
+    public ref BulletBuilder MakeCurvyLaser(int length)
+    {
+        collider.ShapeType = ShapeType.CurvyLaser;
+        curvyLaserLength = length;
+        return ref this;
+    }
+    #endregion
+
     [SkipLocalsInit]
     public void Build(Span<Entity> outputEntities = default)
     {
@@ -659,6 +671,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         bool hasCur = curveInstructions.Count > 0;
         bool hasSpw = spawnAnimation.Duration > 0;
         bool hasCol = collider.ShapeType != ShapeType.None;
+        bool hasCls = curvyLaserLength > 0;
 
         int typeCount = 3 + Unsafe.As<bool, byte>(ref hasRds)
                           + Unsafe.As<bool, byte>(ref hasSpr)
@@ -668,7 +681,8 @@ public ref struct BulletBuilder(BulletManager bulletManager)
                           + Unsafe.As<bool, byte>(ref hasAcc)
                           + Unsafe.As<bool, byte>(ref hasCur)
                           + Unsafe.As<bool, byte>(ref hasSpw)
-                          + Unsafe.As<bool, byte>(ref hasCol);
+                          + Unsafe.As<bool, byte>(ref hasCol)
+                          + Unsafe.As<bool, byte>(ref hasCls);
 
         var types = new ComponentTypeInfo[typeCount];
         int tIdx = 0;
@@ -685,6 +699,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         if (hasCur) types[tIdx++] = Component<CurveController>.TypeInfo;
         if (hasSpw) types[tIdx++] = Component<SpawnAnimation>.TypeInfo;
         if (hasCol) types[tIdx++] = Component<Collider>.TypeInfo;
+        if (hasCls) types[tIdx++] = Component<CurvyLaser>.TypeInfo;
 
         using var pooledEntities = ScopedPooledArray<Entity>.Rent(amount);
         Span<Entity> entities = pooledEntities.AsSpan();
@@ -724,6 +739,9 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
         using var pooledCls = hasCol ? ScopedPooledArray<Collider>.Rent(amount) : default;
         Span<Collider> cls = hasCol ? pooledCls.AsSpan() : default;
+
+        using var pooledLzs = hasCls ? ScopedPooledArray<CurvyLaser>.Rent(amount) : default;
+        Span<CurvyLaser> lzs = hasCls ? pooledLzs.AsSpan() : default;
 
         float baseVcMag = movement.Velocity.Length();
         float baseVcAngle = baseVcMag > 0 ? MathF.Atan2(movement.Velocity.Y, movement.Velocity.X) : 0;
@@ -776,6 +794,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
             if (hasCur) ccs[i] = new CurveController { Instructions = sharedCcs!, Index = -1 };
             if (hasSpw) sas[i] = spawnAnimation;
             if (hasCol) cls[i] = collider;
+            if (hasCls) lzs[i] = new CurvyLaser { LaserNodes = new(curvyLaserLength), Length = curvyLaserLength, HalfWidth = curvyLaserHalfWidth };
         }
 
         manager.World.ReserveEntityBulk(entities, types, out Archetype archetype, out Slot start, out Slot end);
@@ -791,6 +810,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         if (hasCur) archetype.SetRangeWithSpanBulk(start, end, ccs);
         if (hasSpw) archetype.SetRangeWithSpanBulk(start, end, sas);
         if (hasCol) archetype.SetRangeWithSpanBulk(start, end, cls);
+        if (hasCls) archetype.SetRangeWithSpanBulk(start, end, lzs);
 
         if (!outputEntities.IsEmpty)
             entities.CopyTo(outputEntities);

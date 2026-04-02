@@ -19,6 +19,7 @@ public sealed class MovementSystem(World world)
             bool hasCur = archetype.Has<CurveController>();
             bool hasRen = archetype.Has<RenderState>();     // for syncing rotation
             bool hasSpw = archetype.Has<SpawnAnimation>();  // this one has to stay here, spawnAnimation affects velocity
+            bool hasCls = archetype.Has<CurvyLaser>();      // techically should have a separate system dedicated to this
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -31,6 +32,7 @@ public sealed class MovementSystem(World world)
                 var curSpan = hasCur ? chunk.GetFilledComponentSpan<CurveController>() : default;
                 var renSpan = hasRen ? chunk.GetFilledComponentSpan<RenderState>() : default;
                 var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnAnimation>() : default;
+                var clsSpan = hasCls ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
@@ -40,6 +42,9 @@ public sealed class MovementSystem(World world)
 
                     var currentFrame = lifetime.AliveFrames;
                     var oldPosition = transform.Position;
+
+                    if (hasCls)
+                        UpdateCurvyLaser(ref clsSpan.UnsafeAt(i), oldPosition);
 
                     if (hasAcc)
                         UpdateAccelerationController(ref accSpan.UnsafeAt(i), currentFrame, ref movement);
@@ -287,5 +292,14 @@ public sealed class MovementSystem(World world)
                 movement.Velocity.Y = x * sin + y * cos;
             }
         }
+    }
+
+    private static void UpdateCurvyLaser(ref CurvyLaser curvyLaser, Vector2 currentPos)
+    {
+        var nodes = curvyLaser.LaserNodes;
+        curvyLaser.LaserNodes.Enqueue(currentPos);
+
+        while (nodes.Count > curvyLaser.Length)
+            nodes.Dequeue();
     }
 }

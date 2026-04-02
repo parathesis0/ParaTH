@@ -4,6 +4,8 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+// don't rent over 2^20(unity) or 2^30(>=.net9)
+// else ArrayPool.Shared stops return powers of 2 and this breaks
 public sealed class UnsafePooledQueue<T> : IDisposable
 {
     private T[] items;
@@ -17,9 +19,7 @@ public sealed class UnsafePooledQueue<T> : IDisposable
 
     public UnsafePooledQueue(int capacity = 4)
     {
-        capacity = capacity <= 0
-            ? 4
-            : (int)BitOperations.RoundUpToPowerOf2((uint)capacity);
+        capacity = (int)BitOperations.RoundUpToPowerOf2((uint)capacity);
 
         items = ArrayPool<T>.Shared.Rent(capacity);
         mask = items.Length - 1;

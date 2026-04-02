@@ -1,10 +1,10 @@
-using System;
 using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
+// todo: impl curvy laser drawing
 public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds)
 {
     private Rectangle bounds = bounds;
