@@ -20,6 +20,7 @@ public sealed class MovementSystem(World world)
             bool hasRen = archetype.Has<RenderState>();     // for syncing rotation
             bool hasSpw = archetype.Has<SpawnAnimation>();  // this one has to stay here, spawnAnimation affects velocity
             bool hasCls = archetype.Has<CurvyLaser>();      // techically should have a separate system dedicated to this
+            bool hasLtf = archetype.Has<LocalTransform>();  // local transform
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -33,6 +34,7 @@ public sealed class MovementSystem(World world)
                 var renSpan = hasRen ? chunk.GetFilledComponentSpan<RenderState>() : default;
                 var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnAnimation>() : default;
                 var clsSpan = hasCls ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
+                var ltfSpan = hasLtf ? chunk.GetFilledComponentSpan<LocalTransform>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
@@ -40,8 +42,10 @@ public sealed class MovementSystem(World world)
                     ref var movement = ref movements.UnsafeAt(i);
                     ref var lifetime = ref lifetimes.UnsafeAt(i);
 
+                    ref Vector2 position = ref (hasLtf ? ref ltfSpan.UnsafeAt(i).LocalPosition : ref transform.Position);
+
                     var currentFrame = lifetime.AliveFrames;
-                    var oldPosition = transform.Position;
+                    var oldPosition = position;
 
                     if (hasCls)
                         UpdateCurvyLaser(ref clsSpan.UnsafeAt(i), oldPosition);
@@ -58,7 +62,7 @@ public sealed class MovementSystem(World world)
                         UpdateVelocityController(ref velSpan.UnsafeAt(i), currentFrame, ref movement);
 
                     if (hasPos)
-                        UpdatePositionController(ref posSpan.UnsafeAt(i), currentFrame, ref transform);
+                        UpdatePositionController(ref posSpan.UnsafeAt(i), currentFrame, ref position);
 
                     var velocityMultiplier = 1.0f;
                     if (hasSpw)
@@ -67,9 +71,9 @@ public sealed class MovementSystem(World world)
                         velocityMultiplier = spw.IsPlaying ? (float)spw.VelocityMultiplier : 1.0f;
                     }
 
-                    transform.Position += movement.Velocity * velocityMultiplier;
+                    position += movement.Velocity * velocityMultiplier;
 
-                    var newPosition = transform.Position;
+                    var newPosition = position;
                     var delta = newPosition - oldPosition;
                     if (movement.SyncRenderStateRotation && delta.LengthSquared() >= float.Epsilon)
                     {
@@ -83,7 +87,7 @@ public sealed class MovementSystem(World world)
         }
     }
 
-    private static void UpdatePositionController(ref PositionController ctrl, ushort currentFrame, ref Transform transform)
+    private static void UpdatePositionController(ref PositionController ctrl, ushort currentFrame, ref Vector2 position)
     {
         // handle instruction advance
         var insts = ctrl.Instructions;
@@ -96,19 +100,19 @@ public sealed class MovementSystem(World world)
             switch (inst.Op)
             {
                 case PositionInstruction.Ops.Set:
-                    ctrl.StartValue = transform.Position;
+                    ctrl.StartValue = position;
                     ctrl.EndValue = inst.Params;
                     break;
                 case PositionInstruction.Ops.Add:
-                    ctrl.StartValue = transform.Position;
-                    ctrl.EndValue = transform.Position + inst.Params; // positionDelta
+                    ctrl.StartValue = position;
+                    ctrl.EndValue = position + inst.Params; // positionDelta
                     break;
             }
 
             // instruction takes 0 frame
             // update position immediately to ensure the next op can get the correct value
             if (inst.Duration == 0)
-                transform.Position = ctrl.EndValue;
+                position = ctrl.EndValue;
         }
 
         // modify position directly
@@ -121,7 +125,7 @@ public sealed class MovementSystem(World world)
             {
                 var t = (float)(relativeTick + 1) / inst.Duration;
                 t = Easing.Evaluate(inst.EaseType, t);
-                transform.Position = Vector2.Lerp(ctrl.StartValue, ctrl.EndValue, t);
+                position = Vector2.Lerp(ctrl.StartValue, ctrl.EndValue, t);
             }
         }
     }

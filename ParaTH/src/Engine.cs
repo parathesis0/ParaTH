@@ -115,14 +115,14 @@ public sealed class TestScript(BulletManager bulletManager)
             //    .Build();
 
             // spawnAnimation test
-            bulletManager.SpawnBullet()
-                .SetPosition(new Vector2(320, 240))
-                .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
-                .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
-                .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
-                .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRenderStateRotation()
-                .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
-                .Build();
+            //bulletManager.SpawnBullet()
+            //    .SetPosition(new Vector2(320, 240))
+            //    .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
+            //    .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
+            //    .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
+            //    .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRenderStateRotation()
+            //    .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
+            //    .Build();
 
             // curvy laser test
             //bulletManager.SpawnBullet()
@@ -135,19 +135,20 @@ public sealed class TestScript(BulletManager bulletManager)
             //    .MakeCurvyLaser(512, 16f)
             //    .Build();
 
-            //bulletManager.SpawnBullet()
-            //    .SetPosition(new Vector2(320, 240))
-            //    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
-            //    .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(60)
-            //    .AddMovementAngle(1f).Delay(20)
-            //    .AddMovementAngle(-1f).Delay(20)
-            //    .AddMovementAngle(1f).Delay(20)
-            //    .AddMovementAngle(-1f).Delay(20)
-            //    .AddMovementAngle(1f).Delay(20)
-            //    .AddMovementAngle(-1f)
-            //    .SetCollisionGroup(0b0000_0010)
-            //    .MakeCurvyLaser(128, 16f)
-            //    .Build();
+            // curvy laser animation & collision test
+            bulletManager.SpawnBullet()
+                .SetPosition(new Vector2(320, 240))
+                .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+                .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(20)
+                .AddMovementAngle(1f).Delay(20)
+                .AddMovementAngle(-1f).Delay(20)
+                .AddMovementAngle(1f).Delay(20)
+                .AddMovementAngle(-1f).Delay(20)
+                .AddMovementAngle(1f).Delay(20)
+                .AddMovementAngle(-1f)
+                .SetCollisionGroup(0b0000_0010)
+                .MakeCurvyLaser(128, 16f)
+                .Build();
         }
 
         counter++;
@@ -168,6 +169,7 @@ public sealed class Engine : Game
     private RenderSystem renderSystem = null!;
     private CollisionSystem collisionSystem = null!;
     private LifetimeSystem lifetimeSystem = null!;
+    private HierarcySystem hierarcySystem = null!;
 
     private Rectangle gameBounds = new(0, 0, 640, 480); // new(640 / 4, 480 / 4, 640 / 2, 480 / 2);
 
@@ -228,6 +230,7 @@ public sealed class Engine : Game
         renderSystem = new RenderSystem(world, stgBatch, gameBounds);
         collisionSystem = new CollisionSystem(world);
         lifetimeSystem = new LifetimeSystem(world, gameBounds);
+        hierarcySystem = new HierarcySystem(world);
 
         script = new(bulletManager);
 
@@ -257,6 +260,7 @@ public sealed class Engine : Game
                 script.Update();
             animationSystem.Update();
             movementSystem.Update();
+            hierarcySystem.Update();
             lifetimeSystem.Update();
             collisionSystem.Update();
         }

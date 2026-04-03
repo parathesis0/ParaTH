@@ -65,6 +65,10 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     [SkipLocalsInit]
     public void Update()
     {
+        var deferredDraws = this.deferredDraws;
+        var deferredCurvyLaserDraws = this.deferredCurvyLaserDraws;
+        var sortKeys = this.sortKeys;
+
         deferredDraws.Clear();
         deferredCurvyLaserDraws.Clear();
         sortKeys.Clear();
@@ -86,7 +90,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
                 var animRenderers = !useSpriteRenderer ?
                     chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
-                var spawnAnims = hasSpawnAnim && !hasCurvyLaser ?
+                var spawnAnims = hasSpawnAnim && !hasCurvyLaser ?   // curvy lasers don't use spawnAnim
                     chunk.GetFilledComponentSpan<SpawnAnimation>() : default;
                 var curvyLasers = hasCurvyLaser ?
                     chunk.GetFilledComponentSpan<CurvyLaser>() : default;
@@ -209,7 +213,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                 }
                 else
                 {
-                    Span<Vector2> renderNodeSpan = stackalloc Vector2[nodeCount]; // hope this doesnt overflow
+                    Span<Vector2> renderNodeSpan = stackalloc Vector2[nodeCount]; // hopefully this doesnt overflow
                     first.CopyTo(renderNodeSpan);
                     second.CopyTo(renderNodeSpan.Slice(first.Length));
 
