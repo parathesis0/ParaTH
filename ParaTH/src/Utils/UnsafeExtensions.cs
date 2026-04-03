@@ -26,7 +26,7 @@ public static class UnsafeExtensions
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static ref T UnsafeAt<T>(this ReadOnlySpan<T> span, int index)
+    public static ref readonly T UnsafeAt<T>(this ReadOnlySpan<T> span, int index)
     {
 #if !DEBUG
         return ref Unsafe.Add(ref MemoryMarshal.GetReference(span), (nint)(uint)index);

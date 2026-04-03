@@ -7,7 +7,7 @@ public sealed class HierarcySystem(World world) : IDisposable
 {
     private readonly World world = world;
     private QueryDescriptor descriptor = new QueryDescriptor()
-        .WithAll<Transform, LocalTransform>();
+        .WithAll<Transform, Hierarchy>();
 
     private struct HierarcyNode : IComparable<HierarcyNode>
     {
@@ -34,7 +34,7 @@ public sealed class HierarcySystem(World world) : IDisposable
         {
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
-                chunk.GetFilledComponentSpan<LocalTransform>(out var local);
+                chunk.GetFilledComponentSpan<Hierarchy>(out var local);
                 var entities = chunk.Entities;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
@@ -63,10 +63,10 @@ public sealed class HierarcySystem(World world) : IDisposable
         for (int i = 0; i < nodeSpan.Length; i++)
         {
             var entity = nodeSpan.UnsafeAt(i).Entity;
-            ref var local = ref world.GetComponent<LocalTransform>(entity);
+            ref var local = ref world.GetComponent<Hierarchy>(entity);
 
             // your parents are dead lmao
-            // not sure if should even happen
+            // not sure if can even happen
             if (!world.IsAlive(local.Parent))
                 continue;
 

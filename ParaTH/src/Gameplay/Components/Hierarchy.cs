@@ -2,7 +2,7 @@ using Microsoft.Xna.Framework;
 
 namespace ParaTH;
 
-public struct LocalTransform(Entity parent, Vector2 localPosition, Vector2 localScale, float localRotation)
+public struct Hierarchy(Entity parent, Vector2 localPosition, Vector2 localScale, float localRotation)
 {
     public Entity Parent = parent;
     public Vector2 LocalPosition = localPosition;

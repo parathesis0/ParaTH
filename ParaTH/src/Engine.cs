@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
-public sealed class TestScript(BulletManager bulletManager)
+public sealed class TestScript(BulletManager bulletManager, World world, Engine engine)
 {
     int counter;
 
@@ -136,19 +136,46 @@ public sealed class TestScript(BulletManager bulletManager)
             //    .Build();
 
             // curvy laser animation & collision test
+            //bulletManager.SpawnBullet()
+            //    .SetPosition(new Vector2(320, 240))
+            //    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+            //    .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(20)
+            //    .AddMovementAngle(1f).Delay(20)
+            //    .AddMovementAngle(-1f).Delay(20)
+            //    .AddMovementAngle(1f).Delay(20)
+            //    .AddMovementAngle(-1f).Delay(20)
+            //    .AddMovementAngle(1f).Delay(20)
+            //    .AddMovementAngle(-1f)
+            //    .SetCollisionGroup(0b0000_0010)
+            //    .MakeCurvyLaser(128, 16f)
+            //    .Build();
+
+            // hierarchy test
+            Span<Entity> parent = stackalloc Entity[1];
             bulletManager.SpawnBullet()
-                .SetPosition(new Vector2(320, 240))
-                .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
-                .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(20)
-                .AddMovementAngle(1f).Delay(20)
-                .AddMovementAngle(-1f).Delay(20)
-                .AddMovementAngle(1f).Delay(20)
-                .AddMovementAngle(-1f).Delay(20)
-                .AddMovementAngle(1f).Delay(20)
-                .AddMovementAngle(-1f)
-                .SetCollisionGroup(0b0000_0010)
-                .MakeCurvyLaser(128, 16f)
-                .Build();
+                .SetPosition(new Vector2(200, 200))
+                .SetMovement(1f, angleOffset, 0).SyncTransformRotation()
+                .Build(parent);
+
+            ref var transform = ref world.GetComponent<Transform>(parent[0]);
+
+            transform.Scale = new Vector2(2, 1);
+
+            Span<Entity> children = stackalloc Entity[8];
+            bulletManager.SpawnBullet()
+                .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
+                .SetSpawningCircle(8)
+                .Build(children);
+
+            for (int i = 0; i < 8; i++)
+            {
+                var delta = MathHelper.TwoPi / 8;
+                var radius = 100;
+                var position = new Vector2(
+                    radius * MathF.Cos(delta * i),
+                    radius * MathF.Sin(delta * i));
+                engine.SetParentTest(parent[0], children[i], position, Vector2.One, 0);
+            }
         }
 
         counter++;
@@ -232,7 +259,7 @@ public sealed class Engine : Game
         lifetimeSystem = new LifetimeSystem(world, gameBounds);
         hierarcySystem = new HierarcySystem(world);
 
-        script = new(bulletManager);
+        script = new(bulletManager, world, this);
 
         assetManager.Load<SpriteAsset>("bullet/curvylaser_sprites.txt", "curvylaser_lime");
         assetManager.Load<AnimationAsset>("bullet/curvylaser_animations.txt", "lightning");
@@ -306,5 +333,44 @@ public sealed class Engine : Game
     {
         world?.Dispose();
         base.UnloadContent();
+    }
+
+    // really bad test methods, no safeguarding whatsoever
+    // todo: should these be in a separate class/system?
+    public void SetParentTest(Entity parent, Entity children, Vector2 localPosition, Vector2 localScale, float rotation = 0)
+    {
+        world.AddComponent<Hierarchy>(children, new() {
+            Parent = parent,
+            LocalPosition = localPosition,
+            LocalScale = localScale,
+            LocalRotation = rotation
+        });
+    }
+
+    public void SetParentTest2(Entity parent, Entity children, bool keepWorldTransform)
+    {
+        if (!world.TryGetComponent<Transform>(children, out var transform))
+            return;
+
+        if (keepWorldTransform)
+        {
+            ref var parentTransform = ref world.GetComponent<Transform>(parent);
+            world.AddComponent<Hierarchy>(children, new() {
+                Parent = parent,
+                LocalPosition = transform.Position - parentTransform.Position,
+                LocalScale = transform.Scale / parentTransform.Scale,
+                LocalRotation = transform.Rotation - parentTransform.Rotation
+            });
+        }
+        else
+        {
+            world.AddComponent<Hierarchy>(children, new()
+            {
+                Parent = parent,
+                LocalPosition = transform.Position,
+                LocalScale = transform.Scale,
+                LocalRotation = transform.Rotation
+            });
+        }
     }
 }

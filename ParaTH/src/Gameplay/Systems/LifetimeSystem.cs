@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 namespace ParaTH;
 
 // todo: make this handle hierarcy
+// parents should always live longer than all their children
 public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
 {
     private readonly World world = world;

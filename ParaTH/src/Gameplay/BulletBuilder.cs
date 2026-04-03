@@ -429,6 +429,13 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         movement.SyncRenderStateRotation = true;
         return ref this;
     }
+
+    [UnscopedRef]
+    public ref BulletBuilder SyncTransformRotation()
+    {
+        movement.SyncTransformRotation = true;
+        return ref this;
+    }
     #endregion
 
     #region Angular Velocity
@@ -656,7 +663,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     #endregion
 
     [SkipLocalsInit]
-    public void Build(Span<Entity> outputEntities = default)
+    public void Build(scoped Span<Entity> outputEntities = default)
     {
         int amount = way * layer;
         if (amount <= 0)
@@ -782,7 +789,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
             var accDir = new Vector2(MathF.Cos(currentAccAngle), MathF.Sin(currentAccAngle));
 
             tfs[i] = new Transform(transform.Position + dir * distanceToCenter, transform.Scale, transform.Rotation);
-            mvs[i] = new Movement { Velocity = dir * currentMag, Acceleration = accDir * currentAccMag, SyncRenderStateRotation = movement.SyncRenderStateRotation };
+            mvs[i] = new Movement(dir * currentMag, accDir * currentAccMag, movement.SyncRenderStateRotation, movement.SyncTransformRotation);
             lts[i] = lifetime;
 
             if (hasRds) { rss[i] = renderState; rss[i].SpawnId = baseSpawnId + (uint)i; }
