@@ -73,6 +73,9 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         deferredCurvyLaserDraws.Clear();
         sortKeys.Clear();
 
+        // used for stackallocing buffer
+        int maxLaserLength = 0;
+
         var q = world.GetOrCreateQuery(descriptor);
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
@@ -113,6 +116,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     if (hasCurvyLaser)
                     {
                         ref var laser = ref curvyLasers.UnsafeAt(i);
+
+                        maxLaserLength = Math.Max(maxLaserLength, laser.Length);
 
                         if (IsCurvyLaserVisible(laser.LaserNodes, laser.HalfWidth))
                         {
@@ -191,6 +196,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         var dataSpan = deferredDraws.AsSpan();
         var laserDataSpan = deferredCurvyLaserDraws.AsSpan();
 
+        Span<Vector2> laserNodeBuffer = stackalloc Vector2[maxLaserLength];
+
         for (int i = 0; i < keysSpan.Length; i++)
         {
             ref var key = ref keysSpan.UnsafeAt(i);
@@ -213,7 +220,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                 }
                 else
                 {
-                    Span<Vector2> renderNodeSpan = stackalloc Vector2[nodeCount]; // hopefully this doesnt overflow
+                    Span<Vector2> renderNodeSpan = laserNodeBuffer.Slice(nodeCount);
                     first.CopyTo(renderNodeSpan);
                     second.CopyTo(renderNodeSpan.Slice(first.Length));
 

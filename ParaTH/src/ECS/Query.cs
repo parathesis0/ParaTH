@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
@@ -20,11 +18,11 @@ public sealed class Query
     private readonly bool isExclusive;
 
 #pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
-    public Query(ArchetypeList allArchetypes, in QueryDescriptor descriptor)
+    public Query(ArchetypeList allArchetypes, in QueryDescriptor descriptor, int initialArchetypeListSize = 8)
 #pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     {
         this.allArchetypes = allArchetypes;
-        matchingArchetypes = new ArchetypeList(8); // todo find a way to pass this in
+        matchingArchetypes = new ArchetypeList(initialArchetypeListSize);
 
         lastVersion = -1;
 
@@ -56,9 +54,8 @@ public sealed class Query
         lastVersion = currentVersion;
 
         matchingArchetypes.Clear();
-        var archetypeSpan = allArchetypes.AsSpan();
 
-        foreach (var archetype in archetypeSpan)
+        foreach (var archetype in allArchetypes.AsSpan())
         {
             if (Matches(archetype.Mask))
                 matchingArchetypes.Add(archetype);

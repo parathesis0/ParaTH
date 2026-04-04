@@ -495,7 +495,6 @@ public sealed partial class Archetype : IDisposable
         }
     }
 
-    // todo: fuck these two methods in particular, find a way to unify them
     // reserve capacity before you call, dstSlot should be the reserved spot
     public static void CopyEntityAndMatchingComponentsTo(Archetype src, Slot srcSlot, Archetype dst, Slot dstSlot)
     {

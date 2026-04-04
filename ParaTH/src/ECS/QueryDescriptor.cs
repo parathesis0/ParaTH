@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
@@ -75,7 +73,7 @@ public partial struct QueryDescriptor
             this.Exclusive == other.Exclusive;
     }
 
-    public override bool Equals(object? obj) => obj is QueryDescriptor other && Equals(other);
+    public override readonly bool Equals(object? obj) => obj is QueryDescriptor other && Equals(other);
 
     public static bool operator ==(QueryDescriptor left, QueryDescriptor right) => left.Equals(right);
 

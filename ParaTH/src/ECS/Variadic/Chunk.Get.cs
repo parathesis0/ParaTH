@@ -4,7 +4,7 @@ namespace ParaTH;
 
 public partial struct Chunk
 {
-    public Components<T0, T1> Get<T0, T1>(int index)
+    public readonly Components<T0, T1> Get<T0, T1>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -14,7 +14,7 @@ public partial struct Chunk
 
         return new Components<T0, T1>(ref c0, ref c1);
     }
-    public Components<T0, T1, T2> Get<T0, T1, T2>(int index)
+    public readonly Components<T0, T1, T2> Get<T0, T1, T2>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -26,7 +26,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2>(ref c0, ref c1, ref c2);
     }
-    public Components<T0, T1, T2, T3> Get<T0, T1, T2, T3>(int index)
+    public readonly Components<T0, T1, T2, T3> Get<T0, T1, T2, T3>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -40,7 +40,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3>(ref c0, ref c1, ref c2, ref c3);
     }
-    public Components<T0, T1, T2, T3, T4> Get<T0, T1, T2, T3, T4>(int index)
+    public readonly Components<T0, T1, T2, T3, T4> Get<T0, T1, T2, T3, T4>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -56,7 +56,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4>(ref c0, ref c1, ref c2, ref c3, ref c4);
     }
-    public Components<T0, T1, T2, T3, T4, T5> Get<T0, T1, T2, T3, T4, T5>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5> Get<T0, T1, T2, T3, T4, T5>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -74,7 +74,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6> Get<T0, T1, T2, T3, T4, T5, T6>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6> Get<T0, T1, T2, T3, T4, T5, T6>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -94,7 +94,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5, T6>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6, T7> Get<T0, T1, T2, T3, T4, T5, T6, T7>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6, T7> Get<T0, T1, T2, T3, T4, T5, T6, T7>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -116,7 +116,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5, T6, T7>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6, T7, T8> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -140,7 +140,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5, T6, T7, T8>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7, ref c8);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -166,7 +166,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7, ref c8, ref c9);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -194,7 +194,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7, ref c8, ref c9, ref c10);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -224,7 +224,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7, ref c8, ref c9, ref c10, ref c11);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -256,7 +256,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7, ref c8, ref c9, ref c10, ref c11, ref c12);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -290,7 +290,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7, ref c8, ref c9, ref c10, ref c11, ref c12, ref c13);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();
@@ -326,7 +326,7 @@ public partial struct Chunk
 
         return new Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(ref c0, ref c1, ref c2, ref c3, ref c4, ref c5, ref c6, ref c7, ref c8, ref c9, ref c10, ref c11, ref c12, ref c13, ref c14);
     }
-    public Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(int index)
+    public readonly Components<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> Get<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(int index)
     {
 
         ref var arr0 = ref GetComponentArrayReference<T0>();

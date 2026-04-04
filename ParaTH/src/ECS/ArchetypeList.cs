@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Generic;
-
 namespace ParaTH;
 
-// standard list implementation because stability matters for archetype iterating
+// standard list implementation because order matters for archetype iterating
 public sealed class ArchetypeList : IDisposable
 {
     private Archetype[] archetypes;
@@ -27,7 +24,7 @@ public sealed class ArchetypeList : IDisposable
         if (count == archetypes.Length)
             Array.Resize(ref archetypes, count == 0 ? initialCapacity : count * 2);
 
-        archetypes[count++] = archetype;
+        archetypes.UnsafeAt(count++) = archetype;
         version++;
     }
 
@@ -40,7 +37,7 @@ public sealed class ArchetypeList : IDisposable
             return false;
 
         Array.Copy(archetypes, index + 1, archetypes, index, count - index - 1);
-        archetypes[count - 1] = null!;
+        archetypes.UnsafeAt(count - 1) = null!;
 
         count--;
         version++;
@@ -54,8 +51,8 @@ public sealed class ArchetypeList : IDisposable
 
     public Archetype this[int index]
     {
-        get => archetypes[index];
-        set => archetypes[index] = value;
+        get => archetypes.UnsafeAt(index);
+        set => archetypes.UnsafeAt(index) = value;
     }
 
     public void Clear()
@@ -69,8 +66,8 @@ public sealed class ArchetypeList : IDisposable
     {
         for (int i = 0; i < count; i++)
         {
-            archetypes[i].Dispose();
-            archetypes[i] = null!;
+            archetypes.UnsafeAt(i).Dispose();
+            archetypes.UnsafeAt(i) = null!;
         }
 
         count = 0;

@@ -9,7 +9,7 @@ namespace ParaTH;
 
 public static class DllMap
 {
-    private static Dictionary<string, string> mapDictionary = [];
+    private static readonly Dictionary<string, string> mapDictionary = [];
 
     [ModuleInitializer]
     public static void Init()

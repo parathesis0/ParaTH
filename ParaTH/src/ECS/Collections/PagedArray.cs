@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace ParaTH;
 
@@ -22,12 +19,15 @@ public sealed class PagedArray<T>
             Occupied = new ulong[(capacity + 63) >> 6];
         }
 
+        // for some reason visual studio wont shut up about making this readonly despite it being incorrect
         public int Count
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get;
+            readonly get;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#pragma warning disable IDE0251 // Make member readonly
             set;
+#pragma warning restore IDE0251 // Make member readonly
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -37,18 +37,18 @@ public sealed class PagedArray<T>
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Set(int index)
+        public readonly void Set(int index)
         {
             Occupied.UnsafeAt(index >> 6) |= (1UL << (index & 0x3F));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Unset(int index)
+        public readonly void Unset(int index)
         {
             Occupied.UnsafeAt(index >> 6) &= ~(1UL << (index & 0x3F));
         }
 
-        public ref T this[int index]
+        public readonly ref T this[int index]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => ref Items.UnsafeAt(index);

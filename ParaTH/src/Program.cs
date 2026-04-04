@@ -1,9 +1,11 @@
+namespace ParaTH;
+
 static class Program
 {
     [STAThread]
-    static void Main(string[] args)
+    static void Main()
     {
-        using var g = new ParaTH.Engine();
+        using var g = new Engine();
         g.Run();
     }
 }

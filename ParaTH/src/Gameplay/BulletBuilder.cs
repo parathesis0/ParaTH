@@ -468,35 +468,35 @@ public ref struct BulletBuilder(BulletManager bulletManager)
 
     #region Visual WIP
     [UnscopedRef]
-    public ref BulletBuilder SetSprite(string spriteName, Color color, byte layer, StgBlendState blendState, float rotation = MathHelper.PiOver2)
+    public ref BulletBuilder SetSprite(string spriteName, Color color, byte layer, StgBlendState blendState,
+                                       float rotation = MathHelper.PiOver2, Vector2? scale = null)
     {
+        scale ??= Vector2.One;
         var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
         spriteRenderer.Sprite = sprite;
         renderState.Color = color;
         renderState.Layer = layer;
         renderState.BlendState = blendState;
-
-        // todo: add these to params?
         renderState.Rotation = rotation;
-        renderState.Scale = Vector2.One;
+        renderState.Scale = scale.Value;
 
         activeRenderer = RendererType.SpriteRenderer;
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetAnimation(string animationName, Color color, byte layer, StgBlendState blendState, float rotation = MathHelper.PiOver2)
+    public ref BulletBuilder SetAnimation(string animationName, Color color, byte layer, StgBlendState blendState,
+                                          float rotation = MathHelper.PiOver2, Vector2? scale = null)
     {
+        scale ??= Vector2.One;
         var animation = manager.AssetManager.Get<AnimationAsset>(animationName);
         animationRenderer.Animation = animation;
         animationRenderer.IsPlaying = true;
         renderState.Color = color;
         renderState.Layer = layer;
         renderState.BlendState = blendState;
-
-        // todo: add these to params?
         renderState.Rotation = rotation;
-        renderState.Scale = Vector2.One;
+        renderState.Scale = scale.Value;
 
         activeRenderer = RendererType.AnimationRenderer;
         return ref this;

@@ -17,7 +17,7 @@ public partial struct Chunk
         var tArgs = string.Join(", ", range.Select(i => $"T{i}"));
         var vArgs = string.Join(", ", range.Select(i => $"ref c{i}"));
 #>
-    public Components<<#= tArgs #>> Get<<#= tArgs #>>(int index)
+    public readonly Components<<#= tArgs #>> Get<<#= tArgs #>>(int index)
     {
 
 <#

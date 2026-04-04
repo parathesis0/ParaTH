@@ -13,12 +13,12 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
     {
         float angleOffset = counter / 10f;
 
-        if (counter % 4 == 0)
+        if (counter % 1 == 0)
         {
-            float way = 5;
-            for (int i = 0; i < way; i++)
+            const float Way = 5;
+            for (int i = 0; i < Way; i++)
             {
-                var angle = angleOffset + (MathHelper.TwoPi / way * i);
+                var angle = angleOffset + (MathHelper.TwoPi / Way * i);
                 var delta = new Vector2(
                     100f * MathF.Cos(angle),
                     100f * MathF.Sin(angle));
@@ -31,7 +31,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                 //    .LerpAddPosition(delta, 120, EaseType.OutQuad)
                 //    .LerpAddPosition(-delta, 120, EaseType.InQuad)
                 //    .SetVelocity(delta / 30f)
-                //    .AutoSyncRenderStateRotation()
+                //    .SyncRenderStateRotation()
                 //    .Build();
 
                 //// velocity test
@@ -39,7 +39,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                 //    .SetPosition(new Vector2(320, 240))
                 //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                //    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
+                //    .SetVelocity(2f, angle).SyncRenderStateRotation()
                 //    .Delay(60)
                 //    .SetVelocity(Vector2.UnitY * 2).Delay(10)
                 //    .AddVelocity(Vector2.UnitY * 2).Delay(10)
@@ -60,7 +60,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                 //    .SetPosition(new Vector2(320, 240))
                 //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                //    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
+                //    .SetVelocity(2f, angle).SyncRenderStateRotation()
                 //    .Delay(60)
                 //    .SetAcceleration(Vector2.UnitY * 0.05f)
                 //    .Build();
@@ -70,7 +70,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                 //    .SetPosition(new Vector2(320, 240))
                 //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                //    .SetVelocity(2f, angle).AutoSyncRenderStateRotation()
+                //    .SetVelocity(2f, angle).SyncRenderStateRotation()
                 //    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
                 //    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
                 //    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
@@ -86,13 +86,14 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                 //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                 //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                 //    .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
-                //    .SetVelocity(2f, angle).LerpAddVelocityMagnitude(12f, 120, EaseType.Linear).AutoSyncRenderStateRotation()
+                //    .SetVelocity(2f, angle).LerpAddVelocityMagnitude(12f, 120, EaseType.Linear).SyncRenderStateRotation()
                 //    .Build();
             }
         }
 
         if (counter == 10)
         {
+            // target test
             bulletManager.SpawnBullet()
                 .SetPosition(new Vector2(400, 400))
                 .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive)
@@ -102,7 +103,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
 
         if (counter % 1 == 0)
         {
-            // spawn control test
+            //// spawn control test
             //bulletManager.SpawnBullet()
             //    .SetPosition(new Vector2(320, 240))
             //    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
@@ -114,7 +115,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
             //    .SetSpawningSpreadByTotal(9, MathHelper.Pi, 3, 0.1f)
             //    .Build();
 
-            // spawnAnimation test
+            //// spawnAnimation test
             //bulletManager.SpawnBullet()
             //    .SetPosition(new Vector2(320, 240))
             //    .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
@@ -124,10 +125,9 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
             //    .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
             //    .Build();
 
-            // curvy laser test
+            //// curvy laser test
             //bulletManager.SpawnBullet()
             //    .SetPosition(new Vector2(320, 240))
-            //    //.SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
             //    .SetSprite("curvylaser_lime", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
             //    .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(6)
             //    .SetAngularVelocity(0.05f)
@@ -135,47 +135,49 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
             //    .MakeCurvyLaser(512, 16f)
             //    .Build();
 
-            // curvy laser animation & collision test
+            //// curvy laser animation & collision test
+            bulletManager.SpawnBullet()
+                .SetPosition(new Vector2(320, 240))
+                .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+                .SetMovement(2f, angleOffset, 0.1f)
+                .SetSpawningCircle(25)
+                .AddMovementAngle(1f).Delay(20)
+                .AddMovementAngle(-1f).Delay(20)
+                .AddMovementAngle(1f).Delay(20)
+                .AddMovementAngle(-1f).Delay(20)
+                .AddMovementAngle(1f).Delay(20)
+                .AddMovementAngle(-1f)
+                .SetCollisionGroup(0b0000_0010)
+                .MakeCurvyLaser(128, 16f)
+                .Build();
+
+            //// hierarchy test
+            //Span<Entity> parent = stackalloc Entity[1];
             //bulletManager.SpawnBullet()
-            //    .SetPosition(new Vector2(320, 240))
-            //    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
-            //    .SetMovement(2f, angleOffset, 0.1f).SetSpawningCircle(20)
-            //    .AddMovementAngle(1f).Delay(20)
-            //    .AddMovementAngle(-1f).Delay(20)
-            //    .AddMovementAngle(1f).Delay(20)
-            //    .AddMovementAngle(-1f).Delay(20)
-            //    .AddMovementAngle(1f).Delay(20)
-            //    .AddMovementAngle(-1f)
-            //    .SetCollisionGroup(0b0000_0010)
-            //    .MakeCurvyLaser(128, 16f)
-            //    .Build();
+            //    .SetPosition(new Vector2(200, 200))
+            //    .SetMovement(1f, angleOffset, 0).SyncTransformRotation()
+            //    .Build(parent);
 
-            // hierarchy test
-            Span<Entity> parent = stackalloc Entity[1];
-            bulletManager.SpawnBullet()
-                .SetPosition(new Vector2(200, 200))
-                .SetMovement(1f, angleOffset, 0).SyncTransformRotation()
-                .Build(parent);
+            //ref var transform = ref world.GetComponent<Transform>(parent[0]);
 
-            ref var transform = ref world.GetComponent<Transform>(parent[0]);
+            //transform.Scale = new Vector2(2, 1);
 
-            transform.Scale = new Vector2(2, 1);
+            //Span<Entity> children = stackalloc Entity[8];
+            //bulletManager.SpawnBullet()
+            //    .SetSpawnAnimation("mist_red", 2f, 1f, 0, 12, EaseType.Linear)
+            //    .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
+            //    .SetSpawningCircle(8)
+            //    .Build(children);
 
-            Span<Entity> children = stackalloc Entity[8];
-            bulletManager.SpawnBullet()
-                .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
-                .SetSpawningCircle(8)
-                .Build(children);
-
-            for (int i = 0; i < 8; i++)
-            {
-                var delta = MathHelper.TwoPi / 8;
-                var radius = 100;
-                var position = new Vector2(
-                    radius * MathF.Cos(delta * i),
-                    radius * MathF.Sin(delta * i));
-                engine.SetParentTest(parent[0], children[i], position, Vector2.One, 0);
-            }
+            //for (int i = 0; i < 8; i++)
+            //{
+            //    const float Delta = MathHelper.TwoPi / 8;
+            //    const int Radius = 100;
+            //    var position = new Vector2(
+            //        Radius * MathF.Cos(Delta * i),
+            //        Radius * MathF.Sin(Delta * i));
+            //    engine.SetParentTest(parent[0], children[i], position, Vector2.One, 0);
+            //}
         }
 
         counter++;
@@ -278,7 +280,7 @@ public sealed class Engine : Game
         {
             currentFps = fpsCounter;
             fpsCounter = 0;
-            fpsTimer -= 1.0;
+            fpsTimer--;
         }
 
         if (!isPaused || shouldAdvance)
@@ -331,7 +333,7 @@ public sealed class Engine : Game
 
     protected override void UnloadContent()
     {
-        world?.Dispose();
+        world.Dispose();
         base.UnloadContent();
     }
 
