@@ -3,25 +3,25 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
-public sealed class HierarcySystem(World world) : IDisposable
+public sealed class HierarchySystem(World world) : IDisposable
 {
     private readonly World world = world;
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Hierarchy>();
 
-    private struct HierarcyNode : IComparable<HierarcyNode>
+    private struct HierarchyNode : IComparable<HierarchyNode>
     {
         public Entity Entity;
         public int Depth;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly int CompareTo(HierarcyNode other)
+        public readonly int CompareTo(HierarchyNode other)
         {
             return Depth.CompareTo(other.Depth);
         }
     }
 
-    private readonly UnsafePooledList<HierarcyNode> nodes = new(256);
+    private readonly UnsafePooledList<HierarchyNode> nodes = new(256);
 
     public void Update()
     {
@@ -39,7 +39,7 @@ public sealed class HierarcySystem(World world) : IDisposable
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
-                    nodes.Add(new HierarcyNode
+                    nodes.Add(new HierarchyNode
                     {
                         Entity = entities.UnsafeAt(i),
                         Depth = local.UnsafeAt(i).Depth,
@@ -57,9 +57,9 @@ public sealed class HierarcySystem(World world) : IDisposable
 
         // todo: this is really bad, optimize if profiler tells us to
         // GetComponents and IsAlive are both random memory accesses happening in (fairly)hot loops
-        // im thinking of putting all transforms in HierarcyNode & sorting its index for accessing
+        // im thinking of putting all transforms in HierarchyNode & sorting its index for accessing
         // it's still random access but it will fit into the L1 cache better
-        // and IsAlive should be checked for each parent once instead of having every child check its parent
+        // and IsAlive should be checked once for each parent instead of having every child check its parent
         for (int i = 0; i < nodeSpan.Length; i++)
         {
             var entity = nodeSpan.UnsafeAt(i).Entity;

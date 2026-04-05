@@ -136,48 +136,51 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
             //    .Build();
 
             //// curvy laser animation & collision test
+            //bulletManager.SpawnBullet()
+            //    .SetPosition(new Vector2(320, 240))
+            //    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+            //    .SetMovement(2f, angleOffset, 0.1f)
+            //    .SetSpawningCircle(25)
+            //    .AddMovementAngle(1f).Delay(20)
+            //    .AddMovementAngle(-1f).Delay(20)
+            //    .AddMovementAngle(1f).Delay(20)
+            //    .AddMovementAngle(-1f).Delay(20)
+            //    .AddMovementAngle(1f).Delay(20)
+            //    .AddMovementAngle(-1f)
+            //    .SetCollisionGroup(0b0000_0010)
+            //    .MakeCurvyLaser(128, 16f)
+            //    .Build();
+
+            // hierarchy test
+            Span<Entity> parent = stackalloc Entity[1];
             bulletManager.SpawnBullet()
-                .SetPosition(new Vector2(320, 240))
-                .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
-                .SetMovement(2f, angleOffset, 0.1f)
-                .SetSpawningCircle(25)
-                .AddMovementAngle(1f).Delay(20)
-                .AddMovementAngle(-1f).Delay(20)
-                .AddMovementAngle(1f).Delay(20)
-                .AddMovementAngle(-1f).Delay(20)
-                .AddMovementAngle(1f).Delay(20)
-                .AddMovementAngle(-1f)
+                .SetPosition(new Vector2(200, 200))
+                .SetMovement(1f, angleOffset, 0).SyncTransformRotation()
+                .Build(parent);
+
+            ref var transform = ref world.GetComponent<Transform>(parent[0]);
+
+            transform.Scale = new Vector2(2, 1);
+
+            const int ChildrenCount = 80;
+
+            Span<Entity> children = stackalloc Entity[ChildrenCount];
+            bulletManager.SpawnBullet()
+                .SetSpawnAnimation("mist_red", 2f, 1f, 0, 12, EaseType.Linear)
+                .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
+                .SetSpawningCircle(ChildrenCount)
                 .SetCollisionGroup(0b0000_0010)
-                .MakeCurvyLaser(128, 16f)
-                .Build();
+                .Build(children);
 
-            //// hierarchy test
-            //Span<Entity> parent = stackalloc Entity[1];
-            //bulletManager.SpawnBullet()
-            //    .SetPosition(new Vector2(200, 200))
-            //    .SetMovement(1f, angleOffset, 0).SyncTransformRotation()
-            //    .Build(parent);
-
-            //ref var transform = ref world.GetComponent<Transform>(parent[0]);
-
-            //transform.Scale = new Vector2(2, 1);
-
-            //Span<Entity> children = stackalloc Entity[8];
-            //bulletManager.SpawnBullet()
-            //    .SetSpawnAnimation("mist_red", 2f, 1f, 0, 12, EaseType.Linear)
-            //    .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
-            //    .SetSpawningCircle(8)
-            //    .Build(children);
-
-            //for (int i = 0; i < 8; i++)
-            //{
-            //    const float Delta = MathHelper.TwoPi / 8;
-            //    const int Radius = 100;
-            //    var position = new Vector2(
-            //        Radius * MathF.Cos(Delta * i),
-            //        Radius * MathF.Sin(Delta * i));
-            //    engine.SetParentTest(parent[0], children[i], position, Vector2.One, 0);
-            //}
+            for (int i = 0; i < ChildrenCount; i++)
+            {
+                const float Delta = MathHelper.TwoPi / ChildrenCount;
+                const int Radius = 100;
+                var position = new Vector2(
+                    Radius * MathF.Cos(Delta * i),
+                    Radius * MathF.Sin(Delta * i));
+                engine.SetParentTest(parent[0], children[i], position, Vector2.One, 0);
+            }
         }
 
         counter++;
@@ -198,7 +201,7 @@ public sealed class Engine : Game
     private RenderSystem renderSystem = null!;
     private CollisionSystem collisionSystem = null!;
     private LifetimeSystem lifetimeSystem = null!;
-    private HierarcySystem hierarcySystem = null!;
+    private HierarchySystem hierarcySystem = null!;
 
     private Rectangle gameBounds = new(0, 0, 640, 480); // new(640 / 4, 480 / 4, 640 / 2, 480 / 2);
 
@@ -259,7 +262,7 @@ public sealed class Engine : Game
         renderSystem = new RenderSystem(world, stgBatch, gameBounds);
         collisionSystem = new CollisionSystem(world);
         lifetimeSystem = new LifetimeSystem(world, gameBounds);
-        hierarcySystem = new HierarcySystem(world);
+        hierarcySystem = new HierarchySystem(world);
 
         script = new(bulletManager, world, this);
 

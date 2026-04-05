@@ -3,12 +3,10 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
-// todo: make this handle hierarcy
-// parents should always live longer than all their children
-public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
+public sealed class LifetimeSystem : IDisposable
 {
-    private readonly World world = world;
-    private Rectangle bounds = bounds;
+    private readonly World world;
+    private Rectangle bounds;
 
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Lifetime>();
@@ -16,20 +14,43 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     private readonly UnsafePooledList<Entity> toDestroy = new(256);
     private readonly UnsafePooledList<Entity> curvyLaserToDestroy = new(16);
 
+    private struct HierarchyNode : IComparable<HierarchyNode>
+    {
+        public Entity Entity;
+        public Entity Parent;
+        public int Depth;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly int CompareTo(HierarchyNode other)
+        {
+            return Depth.CompareTo(other.Depth);
+        }
+    }
+    private readonly UnsafePooledList<HierarchyNode> hierarchyNodes = new(256);
+
+    public LifetimeSystem(World world, Rectangle bounds)
+    {
+        this.world = world;
+        this.bounds = bounds;
+    }
+
     public void Update()
     {
         var q = world.GetOrCreateQuery(descriptor);
         var toDestroy = this.toDestroy;
         var curvyLaserToDestroy = this.curvyLaserToDestroy;
+        var hierarchyNodes = this.hierarchyNodes;
 
         toDestroy.Clear();
         curvyLaserToDestroy.Clear();
+        hierarchyNodes.Clear();
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
             bool hasSprite = archetype.Has<SpriteRenderer>();
             bool hasAnimation = archetype.Has<AnimationRenderer>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
+            bool hasHrc = archetype.Has<Hierarchy>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -39,14 +60,27 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                 var sprites = hasSprite ? chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
                 var animations = hasAnimation ? chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
                 var curvyLasers = hasCurvyLaser ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
+                var hierarchies = hasHrc ? chunk.GetFilledComponentSpan<Hierarchy>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
                     ref var transform = ref transforms.UnsafeAt(i);
                     ref var lifetime = ref lifetimes.UnsafeAt(i);
+                    var entity = chunk.Entities.UnsafeAt(i);
+
+                    lifetime.IsReadyToDie = false;
+
+                    if (hasHrc)
+                    {
+                        hierarchyNodes.Add(new HierarchyNode
+                        {
+                            Entity = entity,
+                            Parent = hierarchies.UnsafeAt(i).Parent,
+                            Depth = hierarchies.UnsafeAt(i).Depth
+                        });
+                    }
 
                     bool isOffscreen;
-
                     if (hasCurvyLaser)
                     {
                         isOffscreen = IsCurvyLaserOffscreen(ref curvyLasers.UnsafeAt(i));
@@ -73,35 +107,73 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                             lifetime.OffscreenFramesToLive--;
                             if (lifetime.OffscreenFramesToLive <= 0)
                             {
-                                if (hasCurvyLaser)
-                                    curvyLaserToDestroy.Add(chunk.Entities.UnsafeAt(i));
-                                else
-                                    toDestroy.Add(chunk.Entities.UnsafeAt(i));
+                                lifetime.IsReadyToDie = true;
+                                if (hasCurvyLaser) curvyLaserToDestroy.Add(entity);
+                                else toDestroy.Add(entity);
                             }
                         }
                         else
                         {
-                            if (hasCurvyLaser)
-                                curvyLaserToDestroy.Add(chunk.Entities.UnsafeAt(i));
-                            else
-                                toDestroy.Add(chunk.Entities.UnsafeAt(i));
+                            lifetime.IsReadyToDie = true;
+                            if (hasCurvyLaser) curvyLaserToDestroy.Add(entity);
+                            else toDestroy.Add(entity);
                         }
                     }
                 }
             }
         }
 
+        var hNodesSpan = hierarchyNodes.AsSpan();
+        if (hNodesSpan.Length > 0)
+        {
+            if (hNodesSpan.Length > 1) // fuck you
+                hNodesSpan.Sort();
+
+            for (int i = hNodesSpan.Length - 1; i >= 0; i--)
+            {
+                ref var node = ref hNodesSpan.UnsafeAt(i);
+                if (!world.IsAlive(node.Parent)) continue;
+
+                ref var childLt = ref world.GetComponent<Lifetime>(node.Entity);
+                if (!childLt.IsReadyToDie)
+                {
+                    ref var parentLt = ref world.GetComponent<Lifetime>(node.Parent);
+                    parentLt.IsReadyToDie = false;
+                }
+            }
+
+            for (int i = 0; i < hNodesSpan.Length; i++)
+            {
+                ref var node = ref hNodesSpan.UnsafeAt(i);
+                if (!world.IsAlive(node.Parent)) continue;
+
+                ref var parentLt = ref world.GetComponent<Lifetime>(node.Parent);
+                if (!parentLt.IsReadyToDie)
+                {
+                    ref var childLt = ref world.GetComponent<Lifetime>(node.Entity);
+                    childLt.IsReadyToDie = false;
+                }
+            }
+        }
+
         // hot path: regular bullets
         for (int i = 0; i < toDestroy.Count; i++)
-            world.DestroyEntity(toDestroy[i]);
+        {
+            var entity = toDestroy[i];
+            if (world.GetComponent<Lifetime>(entity).IsReadyToDie)
+                world.DestroyEntity(entity);
+        }
 
-        // cold path: curvy lasers need manual queue disposal
+        // cold path: curvy lasers
         for (int i = 0; i < curvyLaserToDestroy.Count; i++)
         {
             var entity = curvyLaserToDestroy[i];
-            ref var laser = ref world.GetComponent<CurvyLaser>(entity);
-            laser.LaserNodes.Dispose();
-            world.DestroyEntity(entity);
+            if (world.GetComponent<Lifetime>(entity).IsReadyToDie)
+            {
+                ref var laser = ref world.GetComponent<CurvyLaser>(entity);
+                laser.LaserNodes.Dispose();
+                world.DestroyEntity(entity);
+            }
         }
     }
 
@@ -131,9 +203,7 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
             return true;
 
         float radius = laser.HalfWidth * 1.415f;
-
         nodes.AsSpans(out var first, out var second);
-
         int totalCount = first.Length + second.Length;
         Span<Vector2> allNodes = stackalloc Vector2[totalCount];
         first.CopyTo(allNodes);
@@ -175,5 +245,6 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     {
         toDestroy.Dispose();
         curvyLaserToDestroy.Dispose();
+        hierarchyNodes.Dispose();
     }
 }
