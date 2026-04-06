@@ -3,47 +3,30 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
-public sealed class LifetimeSystem : IDisposable
+using DepthBuckets = UnsafePooledList<UnsafePooledList<Entity>>;
+
+public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
 {
-    private readonly World world;
-    private Rectangle bounds;
+    private readonly World world = world;
+    private Rectangle bounds = bounds;
 
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Lifetime>();
 
-    private readonly UnsafePooledList<Entity> toDestroy = new(256);
-    private readonly UnsafePooledList<Entity> curvyLaserToDestroy = new(16);
-
-    private struct HierarchyNode : IComparable<HierarchyNode>
-    {
-        public Entity Entity;
-        public Entity Parent;
-        public int Depth;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly int CompareTo(HierarchyNode other)
-        {
-            return Depth.CompareTo(other.Depth);
-        }
-    }
-    private readonly UnsafePooledList<HierarchyNode> hierarchyNodes = new(256);
-
-    public LifetimeSystem(World world, Rectangle bounds)
-    {
-        this.world = world;
-        this.bounds = bounds;
-    }
+    private readonly UnsafePooledList<Entity> potentialToDestroy = new(256);
+    private readonly UnsafePooledList<Entity> potentialCurvyLaserToDestroy = new(16);   // handled separately because curvy lasers resources that need manual disposal
+    private readonly DepthBuckets hierarchyEntityBuckets = new();                       // depth-based buckets used for syncing parent and children's lifetimes
+    private int maxDepthSeen = -1;
 
     public void Update()
     {
         var q = world.GetOrCreateQuery(descriptor);
-        var toDestroy = this.toDestroy;
-        var curvyLaserToDestroy = this.curvyLaserToDestroy;
-        var hierarchyNodes = this.hierarchyNodes;
+        var potentialToDestroy = this.potentialToDestroy;
+        var potentialCurvyLaserToDestroy = this.potentialCurvyLaserToDestroy;
+        var hierarchyEntityBuckets = this.hierarchyEntityBuckets;
 
-        toDestroy.Clear();
-        curvyLaserToDestroy.Clear();
-        hierarchyNodes.Clear();
+        potentialToDestroy.Clear();
+        potentialCurvyLaserToDestroy.Clear();
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
@@ -70,16 +53,7 @@ public sealed class LifetimeSystem : IDisposable
 
                     lifetime.IsReadyToDie = false;
 
-                    if (hasHrc)
-                    {
-                        hierarchyNodes.Add(new HierarchyNode
-                        {
-                            Entity = entity,
-                            Parent = hierarchies.UnsafeAt(i).Parent,
-                            Depth = hierarchies.UnsafeAt(i).Depth
-                        });
-                    }
-
+                    // calculate if an entity is offscreen
                     bool isOffscreen;
                     if (hasCurvyLaser)
                     {
@@ -100,74 +74,110 @@ public sealed class LifetimeSystem : IDisposable
                         isOffscreen = IsPointOffscreen(transform.Position);
                     }
 
+                    // decrement ttl or put on kill list
                     if (isOffscreen)
                     {
                         if (lifetime.OffscreenFramesToLive > 0)
                         {
                             lifetime.OffscreenFramesToLive--;
                             if (lifetime.OffscreenFramesToLive <= 0)
-                            {
                                 lifetime.IsReadyToDie = true;
-                                if (hasCurvyLaser) curvyLaserToDestroy.Add(entity);
-                                else toDestroy.Add(entity);
-                            }
                         }
                         else
                         {
                             lifetime.IsReadyToDie = true;
-                            if (hasCurvyLaser) curvyLaserToDestroy.Add(entity);
-                            else toDestroy.Add(entity);
                         }
+
+                        if (lifetime.IsReadyToDie)
+                        {
+                            if (hasCurvyLaser)
+                                potentialCurvyLaserToDestroy.Add(entity);
+                            else
+                                potentialToDestroy.Add(entity);
+                        }
+                    }
+
+                    // if an entity has hierarchy, it is someone's children and could be someone's parent
+                    // add to depth buckets for hierarchy processing
+                    if (hasHrc)
+                    {
+                        int depth = hierarchies.UnsafeAt(i).Depth;
+
+                        if (depth > maxDepthSeen)
+                        {
+                            for (int d = maxDepthSeen + 1; d <= depth; d++)
+                                hierarchyEntityBuckets.Add(new UnsafePooledList<Entity>(64));
+
+                            maxDepthSeen = depth;
+                        }
+
+                        hierarchyEntityBuckets[depth].Add(entity);
                     }
                 }
             }
         }
 
-        var hNodesSpan = hierarchyNodes.AsSpan();
-        if (hNodesSpan.Length > 0)
+        // todo: a lot of random memory accesses, ew
+        // process hierarchy from deepest to shallowest (children save parents)
+        for (int depth = maxDepthSeen; depth >= 0; depth--)
         {
-            if (hNodesSpan.Length > 1) // fuck you
-                hNodesSpan.Sort();
+            var bucket = hierarchyEntityBuckets[depth];
+            var bucketSpan = bucket.AsSpan();
 
-            for (int i = hNodesSpan.Length - 1; i >= 0; i--)
+            for (int i = 0; i < bucketSpan.Length; i++)
             {
-                ref var node = ref hNodesSpan.UnsafeAt(i);
-                if (!world.IsAlive(node.Parent)) continue;
+                var childEntity = bucketSpan.UnsafeAt(i);
+                ref var hrc = ref world.GetComponent<Hierarchy>(childEntity);
 
-                ref var childLt = ref world.GetComponent<Lifetime>(node.Entity);
+                if (!world.IsAlive(hrc.Parent))
+                    continue;
+
+                ref var childLt = ref world.GetComponent<Lifetime>(childEntity);
                 if (!childLt.IsReadyToDie)
                 {
-                    ref var parentLt = ref world.GetComponent<Lifetime>(node.Parent);
+                    ref var parentLt = ref world.GetComponent<Lifetime>(hrc.Parent);
                     parentLt.IsReadyToDie = false;
-                }
-            }
-
-            for (int i = 0; i < hNodesSpan.Length; i++)
-            {
-                ref var node = ref hNodesSpan.UnsafeAt(i);
-                if (!world.IsAlive(node.Parent)) continue;
-
-                ref var parentLt = ref world.GetComponent<Lifetime>(node.Parent);
-                if (!parentLt.IsReadyToDie)
-                {
-                    ref var childLt = ref world.GetComponent<Lifetime>(node.Entity);
-                    childLt.IsReadyToDie = false;
                 }
             }
         }
 
-        // hot path: regular bullets
-        for (int i = 0; i < toDestroy.Count; i++)
+        // process hierarchy from shallowest to deepest (parents save children)
+        for (int depth = 0; depth <= maxDepthSeen; depth++)
         {
-            var entity = toDestroy[i];
+            var bucket = hierarchyEntityBuckets[depth];
+            var bucketSpan = bucket.AsSpan();
+
+            for (int i = 0; i < bucketSpan.Length; i++)
+            {
+                var childEntity = bucketSpan.UnsafeAt(i);
+                ref var hrc = ref world.GetComponent<Hierarchy>(childEntity);
+
+                if (!world.IsAlive(hrc.Parent))
+                    continue;
+
+                ref var parentLt = ref world.GetComponent<Lifetime>(hrc.Parent);
+                if (!parentLt.IsReadyToDie)
+                {
+                    ref var childLt = ref world.GetComponent<Lifetime>(childEntity);
+                    childLt.IsReadyToDie = false;
+                }
+            }
+
+            bucket.Clear();
+        }
+
+        // hot path: regular bullets
+        for (int i = 0; i < potentialToDestroy.Count; i++)
+        {
+            var entity = potentialToDestroy[i];
             if (world.GetComponent<Lifetime>(entity).IsReadyToDie)
                 world.DestroyEntity(entity);
         }
 
         // cold path: curvy lasers
-        for (int i = 0; i < curvyLaserToDestroy.Count; i++)
+        for (int i = 0; i < potentialCurvyLaserToDestroy.Count; i++)
         {
-            var entity = curvyLaserToDestroy[i];
+            var entity = potentialCurvyLaserToDestroy[i];
             if (world.GetComponent<Lifetime>(entity).IsReadyToDie)
             {
                 ref var laser = ref world.GetComponent<CurvyLaser>(entity);
@@ -239,12 +249,28 @@ public sealed class LifetimeSystem : IDisposable
         return baseRadius * maxScale * 1.415f;
     }
 
-    public void SetBounds(Rectangle newBounds) => bounds = newBounds;
+    public void SetBounds(Rectangle newBounds)
+    {
+        bounds = newBounds;
+    }
+
+    public void TrimExcess()
+    {
+        for (int i = 0; i < hierarchyEntityBuckets.Count; i++)
+            hierarchyEntityBuckets[i].Dispose();
+
+        hierarchyEntityBuckets.Clear();
+        maxDepthSeen = -1;
+    }
 
     public void Dispose()
     {
-        toDestroy.Dispose();
-        curvyLaserToDestroy.Dispose();
-        hierarchyNodes.Dispose();
+        potentialToDestroy.Dispose();
+        potentialCurvyLaserToDestroy.Dispose();
+
+        for (int i = 0; i < hierarchyEntityBuckets.Count; i++)
+            hierarchyEntityBuckets[i].Dispose();
+
+        hierarchyEntityBuckets.Dispose();
     }
 }
