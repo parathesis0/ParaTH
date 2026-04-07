@@ -5,7 +5,6 @@
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".cs" #>
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
@@ -20,7 +19,6 @@ public sealed partial class World
         var pArgs = string.Join(", ", range.Select(i => $"in T{i} c{i}"));
         var cArgs = string.Join(", ", range.Select(i => $"c{i}"));
 #>
-    [SkipLocalsInit]
     public void QueryRemoveComponent<<#= tArgs #>>(in QueryDescriptor descriptor)
     {
         var query = GetOrCreateQuery(in descriptor);

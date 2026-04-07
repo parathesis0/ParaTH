@@ -3,6 +3,7 @@ using System.Runtime.Intrinsics;
 
 namespace ParaTH;
 
+[SkipLocalsInit]
 public readonly struct ComponentMask : IEquatable<ComponentMask>
 {
     public static readonly ComponentMask Zero = default;

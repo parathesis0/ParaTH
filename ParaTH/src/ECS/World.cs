@@ -7,6 +7,7 @@ public interface IForeach { void Update(Entity entity); }
 
 public delegate void ForEach(Entity entity);
 
+[SkipLocalsInit]
 public sealed partial class World : IDisposable
 {
     private readonly EntityDataMap entityDatas;
@@ -42,7 +43,6 @@ public sealed partial class World : IDisposable
     }
 
     #region Entity Management
-    [SkipLocalsInit]
     public Entity CreateEntity<T0>(in T0 component)
     {
         var types = Component<T0>.GroupTypeInfo;
@@ -60,7 +60,6 @@ public sealed partial class World : IDisposable
         return entity;
     }
 
-    [SkipLocalsInit]
     public void CreateEntityBulk<T0>(Span<Entity> entityBuffer, Span<T0> components)
     {
         Debug.Assert(entityBuffer.Length == components.Length);
@@ -79,7 +78,6 @@ public sealed partial class World : IDisposable
         AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
 
-    [SkipLocalsInit]
     public void ReserveEntityBulk(Span<Entity> entityBuffer, ComponentTypeInfo[] types,
                                   out Archetype archetype, out Slot start, out Slot end)
     {
@@ -99,7 +97,6 @@ public sealed partial class World : IDisposable
         AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
 
-    [SkipLocalsInit]
     public void DestroyEntity(Entity entity)
     {
         Debug.Assert(IsAlive(entity));
@@ -111,7 +108,6 @@ public sealed partial class World : IDisposable
         DestroyAndRecycleEntity(entity);
     }
 
-    [SkipLocalsInit]
     public bool IsAlive(Entity entity)
     {
         ref var entityData = ref entityDatas.TryGetEntityData(entity.Id);
@@ -120,7 +116,6 @@ public sealed partial class World : IDisposable
             entityData.Version == entity.Version;
     }
 
-    [SkipLocalsInit]
     private Entity RecycleOrCreateEntity()
     {
         var shouldRecycle = recycledEntities.TryDequeue(out Entity entity);
@@ -129,7 +124,6 @@ public sealed partial class World : IDisposable
         return result;
     }
 
-    [SkipLocalsInit]
     private void RecycleOrCreateEntityBulk(
         Archetype archetype, Span<Entity> entityBuffer, Span<EntityData> entityDataBuffer)
     {
@@ -147,7 +141,6 @@ public sealed partial class World : IDisposable
         }
     }
 
-    [SkipLocalsInit]
     private void DestroyAndRecycleEntity(Entity entity)
     {
         entityDatas.Remove(entity.Id);
@@ -156,7 +149,6 @@ public sealed partial class World : IDisposable
         entityCount--;
     }
 
-    [SkipLocalsInit]
     private Archetype GetOrCreateArchetype(ComponentTypeInfo[] types)
     {
         var mask = ComponentMask.Zero;
@@ -177,7 +169,6 @@ public sealed partial class World : IDisposable
         return newArchetype;
     }
 
-    [SkipLocalsInit]
     private Archetype GetOrCreateArchetypeWithCapacity(ComponentTypeInfo[] types, int amount)
     {
         var archetype = GetOrCreateArchetype(types);
@@ -192,7 +183,6 @@ public sealed partial class World : IDisposable
         return archetype;
     }
 
-    [SkipLocalsInit]
     private void AddEntityDataBulk(Span<Entity> entities, Span<EntityData> entityData)
     {
         int amount = entities.Length;
@@ -207,7 +197,6 @@ public sealed partial class World : IDisposable
     #endregion
 
     #region Component Manipulation
-    [SkipLocalsInit]
     public ref T0 GetComponent<T0>(Entity entity)
     {
         Debug.Assert(IsAlive(entity));
@@ -219,7 +208,6 @@ public sealed partial class World : IDisposable
         return ref archetype.Get<T0>(slot);
     }
 
-    [SkipLocalsInit]
     public bool TryGetComponent<T>(Entity entity, out T component)
     {
         Debug.Assert(IsAlive(entity));
@@ -240,7 +228,6 @@ public sealed partial class World : IDisposable
         return true;
     }
 
-    [SkipLocalsInit]
     public ref T TryGetComponentRef<T>(Entity entity)
     {
         Debug.Assert(IsAlive(entity));
@@ -257,7 +244,6 @@ public sealed partial class World : IDisposable
         return ref arr.UnsafeAt(slot.Index);
     }
 
-    [SkipLocalsInit]
     public bool HasComponent<T0>(Entity entity)
     {
         Debug.Assert(IsAlive(entity));
@@ -266,7 +252,6 @@ public sealed partial class World : IDisposable
         return archetype.Has<T0>();
     }
 
-    [SkipLocalsInit]
     public void SetComponentValue<T0>(Entity entity, in T0 component)
     {
         Debug.Assert(IsAlive(entity));
@@ -279,7 +264,6 @@ public sealed partial class World : IDisposable
         archetype.Set<T0>(slot, component);
     }
 
-    [SkipLocalsInit]
     public void AddComponent<T0>(Entity entity, in T0 component)
     {
         Debug.Assert(IsAlive(entity));
@@ -297,7 +281,6 @@ public sealed partial class World : IDisposable
         SetComponentValue<T0>(entity, component);
     }
 
-    [SkipLocalsInit]
     public void RemoveComponent<T0>(Entity entity)
     {
         Debug.Assert(IsAlive(entity));
@@ -312,7 +295,6 @@ public sealed partial class World : IDisposable
         Move(ref entityData, oldArchetype, newArchetype);
     }
 
-    [SkipLocalsInit]
     private Archetype GetOrCreateArchetypeByAddEdge(ComponentTypeInfo newType, Archetype oldArchetype)
     {
         var index = newType.Id;
@@ -328,7 +310,6 @@ public sealed partial class World : IDisposable
         return newArchetype;
     }
 
-    [SkipLocalsInit]
     private Archetype GetOrCreateArchetypeByRemoveEdge(ComponentTypeInfo removedType, Archetype oldArchetype)
     {
         var index = removedType.Id;
@@ -344,7 +325,6 @@ public sealed partial class World : IDisposable
         return newArchetype;
     }
 
-    [SkipLocalsInit]
     private void Move(ref EntityData srcEntityData, Archetype srcArchetype, Archetype dstArchetype)
     {
         Debug.Assert(srcArchetype != dstArchetype,
@@ -366,7 +346,6 @@ public sealed partial class World : IDisposable
         entityDatas.EnsureCapacity(entityCapacity);
     }
 
-    [SkipLocalsInit]
     private static T[] Merge<T>(T[] a, T[] b)
     {
         if (a.Length == 0) return b;
@@ -378,7 +357,6 @@ public sealed partial class World : IDisposable
         return result;
     }
 
-    [SkipLocalsInit]
     private static T[] Remove<T>(T[] a, T[] b) where T : IEquatable<T>
     {
         var result = GC.AllocateUninitializedArray<T>(a.Length - b.Length);
@@ -396,7 +374,6 @@ public sealed partial class World : IDisposable
 
     #region Query
 #pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
-    [SkipLocalsInit]
     // for optimal performance, use this and iterate archetypes & chunks manually
     public Query GetOrCreateQuery(in QueryDescriptor descriptor)
     {
@@ -411,7 +388,6 @@ public sealed partial class World : IDisposable
     }
 
     // slow, only use for prototyping
-    [SkipLocalsInit]
     public void Query(in QueryDescriptor descriptor, ForEach forEntity)
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -431,7 +407,6 @@ public sealed partial class World : IDisposable
     }
 
     // fast but could still be faster
-    [SkipLocalsInit]
     public void Query<T>(in QueryDescriptor descriptor, ref T iForEach) where T : struct, IForeach
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -450,14 +425,12 @@ public sealed partial class World : IDisposable
         }
     }
 
-    [SkipLocalsInit]
     public int CountArchetypes(in QueryDescriptor descriptor)
     {
         var query = GetOrCreateQuery(in descriptor);
         return query.GetMatchingArchetypesSpan().Length;
     }
 
-    [SkipLocalsInit]
     public int CountChunks(in QueryDescriptor descriptor)
     {
         var count = 0;
@@ -469,7 +442,6 @@ public sealed partial class World : IDisposable
         return count;
     }
 
-    [SkipLocalsInit]
     public int CountEntities(in QueryDescriptor descriptor)
     {
         var count = 0;
@@ -482,7 +454,6 @@ public sealed partial class World : IDisposable
     }
 
     // BYOM get methods
-    [SkipLocalsInit]
     public void GetArchetypes(in QueryDescriptor descriptor, Span<Archetype> buffer)
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -490,7 +461,6 @@ public sealed partial class World : IDisposable
         matchingArchetypes.CopyTo(buffer);
     }
 
-    [SkipLocalsInit]
     public void GetChunks(in QueryDescriptor descriptor, Span<Chunk> buffer)
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -499,7 +469,6 @@ public sealed partial class World : IDisposable
             archetype.Chunks.AsSpan().CopyTo(buffer);
     }
 
-    [SkipLocalsInit]
     public void GetEntities(in QueryDescriptor descriptor, Span<Entity> buffer)
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -515,7 +484,6 @@ public sealed partial class World : IDisposable
 
     #region Batch Query Operations
 #pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
-    [SkipLocalsInit]
     public void QueryDestroyEntity(in QueryDescriptor descriptor)
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -536,7 +504,6 @@ public sealed partial class World : IDisposable
         }
     }
 
-    [SkipLocalsInit]
     public void QuerySetComponentValue<T0>(in QueryDescriptor descriptor, in T0 component)
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -553,7 +520,6 @@ public sealed partial class World : IDisposable
         }
     }
 
-    [SkipLocalsInit]
     public void QueryAddComponent<T0>(in QueryDescriptor descriptor, in T0 component)
     {
         var query = GetOrCreateQuery(in descriptor);
@@ -592,7 +558,6 @@ public sealed partial class World : IDisposable
         entityDatas.EnsureCapacity(entityCapacity);
     }
 
-    [SkipLocalsInit]
     public void QueryRemoveComponent<T0>(in QueryDescriptor descriptor)
     {
         var query = GetOrCreateQuery(in descriptor);

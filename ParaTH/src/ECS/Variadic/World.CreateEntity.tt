@@ -4,8 +4,6 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".cs" #>
-using System.Runtime.CompilerServices;
-
 namespace ParaTH;
 
 public sealed partial class World
@@ -18,7 +16,6 @@ public sealed partial class World
         var pArgs = string.Join(", ", range.Select(i => $"in T{i} c{i}"));
         var vArgs = string.Join(", ", range.Select(i => $"c{i}"));
 #>
-    [SkipLocalsInit]
     public Entity CreateEntity<<#= tArgs #>>(<#= pArgs #>)
     {
         var types = Component<<#= tArgs #>>.GroupTypeInfo;

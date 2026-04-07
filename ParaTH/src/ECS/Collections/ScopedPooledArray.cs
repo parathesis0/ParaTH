@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+[SkipLocalsInit]
 public readonly record struct ScopedPooledArray<T>(T[] Array, int Length) : IDisposable
 {
     public ref T this[int index]

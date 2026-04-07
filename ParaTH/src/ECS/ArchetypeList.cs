@@ -1,6 +1,9 @@
+using System.Runtime.CompilerServices;
+
 namespace ParaTH;
 
 // standard list implementation because order matters for archetype iterating
+[SkipLocalsInit]
 public sealed class ArchetypeList : IDisposable
 {
     private Archetype[] archetypes;

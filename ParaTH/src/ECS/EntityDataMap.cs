@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+[SkipLocalsInit]
 public sealed class EntityDataMap
 {
     public readonly PagedArray<EntityData> EntityDatas;

@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+[SkipLocalsInit]
 public sealed partial class Archetype : IDisposable
 {
     public const int InvalidIndex = -1;
