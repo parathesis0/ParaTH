@@ -38,17 +38,16 @@ public sealed class HierarchySystem(World world) : IDisposable
                         maxDepthSeen = depth;
                     }
 
-                    // sort all children entities bu depth order for proper hierarchy
+                    // sort all children entities in depth order for proper hierarchy handling
                     buckets[depth].Add(entities.UnsafeAt(i));
                 }
             }
         }
 
         // todo: this is really bad, optimize if profiler tells us to
-        // GetComponents and IsAlive are both random memory accesses happening in (fairly)hot loops
-        // maybe all transforms in buckets as well & use its sorted index for accessing?
+        // all 3 GetComponents are random memory accesses happening in (fairly)hot loops
+        // maybe store transforms in buckets as well & use its sorted index for accessing?
         // it's still random access but will fit into L1 cache better
-        // and IsAlive should be checked once for each parent instead of having every child check its parent
         for (int depth = 0; depth <= maxDepthSeen; depth++)
         {
             var bucket = buckets[depth];
@@ -59,13 +58,12 @@ public sealed class HierarchySystem(World world) : IDisposable
                 var entity = bucketSpan.UnsafeAt(i);
                 ref var local = ref world.GetComponent<Hierarchy>(entity);
 
-                // your parents are dead lmao
-                // not sure if this can or should happen
-                if (!world.IsAlive(local.Parent))
-                    continue;
+                // parents should always outlive their children
+                //if (!world.IsAlive(local.Parent))
+                //    continue;
 
-                ref var parentTransform = ref world.GetComponent<Transform>(local.Parent);
                 ref var childTransform = ref world.GetComponent<Transform>(entity);
+                ref var parentTransform = ref world.GetComponent<Transform>(local.Parent);
 
                 // apply parent's transform
                 float cos = MathF.Cos(parentTransform.Rotation);

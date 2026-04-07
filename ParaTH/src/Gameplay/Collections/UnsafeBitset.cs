@@ -1,21 +1,25 @@
+using System.Buffers;
 using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
 [SkipLocalsInit]
-public sealed class UnsafeBitset
+public sealed class UnsafeBitset : IDisposable
 {
     private ulong[] bits;
+    private int length;
 
     public int Capacity
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => bits.Length << 6;
+        get => length << 6;
     }
 
     public UnsafeBitset(int bitsCount)
     {
-        bits = new ulong[((bitsCount - 1) >> 6) + 1];
+        length = ((bitsCount - 1) >> 6) + 1;
+        bits = ArrayPool<ulong>.Shared.Rent(length);
+        bits.AsSpan(0, length).Clear();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -39,32 +43,28 @@ public sealed class UnsafeBitset
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
     {
-        bits.AsSpan().Clear();
+        bits.AsSpan(0, length).Clear();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int minBitsCount)
     {
-        if (minBitsCount <= Capacity)
+        int requiredLength = ((minBitsCount - 1) >> 6) + 1;
+        if (requiredLength <= length)
             return;
 
-        Array.Resize(ref bits, ((minBitsCount - 1) >> 6) + 1);
+        var newBits = ArrayPool<ulong>.Shared.Rent(requiredLength);
+        bits.AsSpan(0, length).CopyTo(newBits);
+        newBits.AsSpan(length, requiredLength - length).Clear();
+
+        ArrayPool<ulong>.Shared.Return(bits);
+        bits = newBits;
+        length = requiredLength;
     }
 
-    public void TrimExcess()
+    public void Dispose()
     {
-        int lastUsed = -1;
-        for (int i = bits.Length - 1; i >= 0; i--)
-        {
-            if (bits.UnsafeAt(i) != 0)
-            {
-                lastUsed = i;
-                break;
-            }
-        }
-
-        int newLength = Math.Max(lastUsed + 1, 1);
-        if (newLength < bits.Length)
-            Array.Resize(ref bits, newLength);
+        ArrayPool<ulong>.Shared.Return(bits);
+        bits = null!;
     }
 }

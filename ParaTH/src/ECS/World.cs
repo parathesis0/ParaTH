@@ -23,6 +23,8 @@ public sealed partial class World : IDisposable
 
     private bool isDisposed;
 
+    public int MaxEntityId => entityCount + recycledEntities.Count - 1;
+
     public World(
         int baseChunkByteSize,
         int baseChunkEntityCount,
