@@ -14,7 +14,7 @@ public sealed partial class World : IDisposable
     private readonly ArchetypeList archetypes;
     private readonly Dictionary<ComponentMask, Archetype> groupMaskToArchetype;
     private readonly Dictionary<QueryDescriptor, Query> queryCache;
-    private readonly Queue<Entity> recycledEntities;
+    private readonly UnsafePooledQueue<Entity> recycledEntities;
 
     private readonly int baseChunkByteSize;
     private readonly int baseChunkEntityCount;
@@ -36,7 +36,7 @@ public sealed partial class World : IDisposable
         archetypes = new ArchetypeList(initialArchetypeCapacity);
         groupMaskToArchetype = new Dictionary<ComponentMask, Archetype>(initialArchetypeCapacity);
         queryCache = new Dictionary<QueryDescriptor, Query>(initialArchetypeCapacity);
-        recycledEntities = new Queue<Entity>(initialEntityCapacity);
+        recycledEntities = new UnsafePooledQueue<Entity>(initialEntityCapacity);
 
         this.baseChunkByteSize = baseChunkByteSize;
         this.baseChunkEntityCount = baseChunkEntityCount;
@@ -676,7 +676,7 @@ public sealed partial class World : IDisposable
         archetypes.Dispose();
         groupMaskToArchetype.Clear();
         queryCache.Clear();
-        recycledEntities.Clear();
+        recycledEntities.Dispose();
     }
     #endregion
 }

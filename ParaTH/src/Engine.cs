@@ -162,7 +162,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
 
             transform.Scale = new Vector2(2, 1);
 
-            const int ChildrenCount = 80;
+            const int ChildrenCount = 400;
 
             Span<Entity> children = stackalloc Entity[ChildrenCount];
             bulletManager.SpawnBullet()
