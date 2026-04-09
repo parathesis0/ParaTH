@@ -272,8 +272,8 @@ public sealed class Engine : Game
 
         script = new(bulletManager, world, this);
 
-        assetManager.Load<SpriteAsset>("bullet/curvylaser_sprites.txt", "curvylaser_lime");
-        assetManager.Load<AnimationAsset>("bullet/curvylaser_animations.txt", "lightning");
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "curvylaser_lime");
+        assetManager.Load<AnimationAsset>("bullet/bullet_animations.txt", "lightning");
     }
 
     protected override void Update(GameTime gameTime)

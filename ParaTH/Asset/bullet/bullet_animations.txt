@@ -54,3 +54,9 @@ animation note_pink loop
 32	272	32	32	16	16	3
 64	272	32	32	16	16	3
 
+animation lightning loop
+# x	y	w	h	ax	ay	dur
+0 	640	256	32	128	16	3
+0 	672	256	32	128	16	3
+0 	704	256	32	128	16	3
+0 	736	256	32	128	16	3

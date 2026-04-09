@@ -47,9 +47,26 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
     private struct DrawSortKey : IComparable<DrawSortKey>
     {
+        private const int FlagMask = unchecked((int)0x80000000);
+        private const int IndexMask = 0x7FFFFFFF;
+        private int packedSpawnIdAndFlag;
         public uint SpawnId;
-        public int Index;
-        public bool IsCurvyLaser;
+
+        public int Index
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            readonly get => packedSpawnIdAndFlag & IndexMask;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => packedSpawnIdAndFlag = (packedSpawnIdAndFlag & FlagMask) | (value & IndexMask);
+        }
+
+        public bool IsCurvyLaser
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            readonly get => (packedSpawnIdAndFlag & FlagMask) != 0;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => packedSpawnIdAndFlag = value ? (packedSpawnIdAndFlag | FlagMask) : (packedSpawnIdAndFlag & IndexMask);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly int CompareTo(DrawSortKey other)
@@ -73,7 +90,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         deferredCurvyLaserDraws.Clear();
         sortKeys.Clear();
 
-        // used for stackallocing buffer
+        // used for stackallocing curvy laser buffer
         int maxLaserLength = 0;
 
         var q = world.GetOrCreateQuery(descriptor);
@@ -86,7 +103,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
                 chunk.GetFilledComponentSpan<Transform, Renderer>(
-                    out var transforms, out var renderers);
+                    out var transforms, out var states);
 
                 var spawnAnims = hasSpawnEffect ?
                     chunk.GetFilledComponentSpan<SpawnEffect>() : default;
@@ -95,52 +112,21 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
-                    ref var renderer = ref renderers.UnsafeAt(i);
+                    ref var state = ref states.UnsafeAt(i);
 
                     var dp = new DrawParams
                     {
-                        Texture = renderer.Texture,
-                        SourceRect = renderer.SourceRect,
-                        Anchor = renderer.Anchor,
-                        Scale = renderer.Scale,
-                        Color = renderer.Color,
+                        Texture = state.Texture,
+                        SourceRect = state.SourceRect,
+                        Anchor = state.Anchor,
+                        Scale = state.Scale,
+                        Color = state.Color,
                     };
 
-                    if (hasCurvyLaser)
-                    {
-                        // curvy lasers don't use spawn effecct
-                        ref var laser = ref curvyLasers.UnsafeAt(i);
-
-                        maxLaserLength = Math.Max(maxLaserLength, laser.Length);
-
-                        if (IsCurvyLaserVisible(laser.LaserNodes, laser.HalfWidth))
-                        {
-                            int currentIndex = deferredCurvyLaserDraws.Count;
-
-                            deferredCurvyLaserDraws.Add(new DeferredCurvyLaserDrawData
-                            {
-                                Texture = dp.Texture,
-                                SourceRect = dp.SourceRect,
-                                TextureRotation = renderer.Rotation,
-                                LaserNodes = laser.LaserNodes,
-                                HalfWidth = laser.HalfWidth,
-                                Color = dp.Color,
-                                Layer = renderer.Layer,
-                                BlendState = renderer.BlendState,
-                            });
-
-                            sortKeys.Add(new DrawSortKey
-                            {
-                                SpawnId = renderer.SpawnId,
-                                Index = currentIndex,
-                                IsCurvyLaser = true,
-                            });
-                        }
-                    }
-                    else
+                    if (!hasCurvyLaser)
                     {
                         if (hasSpawnEffect)
-                            ApplySpawnEffect(ref spawnAnims.UnsafeAt(i), in renderer, ref dp);
+                            ApplySpawnEffect(ref spawnAnims.UnsafeAt(i), in state, ref dp);
 
                         ref var transform = ref transforms.UnsafeAt(i);
 
@@ -166,15 +152,46 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                                 Anchor = dp.Anchor,
                                 Scale = dp.Scale,
                                 Color = dp.Color,
-                                Rotation = renderer.Rotation,
-                                Layer = renderer.Layer,
-                                BlendState = renderer.BlendState
+                                Rotation = state.Rotation,
+                                Layer = state.Layer,
+                                BlendState = state.BlendState
                             });
 
                             sortKeys.Add(new DrawSortKey
                             {
-                                SpawnId = renderer.SpawnId,
+                                SpawnId = state.SpawnId,
                                 Index = currentIndex,
+                            });
+                        }
+                    }
+                    else
+                    {
+                        // curvy lasers don't use spawn effecct
+                        ref var laser = ref curvyLasers.UnsafeAt(i);
+
+                        maxLaserLength = Math.Max(maxLaserLength, laser.Length);
+
+                        if (IsCurvyLaserVisible(laser.LaserNodes, laser.HalfWidth))
+                        {
+                            int currentIndex = deferredCurvyLaserDraws.Count;
+
+                            deferredCurvyLaserDraws.Add(new DeferredCurvyLaserDrawData
+                            {
+                                Texture = dp.Texture,
+                                SourceRect = dp.SourceRect,
+                                TextureRotation = state.Rotation,
+                                LaserNodes = laser.LaserNodes,
+                                HalfWidth = laser.HalfWidth,
+                                Color = dp.Color,
+                                Layer = state.Layer,
+                                BlendState = state.BlendState,
+                            });
+
+                            sortKeys.Add(new DrawSortKey
+                            {
+                                SpawnId = state.SpawnId,
+                                Index = currentIndex,
+                                IsCurvyLaser = true,
                             });
                         }
                     }
@@ -184,8 +201,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
         var keysSpan = sortKeys.AsSpan();
 
-        if (keysSpan.Length > 1)
-            keysSpan.Sort();
+        keysSpan.Sort();
 
         var dataSpan = deferredDraws.AsSpan();
         var laserDataSpan = deferredCurvyLaserDraws.AsSpan();
@@ -196,7 +212,15 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         {
             ref var key = ref keysSpan.UnsafeAt(i);
 
-            if (key.IsCurvyLaser)
+            if (!key.IsCurvyLaser)
+            {
+                ref var d = ref dataSpan.UnsafeAt(key.Index);
+                batch.Draw(
+                    d.Texture, d.Position, d.SourceRect, d.Color,
+                    d.Rotation, d.Anchor, d.Scale,
+                    SpriteEffects.None, d.Layer, d.BlendState);
+            }
+            else
             {
                 ref var d = ref laserDataSpan.UnsafeAt(key.Index);
                 int nodeCount = d.LaserNodes.Count;
@@ -224,14 +248,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                         renderNodeSpan, d.HalfWidth,
                         d.Color, d.Layer, d.BlendState);
                 }
-            }
-            else
-            {
-                ref var d = ref dataSpan.UnsafeAt(key.Index);
-                batch.Draw(
-                    d.Texture, d.Position, d.SourceRect, d.Color,
-                    d.Rotation, d.Anchor, d.Scale,
-                    SpriteEffects.None, d.Layer, d.BlendState);
             }
         }
     }
@@ -272,7 +288,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ApplySpawnEffect(
 #pragma warning disable RCS1242
-        ref SpawnEffect effect, in Renderer renderer, ref DrawParams dp)
+        ref SpawnEffect effect, in Renderer state, ref DrawParams dp)
 #pragma warning restore RCS1242
     {
         if (effect.Counter >= effect.Duration) return;
@@ -283,11 +299,11 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
         float t = (float)(effect.Counter + 1) / effect.Duration;
         dp.Scale.X = MathHelper.Lerp(
-            effect.StartScale.X, renderer.Scale.X, Easing.Evaluate(effect.TypeX, t));
+            effect.StartScale.X, state.Scale.X, Easing.Evaluate(effect.TypeX, t));
         dp.Scale.Y = MathHelper.Lerp(
-            effect.StartScale.Y, renderer.Scale.Y, Easing.Evaluate(effect.TypeY, t));
+            effect.StartScale.Y, state.Scale.Y, Easing.Evaluate(effect.TypeY, t));
         dp.Color.A = (byte)MathHelper.Lerp(
-            (float)effect.StartAlpha * 255f, renderer.Color.A, t);
+            (float)effect.StartAlpha * 255f, state.Color.A, t);
     }
 
     public void Dispose()

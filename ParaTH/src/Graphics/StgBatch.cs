@@ -199,10 +199,29 @@ public sealed unsafe class StgBatch : IDisposable
     #endregion
 
     #region Public Draw Methods
+    // all this to save a branch and a 16 bytes assignment?
     public void Draw(
         Texture2D texture,
         Vector2 position,
         Rectangle? sourceRectangle,
+        Color color,
+        float rotation,
+        Vector2 origin,
+        Vector2 scale,
+        SpriteEffects spriteEffects,
+        byte layerDepth,
+        StgBlendState blendState)
+    {
+        Rectangle source = sourceRectangle ??
+                           new Rectangle(0, 0, texture.Width, texture.Height);
+
+        Draw(texture, position, source, color, rotation, origin, scale, spriteEffects, layerDepth, blendState);
+    }
+
+    public void Draw(
+        Texture2D texture,
+        Vector2 position,
+        Rectangle sourceRectangle,
         Color color,
         float rotation,
         Vector2 origin,
@@ -220,11 +239,8 @@ public sealed unsafe class StgBatch : IDisposable
             FlushBatch();
         }
 
-        Rectangle source = sourceRectangle ??
-                           new Rectangle(0, 0, texture.Width, texture.Height);
-
-        float width = source.Width * scale.X;
-        float height = source.Height * scale.Y;
+        float width = sourceRectangle.Width * scale.X;
+        float height = sourceRectangle.Height * scale.Y;
 
         float ox = origin.X * scale.X;
         float oy = origin.Y * scale.Y;
@@ -272,10 +288,10 @@ public sealed unsafe class StgBatch : IDisposable
         float invTexWidth = 1f / texture.Width;
         float invTexHeight = 1f / texture.Height;
 
-        float u0 = source.X * invTexWidth;
-        float v0 = source.Y * invTexHeight;
-        float u1 = (source.X + source.Width) * invTexWidth;
-        float v1 = (source.Y + source.Height) * invTexHeight;
+        float u0 = sourceRectangle.X * invTexWidth;
+        float v0 = sourceRectangle.Y * invTexHeight;
+        float u1 = (sourceRectangle.X + sourceRectangle.Width) * invTexWidth;
+        float v1 = (sourceRectangle.Y + sourceRectangle.Height) * invTexHeight;
 
         if (spriteEffects.HasFlag(SpriteEffects.FlipHorizontally))
             (u0, u1) = (u1, u0);
@@ -393,7 +409,7 @@ public sealed unsafe class StgBatch : IDisposable
     [SkipLocalsInit]
     public void DrawCurvyLaser(
         Texture2D texture,
-        Rectangle? sourceRectangle,
+        Rectangle sourceRectangle,
         float textureRotation,
         ReadOnlySpan<Vector2> nodes,
         float halfThickness,
@@ -445,14 +461,13 @@ public sealed unsafe class StgBatch : IDisposable
         }
 
         // transform uv
-        Rectangle source = sourceRectangle ?? new Rectangle(0, 0, texture.Width, texture.Height);
         float invTexWidth = 1f / texture.Width;
         float invTexHeight = 1f / texture.Height;
 
-        float u0 = source.X * invTexWidth;
-        float v0 = source.Y * invTexHeight;
-        float u1 = (source.X + source.Width) * invTexWidth;
-        float v1 = (source.Y + source.Height) * invTexHeight;
+        float u0 = sourceRectangle.X * invTexWidth;
+        float v0 = sourceRectangle.Y * invTexHeight;
+        float u1 = (sourceRectangle.X + sourceRectangle.Width) * invTexWidth;
+        float v1 = (sourceRectangle.Y + sourceRectangle.Height) * invTexHeight;
 
         float cu = (u0 + u1) * 0.5f;
         float cv = (v0 + v1) * 0.5f;
