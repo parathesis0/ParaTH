@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
+// handle rendering and transient visual states
 public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) : IDisposable
 {
     private Rectangle bounds = bounds;
@@ -81,7 +82,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
             bool useSpriteRenderer = archetype.Has<SpriteRenderer>();
-            bool hasSpawnAnim = archetype.Has<SpawnAnimation>();
+            bool hasSpawnEffect = archetype.Has<SpawnEffect>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
@@ -93,8 +94,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
                 var animRenderers = !useSpriteRenderer ?
                     chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
-                var spawnAnims = hasSpawnAnim && !hasCurvyLaser ?   // curvy lasers don't use spawnAnim
-                    chunk.GetFilledComponentSpan<SpawnAnimation>() : default;
+                var spawnAnims = hasSpawnEffect && !hasCurvyLaser ?   // curvy lasers don't use spawnAnim
+                    chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var curvyLasers = hasCurvyLaser ?
                     chunk.GetFilledComponentSpan<CurvyLaser>() : default;
 
@@ -145,8 +146,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     }
                     else
                     {
-                        if (hasSpawnAnim)
-                            ApplySpawnAnimation(ref spawnAnims.UnsafeAt(i), in state, ref dp);
+                        if (hasSpawnEffect)
+                            ApplySpawnEffect(ref spawnAnims.UnsafeAt(i), in state, ref dp);
 
                         ref var transform = ref transforms.UnsafeAt(i);
 
@@ -207,7 +208,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                 ref var d = ref laserDataSpan.UnsafeAt(key.Index);
                 int nodeCount = d.LaserNodes.Count;
 
-                if (nodeCount == 0) continue;
+                if (nodeCount == 0)
+                    continue;
 
                 d.LaserNodes.AsSpans(out var first, out var second);
 
@@ -293,24 +295,24 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     // ────────────────── Effects ──────────────────
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ApplySpawnAnimation(
+    private static void ApplySpawnEffect(
 #pragma warning disable RCS1242
-        ref SpawnAnimation anim, in RenderState state, ref DrawParams dp)
+        ref SpawnEffect effect, in RenderState state, ref DrawParams dp)
 #pragma warning restore RCS1242
     {
-        if (anim.Counter >= anim.Duration) return;
+        if (effect.Counter >= effect.Duration) return;
 
-        dp.Texture = anim.Sprite.Texture;
-        dp.SourceRect = anim.Sprite.SourceRect;
-        dp.Anchor = anim.Sprite.Anchor;
+        dp.Texture = effect.Sprite.Texture;
+        dp.SourceRect = effect.Sprite.SourceRect;
+        dp.Anchor = effect.Sprite.Anchor;
 
-        float t = (float)(anim.Counter + 1) / anim.Duration;
+        float t = (float)(effect.Counter + 1) / effect.Duration;
         dp.Scale.X = MathHelper.Lerp(
-            anim.StartScale.X, state.Scale.X, Easing.Evaluate(anim.TypeX, t));
+            effect.StartScale.X, state.Scale.X, Easing.Evaluate(effect.TypeX, t));
         dp.Scale.Y = MathHelper.Lerp(
-            anim.StartScale.Y, state.Scale.Y, Easing.Evaluate(anim.TypeY, t));
+            effect.StartScale.Y, state.Scale.Y, Easing.Evaluate(effect.TypeY, t));
         dp.Color.A = (byte)MathHelper.Lerp(
-            (float)anim.StartAlpha * 255f, state.Color.A, t);
+            (float)effect.StartAlpha * 255f, state.Color.A, t);
     }
 
     public void Dispose()

@@ -5,6 +5,7 @@ namespace ParaTH;
 
 using DepthBuckets = UnsafePooledList<UnsafePooledList<HierarchySystem.ChildSlot>>;
 
+// handles hierarchy transform, children's transform are based off its parents
 public sealed class HierarchySystem(World world) : IDisposable
 {
     // compact handle to a child's location in the archetype chunk storage

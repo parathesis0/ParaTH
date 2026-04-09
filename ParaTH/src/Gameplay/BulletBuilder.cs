@@ -18,6 +18,7 @@ public enum SpawningType : byte
     Spread
 }
 
+// TODO: put SpriteRenderer in RenderState and make AnimationRenderer modify it
 public ref struct BulletBuilder(BulletManager bulletManager)
 {
     private readonly BulletManager manager = bulletManager;
@@ -42,7 +43,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     private readonly UnsafePooledList<CurveInstruction> curveInstructions = new(4);
 
     // optional
-    private SpawnAnimation spawnAnimation;
+    private SpawnEffect spawnEffect;
     private Collider collider = new() { IsActive = true };
     private int curvyLaserLength = 0;
     private float curvyLaserHalfWidth = 0;
@@ -507,13 +508,13 @@ public ref struct BulletBuilder(BulletManager bulletManager)
                                                float spawningVelocityMultiplier, byte duration, EaseType easeX, EaseType easeY)
     {
         var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
-        spawnAnimation.Sprite = sprite;
-        spawnAnimation.StartScale = startScale;
-        spawnAnimation.StartAlpha = (Half)startAlpha;
-        spawnAnimation.VelocityMultiplier = (Half)spawningVelocityMultiplier;
-        spawnAnimation.Duration = duration;
-        spawnAnimation.TypeX = easeX;
-        spawnAnimation.TypeY = easeY;
+        spawnEffect.Sprite = sprite;
+        spawnEffect.StartScale = startScale;
+        spawnEffect.StartAlpha = (Half)startAlpha;
+        spawnEffect.VelocityMultiplier = (Half)spawningVelocityMultiplier;
+        spawnEffect.Duration = duration;
+        spawnEffect.TypeX = easeX;
+        spawnEffect.TypeY = easeY;
 
         return ref this;
     }
@@ -677,7 +678,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         bool hasVel = velocityInstructions.Count > 0;
         bool hasAcc = accelerationInstructions.Count > 0;
         bool hasCur = curveInstructions.Count > 0;
-        bool hasSpw = spawnAnimation.Duration > 0;
+        bool hasSpw = spawnEffect.Duration > 0;
         bool hasCol = collider.ShapeType != ShapeType.None;
         bool hasCls = curvyLaserLength > 0;
 
@@ -705,7 +706,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         if (hasVel) types[tIdx++] = Component<VelocityController>.TypeInfo;
         if (hasAcc) types[tIdx++] = Component<AccelerationController>.TypeInfo;
         if (hasCur) types[tIdx++] = Component<CurveController>.TypeInfo;
-        if (hasSpw) types[tIdx++] = Component<SpawnAnimation>.TypeInfo;
+        if (hasSpw) types[tIdx++] = Component<SpawnEffect>.TypeInfo;
         if (hasCol) types[tIdx++] = Component<Collider>.TypeInfo;
         if (hasCls) types[tIdx++] = Component<CurvyLaser>.TypeInfo;
 
@@ -742,8 +743,8 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         using var pooledCcs = hasCur ? ScopedPooledArray<CurveController>.Rent(amount) : default;
         Span<CurveController> ccs = hasCur ? pooledCcs.AsSpan() : default;
 
-        using var pooledSas = hasSpw ? ScopedPooledArray<SpawnAnimation>.Rent(amount) : default;
-        Span<SpawnAnimation> sas = hasSpw ? pooledSas.AsSpan() : default;
+        using var pooledSes = hasSpw ? ScopedPooledArray<SpawnEffect>.Rent(amount) : default;
+        Span<SpawnEffect> ses = hasSpw ? pooledSes.AsSpan() : default;
 
         using var pooledCls = hasCol ? ScopedPooledArray<Collider>.Rent(amount) : default;
         Span<Collider> cls = hasCol ? pooledCls.AsSpan() : default;
@@ -800,7 +801,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
             if (hasVel) vcs[i] = new VelocityController { Instructions = sharedVcs!, Index = -1 };
             if (hasAcc) acs[i] = new AccelerationController { Instructions = sharedAcs!, Index = -1 };
             if (hasCur) ccs[i] = new CurveController { Instructions = sharedCcs!, Index = -1 };
-            if (hasSpw) sas[i] = spawnAnimation;
+            if (hasSpw) ses[i] = spawnEffect;
             if (hasCol) cls[i] = collider;
             if (hasCls) lzs[i] = new CurvyLaser { LaserNodes = new(curvyLaserLength), Length = curvyLaserLength, HalfWidth = curvyLaserHalfWidth };
         }
@@ -816,7 +817,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         if (hasVel) archetype.SetRangeWithSpanBulk(start, end, vcs);
         if (hasAcc) archetype.SetRangeWithSpanBulk(start, end, acs);
         if (hasCur) archetype.SetRangeWithSpanBulk(start, end, ccs);
-        if (hasSpw) archetype.SetRangeWithSpanBulk(start, end, sas);
+        if (hasSpw) archetype.SetRangeWithSpanBulk(start, end, ses);
         if (hasCol) archetype.SetRangeWithSpanBulk(start, end, cls);
         if (hasCls) archetype.SetRangeWithSpanBulk(start, end, lzs);
 

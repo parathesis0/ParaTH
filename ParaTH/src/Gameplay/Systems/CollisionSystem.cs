@@ -6,6 +6,7 @@ using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace ParaTH;
 
+// handles cross group collisions between entities with Colliders and CurvyLasers
 public sealed class CollisionSystem : IDisposable
 {
     private readonly World world;

@@ -5,6 +5,8 @@ namespace ParaTH;
 
 using DepthBuckets = UnsafePooledList<UnsafePooledList<LifetimeSystem.HierarchyPair>>;
 
+// handles the destruction of offbound entities
+// a parent children hierarchy is seen as a whole and will not be destroyed until all its entities are offscreen
 public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
 {
     private readonly World world = world;

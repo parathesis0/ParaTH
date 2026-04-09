@@ -6,6 +6,7 @@ namespace ParaTH;
 
 // don't rent over 2^20(unity) or 2^30(>=.net9)
 // else ArrayPool.Shared stops return powers of 2 and this breaks
+[SkipLocalsInit]
 public sealed class UnsafePooledQueue<T> : IDisposable
 {
     private T[] items;

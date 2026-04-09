@@ -3,8 +3,8 @@ using Microsoft.Xna.Framework;
 namespace ParaTH;
 
 // 24 bytes
-public struct SpawnAnimation(SpriteAsset sprite, Vector2 startScale, Half startAlpha,
-                             Half multiplier, byte duration, EaseType easeTypeX, EaseType easeTypeY)
+public struct SpawnEffect(SpriteAsset sprite, Vector2 startScale, Half startAlpha,
+                          Half multiplier, byte duration, EaseType easeTypeX, EaseType easeTypeY)
 {
     public SpriteAsset Sprite = sprite;             // 8
     public Vector2 StartScale = startScale;         // 8

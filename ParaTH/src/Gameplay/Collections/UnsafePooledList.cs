@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+[SkipLocalsInit]
 public sealed class UnsafePooledList<T> : IDisposable
 {
     private T[] items;

@@ -1,11 +1,12 @@
-using static ParaTH.AnimationAsset;
-
 namespace ParaTH;
 
+using static AnimationAsset;
+
+// updates counters
 public sealed class AnimationSystem(World world)
 {
     private QueryDescriptor descriptor = new QueryDescriptor()
-        .WithAny<SpawnAnimation, AnimationRenderer>();
+        .WithAny<SpawnEffect, AnimationRenderer>();
 
     public void Update()
     {
@@ -14,17 +15,17 @@ public sealed class AnimationSystem(World world)
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
             bool hasAni = archetype.Has<AnimationRenderer>();
-            bool hasSpw = archetype.Has<SpawnAnimation>();
+            bool hasSpw = archetype.Has<SpawnEffect>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
                 var aniSpan = hasAni ? chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
-                var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnAnimation>() : default;
+                var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnEffect>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
                     if (hasSpw)
-                        UpdateSpawnAnimation(ref spwSpan.UnsafeAt(i));
+                        UpdateSpawnEffect(ref spwSpan.UnsafeAt(i));
 
                     if (hasAni)
                         UpdateAnimation(ref aniSpan.UnsafeAt(i));
@@ -33,7 +34,7 @@ public sealed class AnimationSystem(World world)
         }
     }
 
-    private static void UpdateSpawnAnimation(ref SpawnAnimation spawnAnim)
+    private static void UpdateSpawnEffect(ref SpawnEffect spawnAnim)
     {
         if (spawnAnim.IsPlaying)
             spawnAnim.Counter++;

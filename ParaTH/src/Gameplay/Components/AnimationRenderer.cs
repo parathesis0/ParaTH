@@ -1,6 +1,6 @@
-using static ParaTH.AnimationAsset;
-
 namespace ParaTH;
+
+using static AnimationAsset;
 
 // 16 bytes
 public struct AnimationRenderer(AnimationAsset animation)
