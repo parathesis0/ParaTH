@@ -315,8 +315,8 @@ public sealed class Engine : Game
         fpsCounter++;
 
         GraphicsDevice.Clear(new Color(15, 10, 30));
-        stgBatch.Begin(SamplerState.PointClamp, RasterizerState.CullCounterClockwise,
-                       null, projection);
+        stgBatch.BeginSorted(SamplerState.PointClamp, RasterizerState.CullCounterClockwise,
+                             null, projection);
 
         renderSystem.Update();
 

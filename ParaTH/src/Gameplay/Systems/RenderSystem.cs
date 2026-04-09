@@ -47,32 +47,47 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
     private struct DrawSortKey : IComparable<DrawSortKey>
     {
-        private const int FlagMask = unchecked((int)0x80000000);
-        private const int IndexMask = 0x7FFFFFFF;
-        private int packedSpawnIdAndFlag;
-        public uint SpawnId;
+        // [63:56] Layer (8)  [55:24] SpawnId (32)  [20] IsCurvyLaser (1)  [19:0] Index (20)
+        private const int IndexBits = 20;
+        private const ulong IndexMask = (1UL << IndexBits) - 1;
+        private const int LaserBit = 20;
+        private const ulong LaserFlag = 1UL << LaserBit;
+        private const int SpawnIdShift = 24;
+        private const int LayerShift = 56;
+
+        private ulong packed;
 
         public int Index
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            readonly get => packedSpawnIdAndFlag & IndexMask;
+            readonly get => (int)(packed & IndexMask);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => packedSpawnIdAndFlag = (packedSpawnIdAndFlag & FlagMask) | (value & IndexMask);
+            set => packed = (packed & ~IndexMask) | ((ulong)(uint)value & IndexMask);
         }
 
         public bool IsCurvyLaser
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            readonly get => (packedSpawnIdAndFlag & FlagMask) != 0;
+            readonly get => (packed & LaserFlag) != 0;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => packedSpawnIdAndFlag = value ? (packedSpawnIdAndFlag | FlagMask) : (packedSpawnIdAndFlag & IndexMask);
+            set => packed = value ? (packed | LaserFlag) : (packed & ~LaserFlag);
+        }
+
+        public uint SpawnId
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => packed = (packed & ~(0xFFFF_FFFFUL << SpawnIdShift)) | ((ulong)value << SpawnIdShift);
+        }
+
+        public byte Layer
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => packed = (packed & ~(0xFFUL << LayerShift)) | ((ulong)value << LayerShift);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly int CompareTo(DrawSortKey other)
-        {
-            return SpawnId.CompareTo(other.SpawnId);
-        }
+            => packed.CompareTo(other.packed);
     }
 
     private readonly UnsafePooledList<DeferredDrawData> deferredDraws = new(16384);
@@ -160,6 +175,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             sortKeys.Add(new DrawSortKey
                             {
                                 SpawnId = state.SpawnId,
+                                Layer = state.Layer,
                                 Index = currentIndex,
                             });
                         }
@@ -190,6 +206,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             sortKeys.Add(new DrawSortKey
                             {
                                 SpawnId = state.SpawnId,
+                                Layer = state.Layer,
                                 Index = currentIndex,
                                 IsCurvyLaser = true,
                             });
@@ -239,7 +256,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                 }
                 else
                 {
-                    Span<Vector2> renderNodeSpan = laserNodeBuffer.Slice(nodeCount);
+                    Span<Vector2> renderNodeSpan = laserNodeBuffer.Slice(0, nodeCount);
                     first.CopyTo(renderNodeSpan);
                     second.CopyTo(renderNodeSpan.Slice(first.Length));
 

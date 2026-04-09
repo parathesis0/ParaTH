@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 
 namespace ParaTH;
 
+[SkipLocalsInit]
 public sealed unsafe class StgBatch : IDisposable
 {
     #region Private Consts
@@ -62,6 +63,7 @@ public sealed unsafe class StgBatch : IDisposable
     private int commandCount;
 
     private bool hasBegun;
+    private bool isSorted;
     private SamplerState samplerState = null!;
     private RasterizerState rasterizerState = null!;
     private Matrix transformMatrix;
@@ -173,6 +175,29 @@ public sealed unsafe class StgBatch : IDisposable
         Effect? customEffect,
         Matrix transformMatrix)
     {
+        BeginInternal(samplerState, rasterizerState, customEffect, transformMatrix, sorted: false);
+    }
+
+    /// <summary>
+    /// Begin a pre-sorted batch. The caller guarantees that all Draw calls
+    /// are submitted in ascending layerDepth order. Skips bucket sort on flush.
+    /// </summary>
+    public void BeginSorted(
+        SamplerState samplerState,
+        RasterizerState rasterizerState,
+        Effect? customEffect,
+        Matrix transformMatrix)
+    {
+        BeginInternal(samplerState, rasterizerState, customEffect, transformMatrix, sorted: true);
+    }
+
+    private void BeginInternal(
+        SamplerState samplerState,
+        RasterizerState rasterizerState,
+        Effect? customEffect,
+        Matrix transformMatrix,
+        bool sorted)
+    {
         if (hasBegun)
             HelperThrow("Begin called before calling End.");
         hasBegun = true;
@@ -182,6 +207,7 @@ public sealed unsafe class StgBatch : IDisposable
 
         this.customEffect = customEffect;
         this.transformMatrix = transformMatrix;
+        this.isSorted = sorted;
     }
     #endregion
 
@@ -426,6 +452,7 @@ public sealed unsafe class StgBatch : IDisposable
 
         // filter out overlapping nodes and calculate arc length
         const float kMinSegLen = 0.5f;
+        const float kMinSegLenSq = kMinSegLen * kMinSegLen;
 
         Vector2* pts = stackalloc Vector2[rawCount];
         float* cumArc = stackalloc float[rawCount];
@@ -437,9 +464,10 @@ public sealed unsafe class StgBatch : IDisposable
 
         for (int i = 1; i < rawCount; i++)
         {
-            float d = Vector2.Distance(pts[pointsCount - 1], nodes.UnsafeAt(i));
-            if (d >= kMinSegLen)
+            float dSq = Vector2.DistanceSquared(pts[pointsCount - 1], nodes.UnsafeAt(i));
+            if (dSq >= kMinSegLenSq)
             {
+                float d = MathF.Sqrt(dSq);
                 totalArc += d;
                 pts[pointsCount] = nodes.UnsafeAt(i);
                 cumArc[pointsCount] = totalArc;
@@ -493,18 +521,21 @@ public sealed unsafe class StgBatch : IDisposable
         // 0.25 → max 4x, handles bends up to ~150°
         const float kMiterMinDot = 0.25f;
 
+        // cached outgoing direction (reused as incoming direction for next node)
+        Vector2 prevDir;
+
         // head node
         {
             Vector2 currentPos = pts[0];
-            float expandX, expandY;
 
             // head: outgoing perpendicular
             Vector2 dir = pts[1] - pts[0];
             float len = dir.Length();
             if (len > 1e-6f) dir /= len; else dir = Vector2.UnitX;
-            // left normal = (-dir.Y, dir.X)
-            expandX = -dir.Y * halfThickness;
-            expandY = dir.X * halfThickness;
+            prevDir = dir;
+
+            float expandX = -dir.Y * halfThickness;
+            float expandY = dir.X * halfThickness;
 
             // uv
             float t = cumArc[0] * invTotalArc;
@@ -534,15 +565,16 @@ public sealed unsafe class StgBatch : IDisposable
             Vector2 currentPos = pts[i];
             float expandX, expandY;
 
-            // middle: miter join
-            Vector2 dIn = pts[i] - pts[i - 1];  // incoming direction
-            Vector2 dOut = pts[i + 1] - pts[i]; // outgoing direction
-            float lenIn = dIn.Length();
-            float lenOut = dOut.Length();
-            if (lenIn > 1e-6f) dIn /= lenIn; else dIn = Vector2.UnitX;
-            if (lenOut > 1e-6f) dOut /= lenOut; else dOut = Vector2.UnitX;
-
+            // reuse cached incoming direction
+            Vector2 dIn = prevDir;
             Vector2 nIn = new(-dIn.Y, dIn.X);
+
+            // compute outgoing direction
+            Vector2 dOut = pts[i + 1] - pts[i];
+            float lenOut = dOut.Length();
+            if (lenOut > 1e-6f) dOut /= lenOut; else dOut = Vector2.UnitX;
+            prevDir = dOut;
+
             Vector2 nOut = new(-dOut.Y, dOut.X);
 
             Vector2 miter = nIn + nOut;
@@ -590,14 +622,11 @@ public sealed unsafe class StgBatch : IDisposable
         {
             int i = pointsCount - 1;
             Vector2 currentPos = pts[i];
-            float expandX, expandY;
 
-            // tail: incoming perpendicular
-            Vector2 dir = pts[i] - pts[i - 1];
-            float len = dir.Length();
-            if (len > 1e-6f) dir /= len; else dir = Vector2.UnitX;
-            expandX = -dir.Y * halfThickness;
-            expandY = dir.X * halfThickness;
+            // tail: reuse cached incoming direction
+            Vector2 dir = prevDir;
+            float expandX = -dir.Y * halfThickness;
+            float expandY = dir.X * halfThickness;
 
             // uv
             float t = cumArc[i] * invTotalArc;
@@ -662,6 +691,43 @@ public sealed unsafe class StgBatch : IDisposable
     {
         if (vertexCount == 0) return;
 
+        if (isSorted)
+            FlushSorted();
+        else
+            FlushBucketSorted();
+    }
+
+    private void FlushSorted()
+    {
+        // caller guarantees draws are in layer order — skip bucket sort,
+        // upload rawIndices directly and draw commands in submission order
+        int vertexDataBytes = vertexCount * sizeof(VertexPositionColorTexture);
+        vertexBuffer.SetDataPointerEXT(
+            0,
+            (IntPtr)vPtr,
+            vertexDataBytes,
+            SetDataOptions.Discard
+        );
+        int indexDataBytes = indexCount * sizeof(short);
+        indexBuffer.SetDataPointerEXT(
+            0,
+            (IntPtr)iPtr,
+            indexDataBytes,
+            SetDataOptions.Discard
+        );
+
+        PrepRenderState();
+        DrawAllBuckets();
+
+        vertexCount = 0;
+        indexCount = 0;
+        commandCount = 0;
+        for (int i = 0; i < BucketCount; i++)
+            buckets.UnsafeAt(i).Count = 0;
+    }
+
+    private void FlushBucketSorted()
+    {
         int sortedIndexPtrOffset = 0;
 
         for (int i = 0; i < BucketCount; i++)
@@ -673,19 +739,42 @@ public sealed unsafe class StgBatch : IDisposable
             var cmds = bucket.Commands;
             int count = bucket.Count;
 
-            for (int j = 0; j < count; j++)
+            // merge contiguous index ranges into a single memcpy
+            int runStart = cmds.UnsafeAt(0).IndexStart;
+            int runEnd = runStart + cmds.UnsafeAt(0).IndexCount;
+            cmds.UnsafeAt(0).IndexStart = sortedIndexPtrOffset;
+
+            for (int j = 1; j < count; j++)
             {
                 ref var cmd = ref cmds.UnsafeAt(j);
 
-                int bytesToCopy = cmd.IndexCount * sizeof(short);
+                if (cmd.IndexStart == runEnd)
+                {
+                    // contiguous — extend run, update command offset
+                    cmd.IndexStart = sortedIndexPtrOffset + (runEnd - runStart);
+                    runEnd += cmd.IndexCount;
+                }
+                else
+                {
+                    // gap — flush accumulated run
+                    int runLen = runEnd - runStart;
+                    int bytesToCopy = runLen * sizeof(short);
+                    Buffer.MemoryCopy(iPtr + runStart, sPtr + sortedIndexPtrOffset, bytesToCopy, bytesToCopy);
+                    sortedIndexPtrOffset += runLen;
 
-                short* src = iPtr + cmd.IndexStart;
-                short* dst = sPtr + sortedIndexPtrOffset;
+                    // start new run
+                    runStart = cmd.IndexStart;
+                    runEnd = runStart + cmd.IndexCount;
+                    cmd.IndexStart = sortedIndexPtrOffset;
+                }
+            }
 
-                Buffer.MemoryCopy(src, dst, bytesToCopy, bytesToCopy);
-
-                cmd.IndexStart = sortedIndexPtrOffset;
-                sortedIndexPtrOffset += cmd.IndexCount;
+            // flush final run
+            {
+                int runLen = runEnd - runStart;
+                int bytesToCopy = runLen * sizeof(short);
+                Buffer.MemoryCopy(iPtr + runStart, sPtr + sortedIndexPtrOffset, bytesToCopy, bytesToCopy);
+                sortedIndexPtrOffset += runLen;
             }
         }
 
