@@ -78,7 +78,7 @@ public sealed partial class World : IDisposable
         AddEntityDataBulk(entityBuffer, entityDataBufferSpan);
     }
 
-    public void ReserveEntityBulk(Span<Entity> entityBuffer, ComponentTypeInfo[] types,
+    public void ReserveEntityBulk(Span<Entity> entityBuffer, ReadOnlySpan<ComponentTypeInfo> types,
                                   out Archetype archetype, out Slot start, out Slot end)
     {
         var amount = entityBuffer.Length;
@@ -149,7 +149,7 @@ public sealed partial class World : IDisposable
         entityCount--;
     }
 
-    private Archetype GetOrCreateArchetype(ComponentTypeInfo[] types)
+    private Archetype GetOrCreateArchetype(ReadOnlySpan<ComponentTypeInfo> types)
     {
         var mask = ComponentMask.Zero;
         foreach (var type in types)
@@ -158,7 +158,7 @@ public sealed partial class World : IDisposable
         if (groupMaskToArchetype.TryGetValue(mask, out var archetype))
             return archetype;
 
-        var newArchetype = new Archetype(types, baseChunkByteSize, baseChunkEntityCount);
+        var newArchetype = new Archetype(types.ToArray(), baseChunkByteSize, baseChunkEntityCount);
         groupMaskToArchetype[mask] = newArchetype;
         archetypes.Add(newArchetype);
 
@@ -169,7 +169,7 @@ public sealed partial class World : IDisposable
         return newArchetype;
     }
 
-    private Archetype GetOrCreateArchetypeWithCapacity(ComponentTypeInfo[] types, int amount)
+    private Archetype GetOrCreateArchetypeWithCapacity(ReadOnlySpan<ComponentTypeInfo> types, int amount)
     {
         var archetype = GetOrCreateArchetype(types);
         entityCapacity -= archetype.EntityCapacity;
@@ -302,7 +302,9 @@ public sealed partial class World : IDisposable
         if (oldArchetype.TryGetAddEdge(index, out var archetype))
             return archetype;
 
-        var types = Merge(oldArchetype.ComponentTypes, [newType]);
+        Span<ComponentTypeInfo> types = stackalloc ComponentTypeInfo[oldArchetype.ComponentTypes.Length + 1];
+
+        MergeTypes(oldArchetype.ComponentTypes, [newType], types);
         var newArchetype = GetOrCreateArchetype(types);
         oldArchetype.AddAddEdge(index, newArchetype);
         newArchetype.AddRemoveEdge(index, oldArchetype);
@@ -317,7 +319,9 @@ public sealed partial class World : IDisposable
         if (oldArchetype.TryGetRemoveEdge(index, out var archetype))
             return archetype;
 
-        var types = Remove(oldArchetype.ComponentTypes, [removedType]);
+        Span<ComponentTypeInfo> types = stackalloc ComponentTypeInfo[oldArchetype.ComponentTypes.Length - 1];
+
+        RemoveTypes(oldArchetype.ComponentTypes, [removedType], types);
         var newArchetype = GetOrCreateArchetype(types);
         oldArchetype.AddRemoveEdge(index, newArchetype);
         newArchetype.AddAddEdge(index, oldArchetype);
@@ -346,29 +350,27 @@ public sealed partial class World : IDisposable
         entityDatas.EnsureCapacity(entityCapacity);
     }
 
-    private static T[] Merge<T>(T[] a, T[] b)
+    private static void MergeTypes(
+        ReadOnlySpan<ComponentTypeInfo> a, ReadOnlySpan<ComponentTypeInfo> b, Span<ComponentTypeInfo> buffer)
     {
-        if (a.Length == 0) return b;
-        if (b.Length == 0) return a;
-
-        var result = GC.AllocateUninitializedArray<T>(a.Length + b.Length);
-        a.AsSpan().CopyTo(result);
-        b.AsSpan().CopyTo(result.AsSpan(a.Length));
-        return result;
+        a.CopyTo(buffer);
+        b.CopyTo(buffer.Slice(a.Length));
     }
 
-    private static T[] Remove<T>(T[] a, T[] b) where T : IEquatable<T>
+    private static void RemoveTypes(
+        ReadOnlySpan<ComponentTypeInfo> a, ReadOnlySpan<ComponentTypeInfo> b, Span<ComponentTypeInfo> buffer)
     {
-        var result = GC.AllocateUninitializedArray<T>(a.Length - b.Length);
-        int ri = 0;
-        ReadOnlySpan<T> bSpan = b;
+        ComponentMask removeMask = ComponentMask.Zero;
+        for (int i = 0; i < b.Length; i++)
+            removeMask |= b.UnsafeAt(i).Mask;
 
+        int ri = 0;
         for (int i = 0; i < a.Length; i++)
         {
-            if (!bSpan.Contains(a.UnsafeAt(i)))
-                result.UnsafeAt(ri++) = a.UnsafeAt(i);
+            var item = a.UnsafeAt(i);
+            if ((item.Mask & removeMask) == ComponentMask.Zero)
+                buffer.UnsafeAt(ri++) = item;
         }
-        return result;
     }
     #endregion
 

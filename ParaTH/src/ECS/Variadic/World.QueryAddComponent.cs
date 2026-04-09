@@ -2,6 +2,7 @@ using System.Diagnostics;
 
 namespace ParaTH;
 
+// add/remove edge lookup supports only one component, for adding/removing 2 or more we'll have to manually merge/remove
 public sealed partial class World
 {
 #pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
@@ -16,8 +17,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -58,8 +64,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -100,8 +111,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -142,8 +158,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -184,8 +205,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -226,8 +252,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -268,8 +299,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -310,8 +346,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -352,8 +393,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -394,8 +440,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -436,8 +487,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -478,8 +534,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -520,8 +581,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -562,8 +628,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;
@@ -604,8 +675,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;

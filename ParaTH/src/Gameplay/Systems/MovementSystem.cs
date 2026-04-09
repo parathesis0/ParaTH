@@ -18,7 +18,7 @@ public sealed class MovementSystem(World world)
             bool hasVel = archetype.Has<VelocityController>();
             bool hasAcc = archetype.Has<AccelerationController>();
             bool hasCur = archetype.Has<CurveController>();
-            bool hasRen = archetype.Has<RenderState>();     // for syncing rotation
+            bool hasRen = archetype.Has<Sprite>();     // for syncing rotation
             bool hasSpw = archetype.Has<SpawnEffect>();  // this one has to stay here, spawnAnimation affects velocity
             bool hasCls = archetype.Has<CurvyLaser>();      // techically should have a separate system dedicated to this
             bool hasHrc = archetype.Has<Hierarchy>();       // if an entity has this, use its local position
@@ -32,7 +32,7 @@ public sealed class MovementSystem(World world)
                 var velSpan = hasVel ? chunk.GetFilledComponentSpan<VelocityController>() : default;
                 var accSpan = hasAcc ? chunk.GetFilledComponentSpan<AccelerationController>() : default;
                 var curSpan = hasCur ? chunk.GetFilledComponentSpan<CurveController>() : default;
-                var renSpan = hasRen ? chunk.GetFilledComponentSpan<RenderState>() : default;
+                var renSpan = hasRen ? chunk.GetFilledComponentSpan<Sprite>() : default;
                 var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var clsSpan = hasCls ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
                 var hrcSpan = hasHrc ? chunk.GetFilledComponentSpan<Hierarchy>() : default;

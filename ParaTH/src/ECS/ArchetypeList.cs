@@ -34,7 +34,7 @@ public sealed class ArchetypeList : IDisposable
     // removes this item, returns true if success;
     public bool Remove(Archetype archetype)
     {
-        int index = Array.IndexOf(archetypes, archetype, 0, count);
+        var index = archetypes.AsSpan().IndexOf(archetype);
 
         if (index == -1)
             return false;

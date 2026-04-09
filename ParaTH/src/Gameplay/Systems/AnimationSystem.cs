@@ -6,7 +6,7 @@ using static AnimationAsset;
 public sealed class AnimationSystem(World world)
 {
     private QueryDescriptor descriptor = new QueryDescriptor()
-        .WithAny<SpawnEffect, AnimationRenderer>();
+        .WithAny<SpawnEffect, SpriteAnimator>();
 
     public void Update()
     {
@@ -14,12 +14,12 @@ public sealed class AnimationSystem(World world)
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
-            bool hasAni = archetype.Has<AnimationRenderer>();
+            bool hasAni = archetype.Has<SpriteAnimator>();
             bool hasSpw = archetype.Has<SpawnEffect>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
-                var aniSpan = hasAni ? chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
+                var aniSpan = hasAni ? chunk.GetFilledComponentSpan<SpriteAnimator>() : default;
                 var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnEffect>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
@@ -40,7 +40,7 @@ public sealed class AnimationSystem(World world)
             spawnAnim.Counter++;
     }
 
-    private static void UpdateAnimation(ref AnimationRenderer anim)
+    private static void UpdateAnimation(ref SpriteAnimator anim)
     {
         if (!anim.IsPlaying)
             return;

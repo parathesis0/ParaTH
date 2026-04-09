@@ -8,6 +8,7 @@ using System.Diagnostics;
 
 namespace ParaTH;
 
+// add/remove edge lookup supports only one component, for adding/removing 2 or more we'll have to manually merge/remove
 public sealed partial class World
 {
 #pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
@@ -30,8 +31,13 @@ public sealed partial class World
             var mask = archetype.Mask | Component<<#= tArgs #>>.GroupMask;
             if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
             {
-                var newArchetypeTypes = Merge(archetype.ComponentTypes, Component<<#= tArgs #>>.GroupTypeInfo);
-                newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+                var oldTypes = archetype.ComponentTypes.AsSpan();
+                var addTypes = Component<<#= tArgs #>>.GroupTypeInfo.AsSpan();
+#pragma warning disable CA2014 // Do not use stackalloc in loops
+                Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addTypes.Length];
+#pragma warning restore CA2014 // Do not use stackalloc in loops
+                MergeTypes(oldTypes, addTypes, newTypes);
+                newArchetype = GetOrCreateArchetype(newTypes);
             }
 
             var oldArchetypeLastSlot = archetype.CurrentSlot;

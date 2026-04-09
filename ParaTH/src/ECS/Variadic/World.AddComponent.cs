@@ -2,6 +2,7 @@ using System.Diagnostics;
 
 namespace ParaTH;
 
+// add/remove edge lookup supports only one component, for adding/removing 2 or more we'll have to manually merge/remove
 public sealed partial class World
 {
     public void AddComponent<T0, T1>(Entity entity, in T0 c0, in T1 c1)
@@ -16,8 +17,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -36,8 +41,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -56,8 +65,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -76,8 +89,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -96,8 +113,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -116,8 +137,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -136,8 +161,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6, T7>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -156,8 +185,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -176,8 +209,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -196,8 +233,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -216,8 +257,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -236,8 +281,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -256,8 +305,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -276,8 +329,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);
@@ -296,8 +353,12 @@ public sealed partial class World
         var mask = oldArchetype.Mask | Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupMask;
         if (!groupMaskToArchetype.TryGetValue(mask, out var newArchetype))
         {
-            var newArchetypeTypes = Merge(oldArchetype.ComponentTypes, Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupTypeInfo);
-            newArchetype = GetOrCreateArchetype(newArchetypeTypes);
+            var oldTypes = oldArchetype.ComponentTypes.AsSpan();
+            var addtypes = Component<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>.GroupTypeInfo.AsSpan();
+            Span<ComponentTypeInfo> newTypes = stackalloc ComponentTypeInfo[oldTypes.Length + addtypes.Length];
+
+            MergeTypes(oldTypes, addtypes, newTypes);
+            newArchetype = GetOrCreateArchetype(newTypes);
         }
 
         Move(ref entityData, oldArchetype, newArchetype);

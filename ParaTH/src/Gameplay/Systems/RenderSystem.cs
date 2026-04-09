@@ -9,8 +9,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 {
     private Rectangle bounds = bounds;
     private QueryDescriptor descriptor = new QueryDescriptor()
-        .WithAll<Transform, RenderState>()
-        .WithAny<SpriteRenderer, AnimationRenderer>();
+        .WithAll<Transform, Sprite>()
+        .WithAny<SpriteRenderer, SpriteAnimator>();
 
     private struct DrawParams
     {
@@ -88,12 +88,12 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
                 var transforms = chunk.GetFilledComponentSpan<Transform>();
-                var states = chunk.GetFilledComponentSpan<RenderState>();
+                var states = chunk.GetFilledComponentSpan<Sprite>();
 
                 var spriteRenderers = useSpriteRenderer ?
                     chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
                 var animRenderers = !useSpriteRenderer ?
-                    chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
+                    chunk.GetFilledComponentSpan<SpriteAnimator>() : default;
                 var spawnAnims = hasSpawnEffect && !hasCurvyLaser ?   // curvy lasers don't use spawnAnim
                     chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var curvyLasers = hasCurvyLaser ?
@@ -285,7 +285,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ResolveAnimation(ref AnimationRenderer r, ref DrawParams dp)
+    private static void ResolveAnimation(ref SpriteAnimator r, ref DrawParams dp)
     {
         dp.Texture = r.Animation.Texture;
         dp.SourceRect = r.CurrentFrame.SourceRect;
@@ -297,7 +297,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ApplySpawnEffect(
 #pragma warning disable RCS1242
-        ref SpawnEffect effect, in RenderState state, ref DrawParams dp)
+        ref SpawnEffect effect, in Sprite state, ref DrawParams dp)
 #pragma warning restore RCS1242
     {
         if (effect.Counter >= effect.Duration) return;

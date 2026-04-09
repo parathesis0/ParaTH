@@ -3,7 +3,7 @@ namespace ParaTH;
 using static AnimationAsset;
 
 // 16 bytes
-public struct AnimationRenderer(AnimationAsset animation)
+public struct SpriteAnimator(AnimationAsset animation)
 {
     public AnimationAsset Animation = animation;    // 8
     public int Counter;                             // 4

@@ -43,7 +43,7 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
             bool hasSprite = archetype.Has<SpriteRenderer>();
-            bool hasAnimation = archetype.Has<AnimationRenderer>();
+            bool hasAnimation = archetype.Has<SpriteAnimator>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
             bool hasHrc = archetype.Has<Hierarchy>();
 
@@ -53,7 +53,7 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                 var lifetimes = chunk.GetFilledComponentSpan<Lifetime>();
 
                 var sprites = hasSprite ? chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
-                var animations = hasAnimation ? chunk.GetFilledComponentSpan<AnimationRenderer>() : default;
+                var animations = hasAnimation ? chunk.GetFilledComponentSpan<SpriteAnimator>() : default;
                 var curvyLasers = hasCurvyLaser ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
                 var hierarchies = hasHrc ? chunk.GetFilledComponentSpan<Hierarchy>() : default;
 
@@ -234,7 +234,7 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float CalculateAnimationRadius(ref Transform tf, ref AnimationRenderer ar)
+    private static float CalculateAnimationRadius(ref Transform tf, ref SpriteAnimator ar)
     {
         var frame = ar.CurrentFrame;
         float w = frame.SourceRect.Width;
