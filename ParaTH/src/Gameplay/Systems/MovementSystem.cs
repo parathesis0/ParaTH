@@ -18,10 +18,10 @@ public sealed class MovementSystem(World world)
             bool hasVel = archetype.Has<VelocityController>();
             bool hasAcc = archetype.Has<AccelerationController>();
             bool hasCur = archetype.Has<CurveController>();
-            bool hasRen = archetype.Has<Sprite>();     // for syncing rotation
+            bool hasRnd = archetype.Has<Renderer>();     // for syncing rotation
             bool hasSpw = archetype.Has<SpawnEffect>();  // this one has to stay here, spawnAnimation affects velocity
-            bool hasCls = archetype.Has<CurvyLaser>();      // techically should have a separate system dedicated to this
-            bool hasHrc = archetype.Has<Hierarchy>();       // if an entity has this, use its local position
+            bool hasCls = archetype.Has<CurvyLaser>();   // techically should have a separate system dedicated to this
+            bool hasHrc = archetype.Has<Hierarchy>();    // if an entity has this, use its local position
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -32,7 +32,7 @@ public sealed class MovementSystem(World world)
                 var velSpan = hasVel ? chunk.GetFilledComponentSpan<VelocityController>() : default;
                 var accSpan = hasAcc ? chunk.GetFilledComponentSpan<AccelerationController>() : default;
                 var curSpan = hasCur ? chunk.GetFilledComponentSpan<CurveController>() : default;
-                var renSpan = hasRen ? chunk.GetFilledComponentSpan<Sprite>() : default;
+                var rndSpan = hasRnd ? chunk.GetFilledComponentSpan<Renderer>() : default;
                 var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var clsSpan = hasCls ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
                 var hrcSpan = hasHrc ? chunk.GetFilledComponentSpan<Hierarchy>() : default;
@@ -79,14 +79,14 @@ public sealed class MovementSystem(World world)
 
                     var angle = 0f;
                     var velocityNotZero = delta.LengthSquared() >= float.Epsilon;
-                    if ((movement.SyncTransformRotation || movement.SyncRenderStateRotation) && velocityNotZero)
+                    if ((movement.SyncTransformRotation || movement.SyncRendererRotation) && velocityNotZero)
                         angle = MathF.Atan2(delta.Y, delta.X);
                     if (movement.SyncTransformRotation && velocityNotZero)
                         transform.Rotation = angle;
-                    if (movement.SyncRenderStateRotation && velocityNotZero)
+                    if (movement.SyncRendererRotation && velocityNotZero)
                     {
-                        ref var ren = ref renSpan.UnsafeAt(i);
-                        ren.Rotation = angle;
+                        ref var renderer = ref rndSpan.UnsafeAt(i);
+                        renderer.Rotation = angle;
                     }
 
                     lifetime.AliveFrames++;

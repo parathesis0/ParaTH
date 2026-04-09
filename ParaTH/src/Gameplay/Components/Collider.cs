@@ -15,9 +15,9 @@ public struct Collider
     [FieldOffset(1)] public bool IsActive;          // 1
     [FieldOffset(2)] public byte GroupMask;         // 1
     [FieldOffset(3)] public byte TargetGroupMask;   // 1
-    [FieldOffset(4)] public ObbRect ObbRect;        // 12
+    [FieldOffset(4)] public ObbRect ObbRect;        // 4 + 4 + 4
     [FieldOffset(4)] public Circle Circle;          // 4
-    [FieldOffset(4)] public Ellipse Ellipse;        // 12, max is 12
+    [FieldOffset(4)] public Ellipse Ellipse;        // 4 + 4 + 4
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(Collider colliderA, Vector2 posA, Collider colliderB, Vector2 posB)

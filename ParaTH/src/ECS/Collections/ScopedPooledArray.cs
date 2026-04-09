@@ -15,7 +15,7 @@ public readonly record struct ScopedPooledArray<T>(T[] Array, int Length) : IDis
 
     public Span<T> AsSpan()
     {
-        return MemoryMarshal.CreateSpan(ref this[0], Length);
+        return new Span<T>(Array, 0, Length);
     }
 
     public static ScopedPooledArray<T> Rent(int amount)

@@ -12,7 +12,7 @@ public struct AccelerationInstruction(ushort triggerFrame, Vector2 @params,
         AddAcceleration, AddMagnitude, AddAngle
     }
 
-    public Vector2 Params = @params;            // 8
+    public Vector2 Params = @params;            // 4 + 4
     public ushort TriggerFrame = triggerFrame;  // 2
     public Ops Op = op;                         // 1
                                                 // 1 padding

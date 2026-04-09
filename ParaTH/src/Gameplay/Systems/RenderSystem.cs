@@ -9,8 +9,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 {
     private Rectangle bounds = bounds;
     private QueryDescriptor descriptor = new QueryDescriptor()
-        .WithAll<Transform, Sprite>()
-        .WithAny<SpriteRenderer, SpriteAnimator>();
+        .WithAll<Transform, Renderer>();
 
     private struct DrawParams
     {
@@ -81,41 +80,35 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
-            bool useSpriteRenderer = archetype.Has<SpriteRenderer>();
             bool hasSpawnEffect = archetype.Has<SpawnEffect>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
-                var transforms = chunk.GetFilledComponentSpan<Transform>();
-                var states = chunk.GetFilledComponentSpan<Sprite>();
+                chunk.GetFilledComponentSpan<Transform, Renderer>(
+                    out var transforms, out var renderers);
 
-                var spriteRenderers = useSpriteRenderer ?
-                    chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
-                var animRenderers = !useSpriteRenderer ?
-                    chunk.GetFilledComponentSpan<SpriteAnimator>() : default;
-                var spawnAnims = hasSpawnEffect && !hasCurvyLaser ?   // curvy lasers don't use spawnAnim
+                var spawnAnims = hasSpawnEffect ?
                     chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var curvyLasers = hasCurvyLaser ?
                     chunk.GetFilledComponentSpan<CurvyLaser>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
-                    ref var state = ref states.UnsafeAt(i);
+                    ref var renderer = ref renderers.UnsafeAt(i);
 
                     var dp = new DrawParams
                     {
-                        Scale = state.Scale,
-                        Color = state.Color,
+                        Texture = renderer.Texture,
+                        SourceRect = renderer.SourceRect,
+                        Anchor = renderer.Anchor,
+                        Scale = renderer.Scale,
+                        Color = renderer.Color,
                     };
-
-                    if (useSpriteRenderer)
-                        ResolveSprite(ref spriteRenderers.UnsafeAt(i), ref dp);
-                    else
-                        ResolveAnimation(ref animRenderers.UnsafeAt(i), ref dp);
 
                     if (hasCurvyLaser)
                     {
+                        // curvy lasers don't use spawn effecct
                         ref var laser = ref curvyLasers.UnsafeAt(i);
 
                         maxLaserLength = Math.Max(maxLaserLength, laser.Length);
@@ -128,17 +121,17 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             {
                                 Texture = dp.Texture,
                                 SourceRect = dp.SourceRect,
-                                TextureRotation = state.Rotation,
+                                TextureRotation = renderer.Rotation,
                                 LaserNodes = laser.LaserNodes,
                                 HalfWidth = laser.HalfWidth,
                                 Color = dp.Color,
-                                Layer = state.Layer,
-                                BlendState = state.BlendState,
+                                Layer = renderer.Layer,
+                                BlendState = renderer.BlendState,
                             });
 
                             sortKeys.Add(new DrawSortKey
                             {
-                                SpawnId = state.SpawnId,
+                                SpawnId = renderer.SpawnId,
                                 Index = currentIndex,
                                 IsCurvyLaser = true,
                             });
@@ -147,7 +140,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     else
                     {
                         if (hasSpawnEffect)
-                            ApplySpawnEffect(ref spawnAnims.UnsafeAt(i), in state, ref dp);
+                            ApplySpawnEffect(ref spawnAnims.UnsafeAt(i), in renderer, ref dp);
 
                         ref var transform = ref transforms.UnsafeAt(i);
 
@@ -173,14 +166,14 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                                 Anchor = dp.Anchor,
                                 Scale = dp.Scale,
                                 Color = dp.Color,
-                                Rotation = state.Rotation,
-                                Layer = state.Layer,
-                                BlendState = state.BlendState
+                                Rotation = renderer.Rotation,
+                                Layer = renderer.Layer,
+                                BlendState = renderer.BlendState
                             });
 
                             sortKeys.Add(new DrawSortKey
                             {
-                                SpawnId = state.SpawnId,
+                                SpawnId = renderer.SpawnId,
                                 Index = currentIndex,
                             });
                         }
@@ -274,30 +267,12 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         return false;
     }
 
-    // ────────────────── Renderers ──────────────────
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ResolveSprite(ref SpriteRenderer r, ref DrawParams dp)
-    {
-        dp.Texture = r.Sprite.Texture;
-        dp.SourceRect = r.Sprite.SourceRect;
-        dp.Anchor = r.Sprite.Anchor;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ResolveAnimation(ref SpriteAnimator r, ref DrawParams dp)
-    {
-        dp.Texture = r.Animation.Texture;
-        dp.SourceRect = r.CurrentFrame.SourceRect;
-        dp.Anchor = r.CurrentFrame.Anchor;
-    }
-
     // ────────────────── Effects ──────────────────
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ApplySpawnEffect(
 #pragma warning disable RCS1242
-        ref SpawnEffect effect, in Sprite state, ref DrawParams dp)
+        ref SpawnEffect effect, in Renderer renderer, ref DrawParams dp)
 #pragma warning restore RCS1242
     {
         if (effect.Counter >= effect.Duration) return;
@@ -308,11 +283,11 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
         float t = (float)(effect.Counter + 1) / effect.Duration;
         dp.Scale.X = MathHelper.Lerp(
-            effect.StartScale.X, state.Scale.X, Easing.Evaluate(effect.TypeX, t));
+            effect.StartScale.X, renderer.Scale.X, Easing.Evaluate(effect.TypeX, t));
         dp.Scale.Y = MathHelper.Lerp(
-            effect.StartScale.Y, state.Scale.Y, Easing.Evaluate(effect.TypeY, t));
+            effect.StartScale.Y, renderer.Scale.Y, Easing.Evaluate(effect.TypeY, t));
         dp.Color.A = (byte)MathHelper.Lerp(
-            (float)effect.StartAlpha * 255f, state.Color.A, t);
+            (float)effect.StartAlpha * 255f, renderer.Color.A, t);
     }
 
     public void Dispose()

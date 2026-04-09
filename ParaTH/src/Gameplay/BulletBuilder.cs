@@ -22,7 +22,7 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     private Lifetime lifetime;
 
     // optional component
-    private Sprite bulletSprite;
+    private Renderer renderer;
     private SpriteAnimator spriteAnimator;
 
     // optional component, instruction is shared
@@ -416,9 +416,9 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SyncRenderStateRotation()
+    public ref BulletBuilder SyncRendererRotation()
     {
-        movement.SyncRenderStateRotation = true;
+        movement.SyncRendererRotation = true;
         return ref this;
     }
 
@@ -458,18 +458,21 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
     #endregion
 
-    #region Visual WIP
+    #region Visual
     [UnscopedRef]
     public ref BulletBuilder SetSprite(string spriteName, Color color, byte layer, StgBlendState blendState,
                                        float rotation = MathHelper.PiOver2, Vector2? scale = null)
     {
         scale ??= Vector2.One;
-        bulletSprite.sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
-        bulletSprite.Color = color;
-        bulletSprite.Layer = layer;
-        bulletSprite.BlendState = blendState;
-        bulletSprite.Rotation = rotation;
-        bulletSprite.Scale = scale.Value;
+        var sprite = manager.AssetManager.Get<SpriteAsset>(spriteName);
+        renderer.Texture = sprite.Texture;
+        renderer.SourceRect = sprite.SourceRect;
+        renderer.Anchor = sprite.Anchor;
+        renderer.Color = color;
+        renderer.Layer = layer;
+        renderer.BlendState = blendState;
+        renderer.Rotation = rotation;
+        renderer.Scale = scale.Value;
 
         return ref this;
     }
@@ -481,11 +484,11 @@ public ref struct BulletBuilder(BulletManager bulletManager)
         scale ??= Vector2.One;
         spriteAnimator.Animation = manager.AssetManager.Get<AnimationAsset>(animationName);
         spriteAnimator.IsPlaying = true;
-        bulletSprite.Color = color;
-        bulletSprite.Layer = layer;
-        bulletSprite.BlendState = blendState;
-        bulletSprite.Rotation = rotation;
-        bulletSprite.Scale = scale.Value;
+        renderer.Color = color;
+        renderer.Layer = layer;
+        renderer.BlendState = blendState;
+        renderer.Rotation = rotation;
+        renderer.Scale = scale.Value;
 
         return ref this;
     }
@@ -649,162 +652,147 @@ public ref struct BulletBuilder(BulletManager bulletManager)
     }
     #endregion
 
-public void Build(scoped Span<Entity> outputEntities = default)
-{
-    int amount = way * layer;
-    if (amount <= 0)
-        return;
-
-    bool hasSprite    = EqualityComparer<Sprite>.Default.Equals(bulletSprite, default);
-    bool hasAnimator  = EqualityComparer<SpriteAnimator>.Default.Equals(spriteAnimator, default);
-    bool hasPosCtr    = positionInstructions.Count > 0;
-    bool hasVelCtr    = velocityInstructions.Count > 0;
-    bool hasAccCtr    = accelerationInstructions.Count > 0;
-    bool hasCurveCtr  = curveInstructions.Count > 0;
-    bool hasSpawnFx   = spawnEffect.Duration > 0;
-    bool hasCollider  = collider.ShapeType != ShapeType.None;
-    bool hasCurvyLsr  = curvyLaserLength > 0;
-
-    int typeCount = 3 + Unsafe.As<bool, byte>(ref hasSprite)
-                      + Unsafe.As<bool, byte>(ref hasAnimator)
-                      + Unsafe.As<bool, byte>(ref hasPosCtr)
-                      + Unsafe.As<bool, byte>(ref hasVelCtr)
-                      + Unsafe.As<bool, byte>(ref hasAccCtr)
-                      + Unsafe.As<bool, byte>(ref hasCurveCtr)
-                      + Unsafe.As<bool, byte>(ref hasSpawnFx)
-                      + Unsafe.As<bool, byte>(ref hasCollider)
-                      + Unsafe.As<bool, byte>(ref hasCurvyLsr);
-
-    Span<ComponentTypeInfo> types = stackalloc ComponentTypeInfo[typeCount];
-    int idx = 0;
-    types.UnsafeAt(idx++) = Component<Transform>.TypeInfo;
-    types.UnsafeAt(idx++) = Component<Movement>.TypeInfo;
-    types.UnsafeAt(idx++) = Component<Lifetime>.TypeInfo;
-
-    if (hasSprite)   types.UnsafeAt(idx++) = Component<Sprite>.TypeInfo;
-    if (hasAnimator) types.UnsafeAt(idx++) = Component<SpriteAnimator>.TypeInfo;
-    if (hasPosCtr)   types.UnsafeAt(idx++) = Component<PositionController>.TypeInfo;
-    if (hasVelCtr)   types.UnsafeAt(idx++) = Component<VelocityController>.TypeInfo;
-    if (hasAccCtr)   types.UnsafeAt(idx++) = Component<AccelerationController>.TypeInfo;
-    if (hasCurveCtr) types.UnsafeAt(idx++) = Component<CurveController>.TypeInfo;
-    if (hasSpawnFx)  types.UnsafeAt(idx++) = Component<SpawnEffect>.TypeInfo;
-    if (hasCollider) types.UnsafeAt(idx++) = Component<Collider>.TypeInfo;
-    if (hasCurvyLsr) types.UnsafeAt(idx++) = Component<CurvyLaser>.TypeInfo;
-
-    using var entitiesPool   = ScopedPooledArray<Entity>.Rent(amount);
-    using var transformsPool = ScopedPooledArray<Transform>.Rent(amount);
-    using var movementsPool  = ScopedPooledArray<Movement>.Rent(amount);
-    using var lifetimesPool  = ScopedPooledArray<Lifetime>.Rent(amount);
-
-    Span<Entity>    entities   = entitiesPool.AsSpan();
-    Span<Transform> transforms = transformsPool.AsSpan();
-    Span<Movement>  movements  = movementsPool.AsSpan();
-    Span<Lifetime>  lifetimes  = lifetimesPool.AsSpan();
-
-    using var spritesPool   = hasSprite   ? ScopedPooledArray<Sprite>.Rent(amount) : default;
-    using var animatorsPool = hasAnimator ? ScopedPooledArray<SpriteAnimator>.Rent(amount) : default;
-    using var posCtrPool    = hasPosCtr   ? ScopedPooledArray<PositionController>.Rent(amount) : default;
-    using var velCtrPool    = hasVelCtr   ? ScopedPooledArray<VelocityController>.Rent(amount) : default;
-    using var accCtrPool    = hasAccCtr   ? ScopedPooledArray<AccelerationController>.Rent(amount) : default;
-    using var curveCtrPool  = hasCurveCtr ? ScopedPooledArray<CurveController>.Rent(amount) : default;
-    using var spawnFxPool   = hasSpawnFx  ? ScopedPooledArray<SpawnEffect>.Rent(amount) : default;
-    using var collidersPool = hasCollider ? ScopedPooledArray<Collider>.Rent(amount) : default;
-    using var curvyLsrPool  = hasCurvyLsr ? ScopedPooledArray<CurvyLaser>.Rent(amount) : default;
-
-    Span<Sprite>                 sprites   = hasSprite   ? spritesPool.AsSpan()   : default;
-    Span<SpriteAnimator>         animators = hasAnimator ? animatorsPool.AsSpan() : default;
-    Span<PositionController>     posCtrs   = hasPosCtr   ? posCtrPool.AsSpan()    : default;
-    Span<VelocityController>     velCtrs   = hasVelCtr   ? velCtrPool.AsSpan()    : default;
-    Span<AccelerationController> accCtrs   = hasAccCtr   ? accCtrPool.AsSpan()    : default;
-    Span<CurveController>        curveCtrs = hasCurveCtr ? curveCtrPool.AsSpan()  : default;
-    Span<SpawnEffect>            spawnFxs  = hasSpawnFx  ? spawnFxPool.AsSpan()   : default;
-    Span<Collider>               colliders = hasCollider ? collidersPool.AsSpan() : default;
-    Span<CurvyLaser>             curvyLsrs = hasCurvyLsr ? curvyLsrPool.AsSpan()  : default;
-
-    float baseVelMag   = movement.Velocity.Length();
-    float baseVelAngle = baseVelMag > 0 ? MathF.Atan2(movement.Velocity.Y, movement.Velocity.X) : 0;
-    float baseAccMag   = movement.Acceleration.Length();
-    float baseAccAngle = baseAccMag > 0 ? MathF.Atan2(movement.Acceleration.Y, movement.Acceleration.X) : baseVelAngle;
-
-    var sharedPosInstr   = hasPosCtr   ? positionInstructions.ToArray()     : null;
-    var sharedVelInstr   = hasVelCtr   ? velocityInstructions.ToArray()     : null;
-    var sharedAccInstr   = hasAccCtr   ? accelerationInstructions.ToArray() : null;
-    var sharedCurveInstr = hasCurveCtr ? curveInstructions.ToArray()        : null;
-
-    uint baseSpawnId = manager.GlobalSpawnCounter;
-    manager.GlobalSpawnCounter += (uint)amount;
-
-    for (int i = 0; i < amount; i++)
+    public void Build(scoped Span<Entity> outputEntities = default)
     {
-        int l = i / way;
-        int w = i % way;
+        int amount = way * layer;
+        if (amount <= 0)
+            return;
 
-        float angle = baseVelAngle;
-        if (spawningType == SpawningType.Circle)
+        bool hasRenderer  = !EqualityComparer<Renderer>.Default.Equals(renderer, default);
+        bool hasAnimator  = !EqualityComparer<SpriteAnimator>.Default.Equals(spriteAnimator, default);
+        bool hasPosCtr    = positionInstructions.Count > 0;
+        bool hasVelCtr    = velocityInstructions.Count > 0;
+        bool hasAccCtr    = accelerationInstructions.Count > 0;
+        bool hasCurveCtr  = curveInstructions.Count > 0;
+        bool hasSpawnFx   = spawnEffect.Duration > 0;
+        bool hasCollider  = collider.ShapeType != ShapeType.None;
+        bool hasCurvyLsr  = curvyLaserLength > 0;
+
+        int typeCount = 3 + Unsafe.As<bool, byte>(ref hasRenderer)
+                          + Unsafe.As<bool, byte>(ref hasAnimator)
+                          + Unsafe.As<bool, byte>(ref hasPosCtr)
+                          + Unsafe.As<bool, byte>(ref hasVelCtr)
+                          + Unsafe.As<bool, byte>(ref hasAccCtr)
+                          + Unsafe.As<bool, byte>(ref hasCurveCtr)
+                          + Unsafe.As<bool, byte>(ref hasSpawnFx)
+                          + Unsafe.As<bool, byte>(ref hasCollider)
+                          + Unsafe.As<bool, byte>(ref hasCurvyLsr);
+
+        Span<ComponentTypeInfo> types = stackalloc ComponentTypeInfo[typeCount];
+        int idx = 0;
+        types.UnsafeAt(idx++) = Component<Transform>.TypeInfo;
+        types.UnsafeAt(idx++) = Component<Movement>.TypeInfo;
+        types.UnsafeAt(idx++) = Component<Lifetime>.TypeInfo;
+
+        if (hasRenderer) types.UnsafeAt(idx++) = Component<Renderer>.TypeInfo;
+        if (hasAnimator) types.UnsafeAt(idx++) = Component<SpriteAnimator>.TypeInfo;
+        if (hasPosCtr)   types.UnsafeAt(idx++) = Component<PositionController>.TypeInfo;
+        if (hasVelCtr)   types.UnsafeAt(idx++) = Component<VelocityController>.TypeInfo;
+        if (hasAccCtr)   types.UnsafeAt(idx++) = Component<AccelerationController>.TypeInfo;
+        if (hasCurveCtr) types.UnsafeAt(idx++) = Component<CurveController>.TypeInfo;
+        if (hasSpawnFx)  types.UnsafeAt(idx++) = Component<SpawnEffect>.TypeInfo;
+        if (hasCollider) types.UnsafeAt(idx++) = Component<Collider>.TypeInfo;
+        if (hasCurvyLsr) types.UnsafeAt(idx++) = Component<CurvyLaser>.TypeInfo;
+
+        using var entities   = ScopedPooledArray<Entity>.Rent(amount);
+        using var transforms = ScopedPooledArray<Transform>.Rent(amount);
+        using var movements  = ScopedPooledArray<Movement>.Rent(amount);
+        using var lifetimes  = ScopedPooledArray<Lifetime>.Rent(amount);
+
+        using var renderers = hasRenderer ? ScopedPooledArray<Renderer>.Rent(amount) : default;
+        using var animators = hasAnimator ? ScopedPooledArray<SpriteAnimator>.Rent(amount) : default;
+        using var posCtrs   = hasPosCtr   ? ScopedPooledArray<PositionController>.Rent(amount) : default;
+        using var velCtrs   = hasVelCtr   ? ScopedPooledArray<VelocityController>.Rent(amount) : default;
+        using var accCtrs   = hasAccCtr   ? ScopedPooledArray<AccelerationController>.Rent(amount) : default;
+        using var curveCtrs = hasCurveCtr ? ScopedPooledArray<CurveController>.Rent(amount) : default;
+        using var spawnFxs  = hasSpawnFx  ? ScopedPooledArray<SpawnEffect>.Rent(amount) : default;
+        using var colliders = hasCollider ? ScopedPooledArray<Collider>.Rent(amount) : default;
+        using var curvyLsrs = hasCurvyLsr ? ScopedPooledArray<CurvyLaser>.Rent(amount) : default;
+
+        float baseVelMag   = movement.Velocity.Length();
+        float baseVelAngle = baseVelMag > 0 ? MathF.Atan2(movement.Velocity.Y, movement.Velocity.X) : 0;
+        float baseAccMag   = movement.Acceleration.Length();
+        float baseAccAngle = baseAccMag > 0 ? MathF.Atan2(movement.Acceleration.Y, movement.Acceleration.X) : baseVelAngle;
+
+        var sharedPosInstr   = hasPosCtr   ? positionInstructions.ToArray()     : null;
+        var sharedVelInstr   = hasVelCtr   ? velocityInstructions.ToArray()     : null;
+        var sharedAccInstr   = hasAccCtr   ? accelerationInstructions.ToArray() : null;
+        var sharedCurveInstr = hasCurveCtr ? curveInstructions.ToArray()        : null;
+
+        uint baseSpawnId = manager.GlobalSpawnCounter;
+        manager.GlobalSpawnCounter += (uint)amount;
+
+        for (int i = 0; i < amount; i++)
         {
-            angle += (MathF.PI * 2f / way) * w + l * layerAngleOffset;
+            int l = i / way;
+            int w = i % way;
+
+            float angle = baseVelAngle;
+            if (spawningType == SpawningType.Circle)
+            {
+                angle += (MathF.PI * 2f / way) * w + l * layerAngleOffset;
+            }
+            else if (spawningType == SpawningType.Spread && way > 1)
+            {
+                float total = totalSpread > 0 ? totalSpread : spreadDelta * (way - 1);
+                float delta = total / (way - 1);
+                angle += -total / 2f + delta * w;
+            }
+
+            float curVelMag   = baseVelMag + l * layerVelocityDelta;
+            float curAccMag   = baseAccMag + l * layerAccelerationDelta;
+            float curAccAngle = baseAccAngle + (angle - baseVelAngle);
+
+            var velDir = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+            var accDir = new Vector2(MathF.Cos(curAccAngle), MathF.Sin(curAccAngle));
+
+            transforms[i] = new Transform(
+                transform.Position + velDir * distanceToCenter,
+                transform.Scale,
+                transform.Rotation);
+            movements[i] = new Movement(
+                velDir * curVelMag,
+                accDir * curAccMag,
+                movement.SyncRendererRotation,
+                movement.SyncTransformRotation);
+            lifetimes[i] = lifetime;
+
+            if (hasRenderer) { renderers[i] = renderer; renderers[i].SpawnId = baseSpawnId + (uint)i; }
+            if (hasAnimator)   animators[i] = spriteAnimator;
+            if (hasPosCtr)     posCtrs[i]   = new PositionController     { Instructions = sharedPosInstr!,   Index = -1 };
+            if (hasVelCtr)     velCtrs[i]   = new VelocityController     { Instructions = sharedVelInstr!,   Index = -1 };
+            if (hasAccCtr)     accCtrs[i]   = new AccelerationController { Instructions = sharedAccInstr!,   Index = -1 };
+            if (hasCurveCtr)   curveCtrs[i] = new CurveController        { Instructions = sharedCurveInstr!, Index = -1 };
+            if (hasSpawnFx)    spawnFxs[i]  = spawnEffect;
+            if (hasCollider)   colliders[i] = collider;
+            if (hasCurvyLsr)   curvyLsrs[i] = new CurvyLaser
+            {
+                LaserNodes = new(curvyLaserLength),
+                Length     = curvyLaserLength,
+                HalfWidth  = curvyLaserHalfWidth
+            };
         }
-        else if (spawningType == SpawningType.Spread && way > 1)
-        {
-            float total = totalSpread > 0 ? totalSpread : spreadDelta * (way - 1);
-            float delta = total / (way - 1);
-            angle += -total / 2f + delta * w;
-        }
 
-        float curVelMag   = baseVelMag + l * layerVelocityDelta;
-        float curAccMag   = baseAccMag + l * layerAccelerationDelta;
-        float curAccAngle = baseAccAngle + (angle - baseVelAngle);
+        manager.World.ReserveEntityBulk(entities.AsSpan(), types, out Archetype archetype, out Slot start, out Slot end);
 
-        var velDir = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
-        var accDir = new Vector2(MathF.Cos(curAccAngle), MathF.Sin(curAccAngle));
+        archetype.SetRangeWithSpanBulk(start, end, transforms.AsSpan(), movements.AsSpan(), lifetimes.AsSpan());
 
-        transforms.UnsafeAt(i) = new Transform(
-            transform.Position + velDir * distanceToCenter,
-            transform.Scale,
-            transform.Rotation);
-        movements.UnsafeAt(i) = new Movement(
-            velDir * curVelMag,
-            accDir * curAccMag,
-            movement.SyncRenderStateRotation,
-            movement.SyncTransformRotation);
-        lifetimes.UnsafeAt(i) = lifetime;
+        if (hasRenderer) archetype.SetRangeWithSpanBulk(start, end, renderers.AsSpan());
+        if (hasAnimator) archetype.SetRangeWithSpanBulk(start, end, animators.AsSpan());
+        if (hasPosCtr)   archetype.SetRangeWithSpanBulk(start, end, posCtrs.AsSpan());
+        if (hasVelCtr)   archetype.SetRangeWithSpanBulk(start, end, velCtrs.AsSpan());
+        if (hasAccCtr)   archetype.SetRangeWithSpanBulk(start, end, accCtrs.AsSpan());
+        if (hasCurveCtr) archetype.SetRangeWithSpanBulk(start, end, curveCtrs.AsSpan());
+        if (hasSpawnFx)  archetype.SetRangeWithSpanBulk(start, end, spawnFxs.AsSpan());
+        if (hasCollider) archetype.SetRangeWithSpanBulk(start, end, colliders.AsSpan());
+        if (hasCurvyLsr) archetype.SetRangeWithSpanBulk(start, end, curvyLsrs.AsSpan());
 
-        if (hasSprite)   { sprites.UnsafeAt(i)   = bulletSprite; sprites.UnsafeAt(i).SpawnId = baseSpawnId + (uint)i; }
-        if (hasAnimator)   animators.UnsafeAt(i) = spriteAnimator;
-        if (hasPosCtr)     posCtrs.UnsafeAt(i)   = new PositionController     { Instructions = sharedPosInstr!,   Index = -1 };
-        if (hasVelCtr)     velCtrs.UnsafeAt(i)   = new VelocityController     { Instructions = sharedVelInstr!,   Index = -1 };
-        if (hasAccCtr)     accCtrs.UnsafeAt(i)   = new AccelerationController { Instructions = sharedAccInstr!,   Index = -1 };
-        if (hasCurveCtr)   curveCtrs.UnsafeAt(i) = new CurveController        { Instructions = sharedCurveInstr!, Index = -1 };
-        if (hasSpawnFx)    spawnFxs.UnsafeAt(i)  = spawnEffect;
-        if (hasCollider)   colliders.UnsafeAt(i) = collider;
-        if (hasCurvyLsr)   curvyLsrs.UnsafeAt(i) = new CurvyLaser
-        {
-            LaserNodes = new(curvyLaserLength),
-            Length     = curvyLaserLength,
-            HalfWidth  = curvyLaserHalfWidth
-        };
+        if (!outputEntities.IsEmpty)
+            entities.AsSpan().CopyTo(outputEntities);
+
+        positionInstructions.Dispose();
+        velocityInstructions.Dispose();
+        accelerationInstructions.Dispose();
+        curveInstructions.Dispose();
     }
-
-    manager.World.ReserveEntityBulk(entities, types, out Archetype archetype, out Slot start, out Slot end);
-
-    archetype.SetRangeWithSpanBulk(start, end, transforms, movements, lifetimes);
-
-    if (hasSprite)   archetype.SetRangeWithSpanBulk(start, end, sprites);
-    if (hasAnimator) archetype.SetRangeWithSpanBulk(start, end, animators);
-    if (hasPosCtr)   archetype.SetRangeWithSpanBulk(start, end, posCtrs);
-    if (hasVelCtr)   archetype.SetRangeWithSpanBulk(start, end, velCtrs);
-    if (hasAccCtr)   archetype.SetRangeWithSpanBulk(start, end, accCtrs);
-    if (hasCurveCtr) archetype.SetRangeWithSpanBulk(start, end, curveCtrs);
-    if (hasSpawnFx)  archetype.SetRangeWithSpanBulk(start, end, spawnFxs);
-    if (hasCollider) archetype.SetRangeWithSpanBulk(start, end, colliders);
-    if (hasCurvyLsr) archetype.SetRangeWithSpanBulk(start, end, curvyLsrs);
-
-    if (!outputEntities.IsEmpty)
-        entities.CopyTo(outputEntities);
-
-    positionInstructions.Dispose();
-    velocityInstructions.Dispose();
-    accelerationInstructions.Dispose();
-    curveInstructions.Dispose();
-}
 }

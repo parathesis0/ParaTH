@@ -12,7 +12,7 @@ public struct VelocityInstruction(ushort triggerFrame, Vector2 @params, ushort d
         AddVelocity, AddMagnitude, AddAngle
     }
 
-    public Vector2 Params = @params;            // 8
+    public Vector2 Params = @params;            // 4 + 4
     public ushort TriggerFrame = triggerFrame;  // 2
     public ushort Duration = duration;          // 2
     public EaseType EaseType = type;            // 1
@@ -24,8 +24,8 @@ public struct VelocityInstruction(ushort triggerFrame, Vector2 @params, ushort d
 public struct VelocityController
 {
     public VelocityInstruction[] Instructions;  // 8
-    public Vector2 StartValue;                  // 8
-    public Vector2 EndValue;                    // 8
+    public Vector2 StartValue;                  // 4 + 4
+    public Vector2 EndValue;                    // 4 + 4
     public sbyte Index;                         // 1
                                                 // 7 padding
 }

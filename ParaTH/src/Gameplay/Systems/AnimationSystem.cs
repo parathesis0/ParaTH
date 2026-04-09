@@ -2,10 +2,11 @@ namespace ParaTH;
 
 using static AnimationAsset;
 
-// updates counters
+// updates counters and apply animation to renderer
 public sealed class AnimationSystem(World world)
 {
     private QueryDescriptor descriptor = new QueryDescriptor()
+        .WithAll<Renderer>()
         .WithAny<SpawnEffect, SpriteAnimator>();
 
     public void Update()
@@ -19,6 +20,8 @@ public sealed class AnimationSystem(World world)
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
+                chunk.GetFilledComponentSpan<Renderer>(out var rndSpan);
+
                 var aniSpan = hasAni ? chunk.GetFilledComponentSpan<SpriteAnimator>() : default;
                 var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnEffect>() : default;
 
@@ -28,7 +31,16 @@ public sealed class AnimationSystem(World world)
                         UpdateSpawnEffect(ref spwSpan.UnsafeAt(i));
 
                     if (hasAni)
-                        UpdateAnimation(ref aniSpan.UnsafeAt(i));
+                    {
+                        ref var renderer = ref rndSpan.UnsafeAt(i);
+                        ref var animator = ref aniSpan.UnsafeAt(i);
+
+                        UpdateAnimation(ref animator);
+
+                        renderer.Texture = animator.Animation.Texture;
+                        renderer.SourceRect = animator.CurrentFrame.SourceRect;
+                        renderer.Texture = animator.Animation.Texture;
+                    }
                 }
             }
         }

@@ -42,18 +42,16 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
-            bool hasSprite = archetype.Has<SpriteRenderer>();
-            bool hasAnimation = archetype.Has<SpriteAnimator>();
+            bool hasRenderer = archetype.Has<Renderer>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
             bool hasHrc = archetype.Has<Hierarchy>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
-                var transforms = chunk.GetFilledComponentSpan<Transform>();
-                var lifetimes = chunk.GetFilledComponentSpan<Lifetime>();
+                chunk.GetFilledComponentSpan<Transform, Lifetime>(
+                    out var transforms, out var lifetimes);
 
-                var sprites = hasSprite ? chunk.GetFilledComponentSpan<SpriteRenderer>() : default;
-                var animations = hasAnimation ? chunk.GetFilledComponentSpan<SpriteAnimator>() : default;
+                var renderers = hasRenderer ? chunk.GetFilledComponentSpan<Renderer>() : default;
                 var curvyLasers = hasCurvyLaser ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
                 var hierarchies = hasHrc ? chunk.GetFilledComponentSpan<Hierarchy>() : default;
 
@@ -69,14 +67,9 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                     {
                         isOffscreen = IsCurvyLaserOffscreen(ref curvyLasers.UnsafeAt(i));
                     }
-                    else if (hasSprite)
+                    else if (hasRenderer)
                     {
-                        float radius = CalculateSpriteRadius(ref transform, ref sprites.UnsafeAt(i));
-                        isOffscreen = IsCircleOffscreen(transform.Position, radius);
-                    }
-                    else if (hasAnimation)
-                    {
-                        float radius = CalculateAnimationRadius(ref transform, ref animations.UnsafeAt(i));
+                        float radius = CalculateSpriteRadius(ref transform, ref renderers.UnsafeAt(i));
                         isOffscreen = IsCircleOffscreen(transform.Position, radius);
                     }
                     else
@@ -224,21 +217,10 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float CalculateSpriteRadius(ref Transform tf, ref SpriteRenderer sr)
+    private static float CalculateSpriteRadius(ref Transform tf, ref Renderer rnd)
     {
-        float w = sr.Sprite.SourceRect.Width;
-        float h = sr.Sprite.SourceRect.Height;
-        float baseRadius = (w > h ? w : h) * 0.5f;
-        float maxScale = tf.Scale.X > tf.Scale.Y ? tf.Scale.X : tf.Scale.Y;
-        return baseRadius * maxScale * 1.415f;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float CalculateAnimationRadius(ref Transform tf, ref SpriteAnimator ar)
-    {
-        var frame = ar.CurrentFrame;
-        float w = frame.SourceRect.Width;
-        float h = frame.SourceRect.Height;
+        float w = rnd.SourceRect.Width;
+        float h = rnd.SourceRect.Height;
         float baseRadius = (w > h ? w : h) * 0.5f;
         float maxScale = tf.Scale.X > tf.Scale.Y ? tf.Scale.X : tf.Scale.Y;
         return baseRadius * maxScale * 1.415f;

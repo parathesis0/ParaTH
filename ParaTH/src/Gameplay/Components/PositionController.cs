@@ -12,7 +12,7 @@ public struct PositionInstruction(ushort triggerFrame, Vector2 end, ushort durat
         Add
     }
 
-    public Vector2 Params = end;                // 8
+    public Vector2 Params = end;                // 4 + 4
     public ushort TriggerFrame = triggerFrame;  // 2
     public ushort Duration = duration;          // 2
     public EaseType EaseType = type;            // 1
@@ -24,8 +24,8 @@ public struct PositionInstruction(ushort triggerFrame, Vector2 end, ushort durat
 public struct PositionController
 {
     public PositionInstruction[] Instructions;  // 8
-    public Vector2 StartValue;                  // 8
-    public Vector2 EndValue;                    // 8
+    public Vector2 StartValue;                  // 4 + 4
+    public Vector2 EndValue;                    // 4 + 4
     public sbyte Index;                         // 1
                                                 // 7 padding
 }
