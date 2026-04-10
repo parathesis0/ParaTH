@@ -432,7 +432,6 @@ public sealed unsafe class StgBatch : IDisposable
     }
 
     // this looks good enough, do not modify unless it lags really really bad
-    [SkipLocalsInit]
     public void DrawCurvyLaser(
         Texture2D texture,
         Rectangle sourceRectangle,

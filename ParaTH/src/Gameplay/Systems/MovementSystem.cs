@@ -1,8 +1,10 @@
 using Microsoft.Xna.Framework;
+using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
 // handles everything movement related, updating entities' position
+[SkipLocalsInit]
 public sealed class MovementSystem(World world)
 {
     private QueryDescriptor descriptor = new QueryDescriptor()

@@ -4,7 +4,8 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-// handle rendering and transient visual states
+// handles rendering and transient visual states
+[SkipLocalsInit]
 public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) : IDisposable
 {
     private Rectangle bounds = bounds;
@@ -36,9 +37,9 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     private struct DeferredCurvyLaserDrawData
     {
         public Texture2D Texture;
+        public UnsafePooledQueue<Vector2> LaserNodes;
         public Rectangle SourceRect;
         public float TextureRotation;
-        public UnsafePooledQueue<Vector2> LaserNodes;
         public float HalfWidth;
         public Color Color;
         public byte Layer;
@@ -95,7 +96,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     private readonly UnsafePooledList<DeferredCurvyLaserDrawData> deferredCurvyLaserDraws = new(256);
     private readonly UnsafePooledList<DrawSortKey> sortKeys = new(16384);
 
-    [SkipLocalsInit]
     public void Update()
     {
         var deferredDraws = this.deferredDraws;

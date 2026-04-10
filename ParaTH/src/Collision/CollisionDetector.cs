@@ -3,10 +3,10 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
+[SkipLocalsInit]
 public static class CollisionDetector
 {
     // really (early)optimized SAT
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(ObbRect rectA, Vector2 posA, ObbRect rectB, Vector2 posB)
     {
@@ -44,7 +44,6 @@ public static class CollisionDetector
     }
 
     // transform circle to obb's
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(ObbRect rect, Vector2 posA, Circle circle, Vector2 posB)
     {
@@ -61,7 +60,6 @@ public static class CollisionDetector
     }
 
     // gemini wrote this approximation
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(ObbRect rect, Vector2 posA, Ellipse ellipse, Vector2 posB)
     {
@@ -92,14 +90,12 @@ public static class CollisionDetector
         return (x2 * b2) + (y2 * a2) <= (a2 * b2);
     }
 
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(Circle circle, Vector2 posA, ObbRect rect, Vector2 posB)
     {
         return Intersects(rect, posB, circle, posA);
     }
 
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(Circle circleA, Vector2 posA, Circle circleB, Vector2 posB)
     {
@@ -110,7 +106,6 @@ public static class CollisionDetector
     }
 
     // gemini wrote this approximation
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(Circle circle, Vector2 posA, Ellipse ellipse, Vector2 posB)
     {
@@ -136,14 +131,12 @@ public static class CollisionDetector
         return (x2 * b2) + (y2 * a2) <= (a2 * b2);
     }
 
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(Ellipse ellipse, Vector2 posA, ObbRect rect, Vector2 posB)
     {
         return Intersects(rect, posB, ellipse, posA);
     }
 
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(Ellipse ellipse, Vector2 posA, Circle Circle, Vector2 posB)
     {
@@ -151,7 +144,6 @@ public static class CollisionDetector
     }
 
     // gemini wrote this approximation
-    [SkipLocalsInit]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool Intersects(Ellipse ellipseA, Vector2 posA, Ellipse ellipseB, Vector2 posB)
     {

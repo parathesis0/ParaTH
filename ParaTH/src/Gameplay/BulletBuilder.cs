@@ -482,8 +482,12 @@ public ref struct BulletBuilder(BulletManager bulletManager)
                                           float rotation = MathHelper.PiOver2, Vector2? scale = null)
     {
         scale ??= Vector2.One;
-        spriteAnimator.Animation = manager.AssetManager.Get<AnimationAsset>(animationName);
-        spriteAnimator.IsPlaying = true;
+        var animation = manager.AssetManager.Get<AnimationAsset>(animationName);
+        spriteAnimator.Animation = animation;
+        spriteAnimator.IsActive = true;
+        renderer.Texture = animation.Texture;
+        renderer.SourceRect = animation.Frames[0].SourceRect;
+        renderer.Anchor = animation.Frames[0].Anchor;
         renderer.Color = color;
         renderer.Layer = layer;
         renderer.BlendState = blendState;

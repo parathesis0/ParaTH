@@ -24,7 +24,8 @@ public struct WalkAnimator(
     public int Counter;                                 // 4
     public ushort FrameIndex;                           // 2
     private byte packedStateData = 0;                   // 1
-                                                        // 1 padding
+    public bool IsActive = true;                        // 1
+
     public bool IsReverse
     {
         readonly get => (packedStateData & 0b0000_0001) != 0;

@@ -1,8 +1,11 @@
+using System.Runtime.CompilerServices;
+
 namespace ParaTH;
 
 using static AnimationAsset;
 
 // updates counters and apply animation to renderer
+[SkipLocalsInit]
 public sealed class AnimationSystem(World world)
 {
     private QueryDescriptor descriptor = new QueryDescriptor()
@@ -34,26 +37,32 @@ public sealed class AnimationSystem(World world)
 
                     if (hasAni)
                     {
-                        ref var renderer = ref rndSpan.UnsafeAt(i);
                         ref var animator = ref aniSpan.UnsafeAt(i);
 
-                        UpdateSpriteAnimation(ref animator);
+                        if (animator.IsActive)
+                        {
+                            ref var renderer = ref rndSpan.UnsafeAt(i);
+                            UpdateSpriteAnimation(ref animator);
 
-                        renderer.Texture = animator.Animation.Texture;
-                        renderer.SourceRect = animator.CurrentFrame.SourceRect;
-                        renderer.Anchor = animator.CurrentFrame.Anchor;
+                            renderer.Texture = animator.Animation.Texture;
+                            renderer.SourceRect = animator.CurrentFrame.SourceRect;
+                            renderer.Anchor = animator.CurrentFrame.Anchor;
+                        }
                     }
 
                     if (hasWlk)
                     {
-                        ref var renderer = ref rndSpan.UnsafeAt(i);
                         ref var walkAnim = ref wlkSpan.UnsafeAt(i);
 
-                        UpdateWalkAnimation(ref walkAnim);
+                        if (walkAnim.IsActive)
+                        {
+                            ref var renderer = ref rndSpan.UnsafeAt(i);
+                            UpdateWalkAnimation(ref walkAnim);
 
-                        renderer.Texture = walkAnim.CurrentAnimation.Texture;
-                        renderer.SourceRect = walkAnim.CurrentFrame.SourceRect;
-                        renderer.Anchor = walkAnim.CurrentFrame.Anchor;
+                            renderer.Texture = walkAnim.CurrentAnimation.Texture;
+                            renderer.SourceRect = walkAnim.CurrentFrame.SourceRect;
+                            renderer.Anchor = walkAnim.CurrentFrame.Anchor;
+                        }
                     }
                 }
             }
@@ -68,7 +77,7 @@ public sealed class AnimationSystem(World world)
 
     private static void UpdateSpriteAnimation(ref SpriteAnimator anim)
     {
-        if (!anim.IsPlaying)
+        if (!anim.IsActive)
             return;
 
         var frames = anim.Animation.Frames;
@@ -82,7 +91,8 @@ public sealed class AnimationSystem(World world)
             while (counter >= frames.UnsafeAt(frameIndex).FrameDuration)
             {
                 frameIndex++;
-                if (frameIndex >= len) break;
+                if (frameIndex >= len)
+                    break;
                 counter = 0;
             }
 
@@ -91,7 +101,7 @@ public sealed class AnimationSystem(World world)
                 switch (anim.Animation.Type)
                 {
                     case PlayType.Hold:
-                        anim.IsPlaying = false;
+                        anim.IsActive = false;
                         frameIndex = len - 1;
                         break;
                     case PlayType.Loop:
@@ -112,7 +122,8 @@ public sealed class AnimationSystem(World world)
             while (counter <= 0)
             {
                 frameIndex--;
-                if (frameIndex < 0) break;
+                if (frameIndex < 0)
+                    break;
                 counter = frames.UnsafeAt(frameIndex).FrameDuration;
             }
 
@@ -121,7 +132,7 @@ public sealed class AnimationSystem(World world)
                 switch (anim.Animation.Type)
                 {
                     case PlayType.Hold:
-                        anim.IsPlaying = false;
+                        anim.IsActive = false;
                         frameIndex = 0;
                         counter = 0;
                         break;

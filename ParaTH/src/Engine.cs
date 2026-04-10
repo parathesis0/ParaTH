@@ -359,7 +359,6 @@ public sealed class Engine : Game
         base.Update(gameTime);
     }
 
-    [SkipLocalsInit]
     protected override void Draw(GameTime gameTime)
     {
         fpsCounter++;
@@ -412,7 +411,7 @@ public sealed class Engine : Game
         });
     }
 
-    public void SetParentTest2(Entity parent, Entity children, bool keepWorldTransform)
+    public void SetParentTest(Entity parent, Entity children, bool keepWorldTransform)
     {
         if (!world.TryGetComponent<Transform>(children, out var transform))
             return;
