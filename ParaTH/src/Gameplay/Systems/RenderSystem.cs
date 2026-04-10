@@ -45,6 +45,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         public StgBlendState BlendState;
     }
 
+    // packed to 8 bytes for faster sorting & swapping
     private struct DrawSortKey : IComparable<DrawSortKey>
     {
         // [63:56] Layer (8)  [55:24] SpawnId (32)  [20] IsCurvyLaser (1)  [19:0] Index (20)

@@ -22,6 +22,7 @@ public sealed class MovementSystem(World world)
             bool hasSpw = archetype.Has<SpawnEffect>();  // this one has to stay here, spawnAnimation affects velocity
             bool hasCls = archetype.Has<CurvyLaser>();   // techically should have a separate system dedicated to this
             bool hasHrc = archetype.Has<Hierarchy>();    // if an entity has this, use its local position
+            bool hasWlk = archetype.Has<WalkAnimator>(); // for setting animation direction
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -36,6 +37,7 @@ public sealed class MovementSystem(World world)
                 var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var clsSpan = hasCls ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
                 var hrcSpan = hasHrc ? chunk.GetFilledComponentSpan<Hierarchy>() : default;
+                var wlkSpan = hasWlk ? chunk.GetFilledComponentSpan<WalkAnimator>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
@@ -77,10 +79,19 @@ public sealed class MovementSystem(World world)
                     var newPosition = position;
                     var delta = newPosition - oldPosition;
 
-                    var angle = 0f;
+                    if (hasWlk)
+                    {
+                        if (MathF.Abs(delta.X) >= float.Epsilon)
+                            wlkSpan.UnsafeAt(i).CurrentDirection = (delta.X > 0) ? (sbyte)1 : (sbyte)-1;
+                        else
+                            wlkSpan.UnsafeAt(i).CurrentDirection = 0;
+                    }
+
                     var velocityNotZero = delta.LengthSquared() >= float.Epsilon;
+                    var angle = 0f;
                     if ((movement.SyncTransformRotation || movement.SyncRendererRotation) && velocityNotZero)
                         angle = MathF.Atan2(delta.Y, delta.X);
+
                     if (movement.SyncTransformRotation && velocityNotZero)
                         transform.Rotation = angle;
                     if (movement.SyncRendererRotation && velocityNotZero)

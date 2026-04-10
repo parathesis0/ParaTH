@@ -1,0 +1,39 @@
+@animations
+
+texture player/pl00.png
+
+# all durations are placeholders
+
+animation reimu_idle loop
+0	0	32	48	16	24	8
+32	0	32	48	16	24	8
+64	0	32	48	16	24	8
+96	0	32	48	16	24	8
+128	0	32	48	16	24	8
+160	0	32	48	16	24	8
+192	0	32	48	16	24	8
+224	0	32	48	16	24	8
+
+animation reimu_left loop
+128	48	32	48	16	24	8
+160	48	32	48	16	24	8
+192	48	32	48	16	24	8
+224	48	32	48	16	24	8
+
+animation reimu_right loop
+128	96	32	48	16	24	8
+160	96	32	48	16	24	8
+192	96	32	48	16	24	8
+224	96	32	48	16	24	8
+
+animation reimu_transition_left hold
+0	48	32	48	16	24	6
+32	48	32	48	16	24	6
+64	48	32	48	16	24	6
+96	48	32	48	16	24	6
+
+animation reimu_transition_right hold
+0	96	32	48	16	24	6
+32	96	32	48	16	24	6
+64	96	32	48	16	24	6
+96	96	32	48	16	24	6
