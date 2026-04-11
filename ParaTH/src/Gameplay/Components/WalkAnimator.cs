@@ -8,7 +8,8 @@ public struct WalkAnimator(
     AnimationAsset left,
     AnimationAsset right,
     AnimationAsset leftTransit,
-    AnimationAsset rightTransit)
+    AnimationAsset rightTransit,
+    bool isActive = true)
 {
     public enum State : byte
     {
@@ -23,8 +24,8 @@ public struct WalkAnimator(
         [idle, left, right, leftTransit, rightTransit]; // 8
     public int Counter;                                 // 4
     public ushort FrameIndex;                           // 2
-    private byte packedStateData = 0;                   // 1
-    public bool IsActive = true;                        // 1
+    private byte packedStateData;                       // 1
+    public bool IsActive = isActive;                    // 1
 
     public bool IsReverse
     {

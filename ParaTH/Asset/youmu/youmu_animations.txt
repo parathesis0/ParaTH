@@ -1,0 +1,41 @@
+@animations
+
+texture youmu/stg6enm.png
+
+animation youmu_idle loop
+256	96	48	64	24	32	8
+304	96	48	64	24	32	8
+352	96	48	64	24	32	8
+400	96	48	64	24	32	8
+
+animation youmu_transition_left loop
+256	160	48	64	24	32	4
+304	160	48	64	24	32	4
+352	160	48	64	24	32	4
+400	160	48	64	24	32	4
+
+animation youmu_transition_right loop
+256	224	48	64	24	32	4
+304	224	48	64	24	32	4
+352	224	48	64	24	32	4
+400	224	48	64	24	32	4
+
+animation youmu_left hold
+400	160	48	64	24	32	1
+
+animation youmu_right hold
+400	224	48	64	24	32	1
+
+animation youmu_slash_right hold
+256	288	48	80	24	48	4
+304	288	48	80	24	48	4
+352	288	48	80	24	48	4
+400	288	48	80	24	48	4
+256	384	72	64	16	32	4
+328	384	72	64	16	32	4
+400	384	72	64	16	32	4
+
+animation youmu_slash_down hold
+0	256	48	64	24	24	4
+48	256	48	64	24	24	4
+96	256	48	64	24	24	4
