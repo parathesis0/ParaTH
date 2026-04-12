@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 
 namespace ParaTH;
 
+// sorry ;(
 public sealed class TestScript(BulletManager bulletManager, World world, Engine engine, AssetManager asset)
 {
     Entity[] reimu = null!;
