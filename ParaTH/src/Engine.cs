@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework.Input;
 namespace ParaTH;
 
 // sorry ;(
-public sealed class TestScript(BulletManager bulletManager, World world, Engine engine, AssetManager asset)
+public sealed class TestScript(BulletFactory bulletManager, World world, Engine engine, AssetManager asset)
 {
     Entity[] reimu = null!;
     Entity[] youmu = null!;
@@ -27,10 +27,10 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                     100f * MathF.Sin(angle));
 
                 // position test
-                bulletManager.SpawnBullet()
+                bulletManager.Create()
                     .SetPosition(new Vector2(200, 200))
                     .SetSprite("heart_pink", Color.White, 100, StgBlendState.Additive)
-                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .LerpAddPosition(delta, 120, EaseType.OutQuad)
                     .LerpAddPosition(-delta, 120, EaseType.InQuad)
                     .SetVelocity(delta / 30f)
@@ -38,10 +38,10 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                     .Build();
 
                 // velocity test
-                bulletManager.SpawnBullet()
+                bulletManager.Create()
                     .SetPosition(new Vector2(320, 240))
                     .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .SetVelocity(2f, angle)
                     .SyncRendererRotation()
                     .Delay(60)
@@ -60,10 +60,10 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                     .Build();
 
                 // acceleration test
-                bulletManager.SpawnBullet()
+                bulletManager.Create()
                     .SetPosition(new Vector2(320, 240))
                     .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .SetVelocity(2f, angle)
                     .SyncRendererRotation()
                     .Delay(60)
@@ -71,10 +71,10 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                     .Build();
 
                 // curve Test
-                bulletManager.SpawnBullet()
+                bulletManager.Create()
                     .SetPosition(new Vector2(320, 240))
                     .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .SetVelocity(2f, angle)
                     .SyncRendererRotation()
                     .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
@@ -87,9 +87,9 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                     .Build();
 
                 // spawnAnimation test
-                bulletManager.SpawnBullet()
+                bulletManager.Create()
                     .SetPosition(new Vector2(320, 240))
-                    .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                     .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                     .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
                     .SetVelocity(2f, angle).LerpAddVelocityMagnitude(12f, 120, EaseType.Linear)
@@ -101,30 +101,30 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
         if (counter == 10)
         {
             // target test
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(400, 400))
                 .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive)
                 .SetCircleCollider(16f).SetCollisionGroup(0b0000_0001).SetTargetGroup(0b0000_0010)
                 .Build();
 
             // player sprite test
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(200, 300))
                 .SetAnimation("reimu_idle", Color.White, 90, StgBlendState.Alpha, 0f)
                 .Build();
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(250, 300))
                 .SetAnimation("reimu_left", Color.White, 90, StgBlendState.Alpha, 0f)
                 .Build();
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(300, 300))
                 .SetAnimation("reimu_right", Color.White, 90, StgBlendState.Alpha, 0f)
                 .Build();
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(350, 300))
                 .SetAnimation("reimu_transition_left", Color.White, 90, StgBlendState.Alpha, 0f)
                 .Build();
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(400, 300))
                 .SetAnimation("reimu_transition_right", Color.White, 90, StgBlendState.Alpha, 0f)
                 .Build();
@@ -132,7 +132,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
             // walk animatior test
             reimu = new Entity[1];
 
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(200, 200))
                 .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive, 0)
                 .LerpAddPosition(new Vector2(160, 0), 80, EaseType.Linear)
@@ -154,7 +154,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
             // mixed animation test
             youmu = new Entity[1];
 
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(100, 100))
                 .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive, 0)
                 .LerpAddPosition(new Vector2(160, 40), 80, EaseType.SmoothStep)
@@ -212,9 +212,9 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
         if (counter % 1 == 0)
         {
             // spawn control test
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(320, 240))
-                .SetSpawnAnimation("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
                 .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
                 .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
                 .SetVelocity(2f, 0)
@@ -224,9 +224,9 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                 .Build();
 
             // spawnAnimation test
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(320, 240))
-                .SetSpawnAnimation("mist_red", 2, 0, 0, 11, EaseType.Linear)
+                .SetSpawnEffect("mist_red", 2, 0, 0, 11, EaseType.Linear)
                 .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
                 .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
                 .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRendererRotation()
@@ -234,7 +234,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                 .Build();
 
             // curvy laser test
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(320, 240))
                 .SetSprite("curvylaser_lime", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
                 .SetMovement(2f, angleOffset, 0.1f)
@@ -245,7 +245,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
                 .Build();
 
             // curvy laser animation & collision test
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(320, 240))
                 .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
                 .SetMovement(2f, angleOffset, 0.1f)
@@ -262,7 +262,7 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
 
             // hierarchy test
             Span<Entity> parent = stackalloc Entity[1];
-            bulletManager.SpawnBullet()
+            bulletManager.Create()
                 .SetPosition(new Vector2(200, 200))
                 .SetMovement(1f, angleOffset, 0)
                 .SyncTransformRotation()
@@ -275,8 +275,8 @@ public sealed class TestScript(BulletManager bulletManager, World world, Engine 
             const int ChildrenCount = 80;
 
             Span<Entity> children = stackalloc Entity[ChildrenCount];
-            bulletManager.SpawnBullet()
-                .SetSpawnAnimation("mist_red", 2f, 1f, 0, 12, EaseType.Linear)
+            bulletManager.Create()
+                .SetSpawnEffect("mist_red", 2f, 1f, 0, 12, EaseType.Linear)
                 .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
                 .SetSpawningCircle(ChildrenCount)
                 .SetCollisionGroup(0b0000_0010)
@@ -304,7 +304,7 @@ public sealed class Engine : Game
     private Matrix projection;
     private World world = null!;
 
-    private BulletManager bulletManager = null!;
+    private BulletFactory bulletFactory = null!;
 
     private MovementSystem movementSystem = null!;
     private AnimationSystem animationSystem = null!;
@@ -383,7 +383,7 @@ public sealed class Engine : Game
             initialArchetypeCapacity: 2,
             initialEntityCapacity: 50000);
 
-        bulletManager = new BulletManager(world, assetManager);
+        bulletFactory = new BulletFactory(world, assetManager);
 
         movementSystem = new MovementSystem(world);
         animationSystem = new AnimationSystem(world);
@@ -392,7 +392,7 @@ public sealed class Engine : Game
         lifetimeSystem = new LifetimeSystem(world, gameBounds);
         hierarcySystem = new HierarchySystem(world);
 
-        script = new(bulletManager, world, this, assetManager);
+        script = new(bulletFactory, world, this, assetManager);
     }
 
     protected override void Update(GameTime gameTime)

@@ -1,6 +1,6 @@
 namespace ParaTH;
 
-public sealed class BulletManager(World world, AssetManager asset)
+public sealed class BulletFactory(World world, AssetManager asset)
 {
     public World World { get; } = world;
 
@@ -8,7 +8,7 @@ public sealed class BulletManager(World world, AssetManager asset)
 
     public uint GlobalSpawnCounter = 0;
 
-    public BulletBuilder SpawnBullet()
+    public BulletBuilder Create()
     {
         return new BulletBuilder(this);
     }

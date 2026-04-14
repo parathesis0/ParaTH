@@ -5,6 +5,8 @@ using Microsoft.Xna.Framework.Graphics;
 namespace ParaTH;
 
 // handles rendering and transient visual states
+// todo: add laser spawn effect.
+// draw LaserSpawnEffect.Sprite with Scale at Nodes.PeekTail if it is spawning
 [SkipLocalsInit]
 public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) : IDisposable
 {
