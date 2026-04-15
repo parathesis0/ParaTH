@@ -38,7 +38,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     // optional curvy laser
     private int curvyLaserLength = 0;
     private float curvyLaserHalfWidth = 0;
-    private LaserSpawnEffect laserSpawnEffect;
+    private LaserSpawnGlow laserSpawnGlow;
 
     // spawn settings
     private int way = 1;
@@ -522,10 +522,10 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetLaserSpawnEffect(string spriteName, Vector2 scale)
+    public ref BulletBuilder SetLaserSpawnGlow(string spriteName, Vector2 scale)
     {
-        laserSpawnEffect.Sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
-        laserSpawnEffect.Scale = scale;
+        laserSpawnGlow.Sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
+        laserSpawnGlow.Scale = scale;
         return ref this;
     }
     #endregion
@@ -680,7 +680,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         bool hasSpawnFx   = spawnEffect.Duration > 0;
         bool hasCollider  = collider.ShapeType != ShapeType.None;
         bool hasCurvyLsr  = curvyLaserLength > 0;
-        bool hasLsrSpwFx  = !EqualityComparer<LaserSpawnEffect>.Default.Equals(laserSpawnEffect, default);
+        bool hasLsrSpwFx  = !EqualityComparer<LaserSpawnGlow>.Default.Equals(laserSpawnGlow, default);
 
         int typeCount = 3 + Unsafe.As<bool, byte>(ref hasRenderer)
                           + Unsafe.As<bool, byte>(ref hasAnimator)
@@ -708,7 +708,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         if (hasSpawnFx)  types.UnsafeAt(idx++) = Component<SpawnEffect>.TypeInfo;
         if (hasCollider) types.UnsafeAt(idx++) = Component<Collider>.TypeInfo;
         if (hasCurvyLsr) types.UnsafeAt(idx++) = Component<CurvyLaser>.TypeInfo;
-        if (hasLsrSpwFx) types.UnsafeAt(idx++) = Component<LaserSpawnEffect>.TypeInfo;
+        if (hasLsrSpwFx) types.UnsafeAt(idx++) = Component<LaserSpawnGlow>.TypeInfo;
 
         using var entities   = ScopedPooledArray<Entity>.Rent(amount);
         using var transforms = ScopedPooledArray<Transform>.Rent(amount);
@@ -724,7 +724,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         using var spawnFxs  = hasSpawnFx  ? ScopedPooledArray<SpawnEffect>.Rent(amount) : default;
         using var colliders = hasCollider ? ScopedPooledArray<Collider>.Rent(amount) : default;
         using var curvyLsrs = hasCurvyLsr ? ScopedPooledArray<CurvyLaser>.Rent(amount) : default;
-        using var lsrSpwFxs = hasLsrSpwFx ? ScopedPooledArray<LaserSpawnEffect>.Rent(amount) : default;
+        using var lsrSpwFxs = hasLsrSpwFx ? ScopedPooledArray<LaserSpawnGlow>.Rent(amount) : default;
 
         float baseVelMag   = movement.Velocity.Length();
         float baseVelAngle = baseVelMag > 0 ? MathF.Atan2(movement.Velocity.Y, movement.Velocity.X) : 0;
@@ -783,7 +783,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
             if (hasSpawnFx)    spawnFxs[i]  = spawnEffect;
             if (hasCollider)   colliders[i] = collider;
             if (hasCurvyLsr)   curvyLsrs[i] = new CurvyLaser { LaserNodes = new(curvyLaserLength), Length = curvyLaserLength, HalfWidth = curvyLaserHalfWidth };
-            if (hasLsrSpwFx)   lsrSpwFxs[i] = laserSpawnEffect;
+            if (hasLsrSpwFx)   lsrSpwFxs[i] = laserSpawnGlow;
         }
 
         factory.World.ReserveEntityBulk(entities.AsSpan(), types, out Archetype archetype, out Slot start, out Slot end);

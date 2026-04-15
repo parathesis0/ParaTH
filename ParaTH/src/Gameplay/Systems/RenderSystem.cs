@@ -5,8 +5,6 @@ using Microsoft.Xna.Framework.Graphics;
 namespace ParaTH;
 
 // handles rendering and transient visual states
-// todo: add laser spawn effect.
-// draw LaserSpawnEffect.Sprite with Scale at Nodes.PeekTail if it is spawning
 [SkipLocalsInit]
 public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) : IDisposable
 {
@@ -14,38 +12,35 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Renderer>();
 
-    private struct DrawParams
-    {
-        public Texture2D Texture;
-        public Rectangle SourceRect;
-        public Vector2 Anchor;
-        public Vector2 Scale;
-        public Color Color;
-    }
-
+    // 64 bytes
     private struct DeferredDrawData
     {
-        public Texture2D Texture;
-        public Rectangle SourceRect;
-        public Vector2 Position;
-        public Vector2 Anchor;
-        public Vector2 Scale;
-        public Color Color;
-        public float Rotation;
-        public byte Layer;
-        public StgBlendState BlendState;
+        public Texture2D Texture;           // 8
+        public Rectangle SourceRect;        // 16: 4 + 4 + 4 + 4
+        public Vector2 Position;            // 8: 4 + 4
+        public Vector2 Anchor;              // 8: 4 + 4
+        public Vector2 Scale;               // 8: 4 + 4
+        public Color Color;                 // 4
+        public float Rotation;              // 4
+        public byte Layer;                  // 1
+        public StgBlendState BlendState;    // 1
+                                            // 6 padding
     }
 
+    // 64 bytes
     private struct DeferredCurvyLaserDrawData
     {
-        public Texture2D Texture;
-        public UnsafePooledQueue<Vector2> LaserNodes;
-        public Rectangle SourceRect;
-        public float TextureRotation;
-        public float HalfWidth;
-        public Color Color;
-        public byte Layer;
-        public StgBlendState BlendState;
+        public Texture2D Texture;                       // 8
+        public UnsafePooledQueue<Vector2> LaserNodes;   // 8
+        public SpriteAsset GlowSprite;                  // 8
+        public Vector2 GlowScale;                       // 8: 4 + 4
+        public Rectangle SourceRect;                    // 16: 4 + 4 + 4 + 4
+        public float TextureRotation;                   // 4
+        public float HalfWidth;                         // 4
+        public Color Color;                             // 4
+        public byte Layer;                              // 1
+        public StgBlendState BlendState;                // 1
+                                                        // 2 padding
     }
 
     // packed to 8 bytes for faster sorting & swapping
@@ -66,7 +61,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             readonly get => (int)(packed & IndexMask);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => packed = (packed & ~IndexMask) | ((ulong)(uint)value & IndexMask);
+            set => packed = (packed & ~IndexMask) | ((uint)value & IndexMask);
         }
 
         public bool IsCurvyLaser
@@ -91,7 +86,9 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly int CompareTo(DrawSortKey other)
-            => packed.CompareTo(other.packed);
+        {
+            return packed.CompareTo(other.packed);
+        }
     }
 
     private readonly UnsafePooledList<DeferredDrawData> deferredDraws = new(16384);
@@ -108,7 +105,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         deferredCurvyLaserDraws.Clear();
         sortKeys.Clear();
 
-        // used for stackallocing curvy laser buffer
         int maxLaserLength = 0;
 
         var q = world.GetOrCreateQuery(descriptor);
@@ -117,43 +113,50 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         {
             bool hasSpawnEffect = archetype.Has<SpawnEffect>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
+            bool hasLaserGlow = archetype.Has<LaserSpawnGlow>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
                 chunk.GetFilledComponentSpan<Transform, Renderer>(
-                    out var transforms, out var states);
+                    out var transforms, out var renderers);
 
                 var spawnAnims = hasSpawnEffect ?
                     chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var curvyLasers = hasCurvyLaser ?
                     chunk.GetFilledComponentSpan<CurvyLaser>() : default;
+                var laserGlows = hasLaserGlow ?
+                    chunk.GetFilledComponentSpan<LaserSpawnGlow>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
-                    ref var state = ref states.UnsafeAt(i);
-
-                    var dp = new DrawParams
-                    {
-                        Texture = state.Texture,
-                        SourceRect = state.SourceRect,
-                        Anchor = state.Anchor,
-                        Scale = state.Scale,
-                        Color = state.Color,
-                    };
+                    ref var renderer = ref renderers.UnsafeAt(i);
 
                     if (!hasCurvyLaser)
                     {
-                        if (hasSpawnEffect)
-                            ApplySpawnEffect(ref spawnAnims.UnsafeAt(i), in state, ref dp);
-
                         ref var transform = ref transforms.UnsafeAt(i);
 
-                        float halfW = dp.SourceRect.Width * 0.5f;
-                        float halfH = dp.SourceRect.Height * 0.5f;
+                        var dd = new DeferredDrawData
+                        {
+                            Texture = renderer.Texture,
+                            SourceRect = renderer.SourceRect,
+                            Position = transform.Position,
+                            Anchor = renderer.Anchor,
+                            Scale = renderer.Scale,
+                            Color = renderer.Color,
+                            Rotation = renderer.Rotation,
+                            Layer = renderer.Layer,
+                            BlendState = renderer.BlendState,
+                        };
+
+                        if (hasSpawnEffect)
+                            ApplySpawnEffect(ref spawnAnims.UnsafeAt(i), in renderer, ref dd);
+
+                        float halfW = dd.SourceRect.Width * 0.5f;
+                        float halfH = dd.SourceRect.Height * 0.5f;
                         float radius = (halfW > halfH ? halfW : halfH) * 1.415f;
 
-                        float px = transform.Position.X;
-                        float py = transform.Position.Y;
+                        float px = dd.Position.X;
+                        float py = dd.Position.Y;
 
                         var b = this.bounds;
 
@@ -161,31 +164,18 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             py + radius > b.Top && py - radius < b.Bottom)
                         {
                             int currentIndex = deferredDraws.Count;
-
-                            deferredDraws.Add(new DeferredDrawData
-                            {
-                                Texture = dp.Texture,
-                                SourceRect = dp.SourceRect,
-                                Position = transform.Position,
-                                Anchor = dp.Anchor,
-                                Scale = dp.Scale,
-                                Color = dp.Color,
-                                Rotation = state.Rotation,
-                                Layer = state.Layer,
-                                BlendState = state.BlendState
-                            });
+                            deferredDraws.Add(dd);
 
                             sortKeys.Add(new DrawSortKey
                             {
-                                SpawnId = state.SpawnId,
-                                Layer = state.Layer,
+                                SpawnId = renderer.SpawnId,
+                                Layer = renderer.Layer,
                                 Index = currentIndex,
                             });
                         }
                     }
                     else
                     {
-                        // curvy lasers don't use spawn effecct
                         ref var laser = ref curvyLasers.UnsafeAt(i);
 
                         maxLaserLength = Math.Max(maxLaserLength, laser.Length);
@@ -194,22 +184,34 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                         {
                             int currentIndex = deferredCurvyLaserDraws.Count;
 
+                            SpriteAsset glowSprite = null!;
+                            Vector2 glowScale = default;
+
+                            if (hasLaserGlow && laser.IsSpawning)
+                            {
+                                ref var glow = ref laserGlows.UnsafeAt(i);
+                                glowSprite = glow.Sprite;
+                                glowScale = glow.Scale;
+                            }
+
                             deferredCurvyLaserDraws.Add(new DeferredCurvyLaserDrawData
                             {
-                                Texture = dp.Texture,
-                                SourceRect = dp.SourceRect,
-                                TextureRotation = state.Rotation,
+                                Texture = renderer.Texture,
+                                SourceRect = renderer.SourceRect,
+                                TextureRotation = renderer.Rotation,
                                 LaserNodes = laser.LaserNodes,
                                 HalfWidth = laser.HalfWidth,
-                                Color = dp.Color,
-                                Layer = state.Layer,
-                                BlendState = state.BlendState,
+                                Color = renderer.Color,
+                                Layer = renderer.Layer,
+                                BlendState = renderer.BlendState,
+                                GlowSprite = glowSprite,
+                                GlowScale = glowScale
                             });
 
                             sortKeys.Add(new DrawSortKey
                             {
-                                SpawnId = state.SpawnId,
-                                Layer = state.Layer,
+                                SpawnId = renderer.SpawnId,
+                                Layer = renderer.Layer,
                                 Index = currentIndex,
                                 IsCurvyLaser = true,
                             });
@@ -220,7 +222,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         }
 
         var keysSpan = sortKeys.AsSpan();
-
         keysSpan.Sort();
 
         var dataSpan = deferredDraws.AsSpan();
@@ -245,9 +246,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                 ref var d = ref laserDataSpan.UnsafeAt(key.Index);
                 int nodeCount = d.LaserNodes.Count;
 
-                if (nodeCount == 0)
-                    continue;
-
                 d.LaserNodes.AsSpans(out var first, out var second);
 
                 if (second.Length == 0)
@@ -268,12 +266,31 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                         renderNodeSpan, d.HalfWidth,
                         d.Color, d.Layer, d.BlendState);
                 }
+
+                if (d.GlowSprite is not null)
+                {
+                    Vector2 headPosition = d.LaserNodes.PeekHead();
+
+                    batch.Draw(
+                        d.GlowSprite.Texture,
+                        headPosition,
+                        d.GlowSprite.SourceRect,
+                        d.Color,
+                        0f,
+                        d.GlowSprite.Anchor,
+                        d.GlowScale,
+                        SpriteEffects.None,
+                        d.Layer,
+                        d.BlendState
+                    );
+                }
             }
         }
     }
 
     // ────────────────── Visibility ──────────────────
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool IsCurvyLaserVisible(UnsafePooledQueue<Vector2> nodes, float hw)
     {
         nodes.AsSpans(out var first, out var second);
@@ -308,22 +325,22 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ApplySpawnEffect(
 #pragma warning disable RCS1242
-        ref SpawnEffect effect, in Renderer state, ref DrawParams dp)
+        ref SpawnEffect effect, in Renderer renderer, ref DeferredDrawData dd)
 #pragma warning restore RCS1242
     {
         if (effect.Counter >= effect.Duration) return;
 
-        dp.Texture = effect.Sprite.Texture;
-        dp.SourceRect = effect.Sprite.SourceRect;
-        dp.Anchor = effect.Sprite.Anchor;
+        dd.Texture = effect.Sprite.Texture;
+        dd.SourceRect = effect.Sprite.SourceRect;
+        dd.Anchor = effect.Sprite.Anchor;
 
         float t = (float)(effect.Counter + 1) / effect.Duration;
-        dp.Scale.X = MathHelper.Lerp(
-            effect.StartScale.X, state.Scale.X, Easing.Evaluate(effect.TypeX, t));
-        dp.Scale.Y = MathHelper.Lerp(
-            effect.StartScale.Y, state.Scale.Y, Easing.Evaluate(effect.TypeY, t));
-        dp.Color.A = (byte)MathHelper.Lerp(
-            (float)effect.StartAlpha * 255f, state.Color.A, t);
+        dd.Scale.X = MathHelper.Lerp(
+            effect.StartScale.X, renderer.Scale.X, Easing.Evaluate(effect.TypeX, t));
+        dd.Scale.Y = MathHelper.Lerp(
+            effect.StartScale.Y, renderer.Scale.Y, Easing.Evaluate(effect.TypeY, t));
+        dd.Color.A = (byte)MathHelper.Lerp(
+            (float)effect.StartAlpha * 255f, renderer.Color.A, t);
     }
 
     public void Dispose()
