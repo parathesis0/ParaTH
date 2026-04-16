@@ -376,6 +376,7 @@ public sealed unsafe class StgBatch : IDisposable
         textureInfo.UnsafeAt(commandCount++) = texture;
     }
 
+    // bad, remake this when needed
     public void DrawConvexPolygon(
         Texture2D texture,
         Vector2[] vertices,
@@ -432,7 +433,7 @@ public sealed unsafe class StgBatch : IDisposable
     }
 
     // this looks good enough, do not modify unless it lags really really bad
-    public void DrawCurvyLaser(
+    public void DrawLaser(
         Texture2D texture,
         Rectangle sourceRectangle,
         float textureRotation,
