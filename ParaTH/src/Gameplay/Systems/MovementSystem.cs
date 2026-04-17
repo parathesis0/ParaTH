@@ -324,7 +324,7 @@ public sealed class MovementSystem(World world)
         var nodes = curvyLaser.LaserNodes;
         curvyLaser.LaserNodes.Enqueue(currentPos);
 
-        while (nodes.Count > curvyLaser.Length)
+        while (nodes.Count > curvyLaser.MaxNodes)
             nodes.Dequeue();
     }
 }

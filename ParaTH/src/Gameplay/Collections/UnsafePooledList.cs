@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -19,6 +20,49 @@ public sealed class UnsafePooledList<T> : IDisposable
 
         items = ArrayPool<T>.Shared.Rent(capacity);
         count = 0;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public UnsafePooledList(T[] source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        InitFromSpan(new ReadOnlySpan<T>(source));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public UnsafePooledList(Span<T> source)
+    {
+        InitFromSpan(source);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public UnsafePooledList(ReadOnlySpan<T> source)
+    {
+        InitFromSpan(source);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public UnsafePooledList(UnsafePooledList<T> source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        InitFromSpan(source.AsSpan());
+    }
+
+    [MemberNotNull(nameof(items))]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void InitFromSpan(ReadOnlySpan<T> source)
+    {
+        if (source.IsEmpty)
+        {
+            items = ArrayPool<T>.Shared.Rent(4);
+            count = 0;
+            return;
+        }
+
+        int capacity = (int)BitOperations.RoundUpToPowerOf2((uint)source.Length);
+        items = ArrayPool<T>.Shared.Rent(capacity);
+        source.CopyTo(items);
+        count = source.Length;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

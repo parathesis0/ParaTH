@@ -178,7 +178,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     {
                         ref var laser = ref curvyLasers.UnsafeAt(i);
 
-                        maxLaserLength = Math.Max(maxLaserLength, laser.Length);
+                        maxLaserLength = Math.Max(maxLaserLength, laser.MaxNodes);
 
                         if (IsCurvyLaserVisible(laser.LaserNodes, laser.HalfWidth))
                         {
