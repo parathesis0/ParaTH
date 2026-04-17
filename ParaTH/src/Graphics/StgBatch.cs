@@ -96,14 +96,12 @@ public sealed unsafe class StgBatch : IDisposable
             GraphicsDevice,
             typeof(VertexPositionColorTexture),
             MaxVertices,
-            BufferUsage.WriteOnly
-        );
+            BufferUsage.WriteOnly);
         indexBuffer = new DynamicIndexBuffer(
             GraphicsDevice,
             IndexElementSize.SixteenBits,
             MaxVertices * 3,
-            BufferUsage.WriteOnly
-        );
+            BufferUsage.WriteOnly);
 
         vHandle = GCHandle.Alloc(rawVertices, GCHandleType.Pinned);
         iHandle = GCHandle.Alloc(rawIndices, GCHandleType.Pinned);
@@ -165,8 +163,7 @@ public sealed unsafe class StgBatch : IDisposable
             SamplerState.PointClamp,
             RasterizerState.CullCounterClockwise,
             null,
-            transformMatrix
-        );
+            transformMatrix);
     }
 
     public void Begin(
@@ -288,20 +285,16 @@ public sealed unsafe class StgBatch : IDisposable
 
             tl = new Vector2(
                 position.X + tlX * cos - tlY * sin,
-                position.Y + tlX * sin + tlY * cos
-            );
+                position.Y + tlX * sin + tlY * cos);
             tr = new Vector2(
                 position.X + trX * cos - trY * sin,
-                position.Y + trX * sin + trY * cos
-            );
+                position.Y + trX * sin + trY * cos);
             br = new Vector2(
                 position.X + brX * cos - brY * sin,
-                position.Y + brX * sin + brY * cos
-            );
+                position.Y + brX * sin + brY * cos);
             bl = new Vector2(
                 position.X + blX * cos - blY * sin,
-                position.Y + blX * sin + blY * cos
-            );
+                position.Y + blX * sin + blY * cos);
         }
         else
         {
@@ -376,7 +369,7 @@ public sealed unsafe class StgBatch : IDisposable
         textureInfo.UnsafeAt(commandCount++) = texture;
     }
 
-    // bad, remake this when needed
+    // bad api, refactor when needed
     public void DrawConvexPolygon(
         Texture2D texture,
         Vector2[] vertices,
@@ -433,7 +426,7 @@ public sealed unsafe class StgBatch : IDisposable
     }
 
     // this looks good enough, do not modify unless it lags really really bad
-    public void DrawLaser(
+    public void DrawStrip(
         Texture2D texture,
         Rectangle sourceRectangle,
         float textureRotation,
@@ -462,6 +455,9 @@ public sealed unsafe class StgBatch : IDisposable
         int pointsCount = 1;
         float totalArc = 0f;
 
+        // cache sqrt result for faster calculation
+        float* invSegLen = stackalloc float[rawCount]; // max pointsCount - 1 segments
+
         for (int i = 1; i < rawCount; i++)
         {
             float dSq = Vector2.DistanceSquared(pts[pointsCount - 1], nodes.UnsafeAt(i));
@@ -471,6 +467,7 @@ public sealed unsafe class StgBatch : IDisposable
                 totalArc += d;
                 pts[pointsCount] = nodes.UnsafeAt(i);
                 cumArc[pointsCount] = totalArc;
+                invSegLen[pointsCount - 1] = 1f / d;
                 pointsCount++;
             }
         }
@@ -497,18 +494,30 @@ public sealed unsafe class StgBatch : IDisposable
         float u1 = (sourceRectangle.X + sourceRectangle.Width) * invTexWidth;
         float v1 = (sourceRectangle.Y + sourceRectangle.Height) * invTexHeight;
 
-        float cu = (u0 + u1) * 0.5f;
-        float cv = (v0 + v1) * 0.5f;
-        float halfU = (u1 - u0) * 0.5f;
-        float halfV = (v1 - v0) * 0.5f;
+        Vector2 uvTL, uvBL, uvTR, uvBR;
 
-        float cos = MathF.Cos(textureRotation);
-        float sin = MathF.Sin(textureRotation);
+        if (textureRotation != 0f)
+        {
+            float cu = (u0 + u1) * 0.5f;
+            float cv = (v0 + v1) * 0.5f;
+            float halfU = (u1 - u0) * 0.5f;
+            float halfV = (v1 - v0) * 0.5f;
 
-        Vector2 uvTL = new(cu - halfU * cos + halfV * sin, cv - halfU * sin - halfV * cos);
-        Vector2 uvBL = new(cu - halfU * cos - halfV * sin, cv - halfU * sin + halfV * cos);
-        Vector2 uvTR = new(cu + halfU * cos + halfV * sin, cv + halfU * sin - halfV * cos);
-        Vector2 uvBR = new(cu + halfU * cos - halfV * sin, cv + halfU * sin + halfV * cos);
+            float cos = MathF.Cos(textureRotation);
+            float sin = MathF.Sin(textureRotation);
+
+            uvTL = new(cu - halfU * cos + halfV * sin, cv - halfU * sin - halfV * cos);
+            uvBL = new(cu - halfU * cos - halfV * sin, cv - halfU * sin + halfV * cos);
+            uvTR = new(cu + halfU * cos + halfV * sin, cv + halfU * sin - halfV * cos);
+            uvBR = new(cu + halfU * cos - halfV * sin, cv + halfU * sin + halfV * cos);
+        }
+        else
+        {
+            uvTL = new(u0, v0);
+            uvBL = new(u0, v1);
+            uvTR = new(u1, v0);
+            uvBR = new(u1, v1);
+        }
 
         // generate vertices — consistent normal-based miter, no cross fix needed
         int startVertex = vertexCount;
@@ -530,8 +539,7 @@ public sealed unsafe class StgBatch : IDisposable
 
             // head: outgoing perpendicular
             Vector2 dir = pts[1] - pts[0];
-            float len = dir.Length();
-            if (len > 1e-6f) dir /= len; else dir = Vector2.UnitX;
+            dir *= invSegLen[0];
             prevDir = dir;
 
             float expandX = -dir.Y * halfThickness;
@@ -571,8 +579,7 @@ public sealed unsafe class StgBatch : IDisposable
 
             // compute outgoing direction
             Vector2 dOut = pts[i + 1] - pts[i];
-            float lenOut = dOut.Length();
-            if (lenOut > 1e-6f) dOut /= lenOut; else dOut = Vector2.UnitX;
+            dOut *= invSegLen[i];
             prevDir = dOut;
 
             Vector2 nOut = new(-dOut.Y, dOut.X);
@@ -647,7 +654,6 @@ public sealed unsafe class StgBatch : IDisposable
             currVertex->Position.Z = 0;
             currVertex->Color = color;
             currVertex->TextureCoordinate = bottomUV;
-            currVertex++;
         }
 
         // generate indices

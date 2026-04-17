@@ -292,12 +292,12 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
             //    engine.SetParentTest(parent[0], children[i], position, Vector2.One, 0);
             //}
 
-            //// laser glow test
+            // laser glow test
             //bulletManager.Create()
             //    .SetPosition(new Vector2(320, 240))
             //    .SetSprite("scale_lightpink", Color.White, 100, StgBlendState.Additive, 0)
             //    .SetMovement(4f, angleOffset, 0f)
-            //    .SetLaserSpawnGlow("lasersource_pink", Vector2.One)
+            //    .SetLaserSourceSprite("lasersource_pink", Vector2.One)
             //    .SetSpawningCircle(10, distanceToCenter: 50)
             //    .SetCollisionGroup(0b0000_0010)
             //    .MakeCurvyLaser(64, 8f)
@@ -470,7 +470,7 @@ public sealed class Engine : Game
 
         var sprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_pink");
 
-        stgBatch.DrawLaser(
+        stgBatch.DrawStrip(
             sprite.Texture,
             sprite.SourceRect,
             0,

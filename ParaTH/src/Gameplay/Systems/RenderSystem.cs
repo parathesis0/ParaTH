@@ -250,7 +250,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
                 if (second.Length == 0)
                 {
-                    batch.DrawLaser(
+                    batch.DrawStrip(
                         d.Texture, d.SourceRect, d.TextureRotation,
                         first, d.HalfWidth,
                         d.Color, d.Layer, d.BlendState);
@@ -261,7 +261,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     first.CopyTo(renderNodeSpan);
                     second.CopyTo(renderNodeSpan.Slice(first.Length));
 
-                    batch.DrawLaser(
+                    batch.DrawStrip(
                         d.Texture, d.SourceRect, d.TextureRotation,
                         renderNodeSpan, d.HalfWidth,
                         d.Color, d.Layer, d.BlendState);
