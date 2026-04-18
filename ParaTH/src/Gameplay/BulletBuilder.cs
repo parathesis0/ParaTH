@@ -825,7 +825,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
             if (hasCollider)   colliders[i]  = collider;
             if (hasCurvyLsr)   curvyLsrs[i]  = new () { LaserNodes = new(curvyLaserMaxNodes), MaxNodes = curvyLaserMaxNodes, HalfWidth = curvyLaserHalfWidth };
             if (hasLsrSrcRdr)  lsrSrcRdrs[i] = laserSourceRenderer;
-            if (hasLaser)    { /*lasers[i]     = todo: transform LaserNodes with angle as rotation*/  }
+            if (hasLaser)    { /*lasers[i]     = todo: transform Laser's transform directly instead of transforming nodes*/  }
         }
 
         factory.World.ReserveEntityBulk(entities.AsSpan(), types, out Archetype archetype, out Slot start, out Slot end);

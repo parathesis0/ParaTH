@@ -27,281 +27,302 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
                     100f * MathF.Sin(angle));
 
                 // position test
-                bulletManager.Create()
-                    .SetPosition(new Vector2(200, 200))
-                    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Additive)
-                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                    .LerpAddPosition(delta, 120, EaseType.OutQuad)
-                    .LerpAddPosition(-delta, 120, EaseType.InQuad)
-                    .SetVelocity(delta / 30f)
-                    .SyncRendererRotation()
-                    .Build();
+                {
+                    //bulletManager.Create()
+                    //    .SetPosition(new Vector2(200, 200))
+                    //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Additive)
+                    //    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    //    .LerpAddPosition(delta, 120, EaseType.OutQuad)
+                    //    .LerpAddPosition(-delta, 120, EaseType.InQuad)
+                    //    .SetVelocity(delta / 30f)
+                    //    .SyncRendererRotation()
+                    //    .Build();
+                }
 
                 // velocity test
-                bulletManager.Create()
-                    .SetPosition(new Vector2(320, 240))
-                    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                    .SetVelocity(2f, angle)
-                    .SyncRendererRotation()
-                    .Delay(60)
-                    .SetVelocity(Vector2.UnitY * 2).Delay(10)
-                    .AddVelocity(Vector2.UnitY * 2).Delay(10)
-                    .LerpToVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad).Delay(10)
-                    .LerpAddVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad).Delay(10)
-                    .SetVelocityMagnitude(4f).Delay(10)
-                    .AddVelocityMagnitude(4f).Delay(10)
-                    .LerpToVelocityMagnitude(4f, 30, EaseType.InQuad).Delay(10)
-                    .LerpAddVelocityMagnitude(4f, 30, EaseType.InQuad).Delay(10)
-                    .SetVelocityAngle(0).Delay(10)
-                    .AddVelocityAngle(MathHelper.PiOver2).Delay(10)
-                    .LerpToVelocityAngle(0, 30, EaseType.InQuad).Delay(10)
-                    .LerpAddVelocityAngle(MathHelper.PiOver2, 30, EaseType.InQuad).Delay(10)
-                    .Build();
+                {
+                    //bulletManager.Create()
+                    //    .SetPosition(new Vector2(320, 240))
+                    //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+                    //    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    //    .SetVelocity(2f, angle)
+                    //    .SyncRendererRotation()
+                    //    .Delay(60)
+                    //    .SetVelocity(Vector2.UnitY * 2).Delay(10)
+                    //    .AddVelocity(Vector2.UnitY * 2).Delay(10)
+                    //    .LerpToVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad).Delay(10)
+                    //    .LerpAddVelocity(Vector2.UnitY * 2, 30, EaseType.InQuad).Delay(10)
+                    //    .SetVelocityMagnitude(4f).Delay(10)
+                    //    .AddVelocityMagnitude(4f).Delay(10)
+                    //    .LerpToVelocityMagnitude(4f, 30, EaseType.InQuad).Delay(10)
+                    //    .LerpAddVelocityMagnitude(4f, 30, EaseType.InQuad).Delay(10)
+                    //    .SetVelocityAngle(0).Delay(10)
+                    //    .AddVelocityAngle(MathHelper.PiOver2).Delay(10)
+                    //    .LerpToVelocityAngle(0, 30, EaseType.InQuad).Delay(10)
+                    //    .LerpAddVelocityAngle(MathHelper.PiOver2, 30, EaseType.InQuad).Delay(10)
+                    //    .Build();
+                }
 
                 // acceleration test
-                bulletManager.Create()
-                    .SetPosition(new Vector2(320, 240))
-                    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                    .SetVelocity(2f, angle)
-                    .SyncRendererRotation()
-                    .Delay(60)
-                    .SetAcceleration(Vector2.UnitY * 0.05f)
-                    .Build();
+                {
+                    //bulletManager.Create()
+                    //    .SetPosition(new Vector2(320, 240))
+                    //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+                    //    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    //    .SetVelocity(2f, angle)
+                    //    .SyncRendererRotation()
+                    //    .Delay(60)
+                    //    .SetAcceleration(Vector2.UnitY * 0.05f)
+                    //    .Build();
+                }
 
                 // curve Test
-                bulletManager.Create()
-                    .SetPosition(new Vector2(320, 240))
-                    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                    .SetVelocity(2f, angle)
-                    .SyncRendererRotation()
-                    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
-                    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
-                    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
-                    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
-                    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
-                    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
-                    .SetAngularVelocity(0)
-                    .Build();
+                {
+                    //bulletManager.Create()
+                    //    .SetPosition(new Vector2(320, 240))
+                    //    .SetSprite("heart_pink", Color.White, 100, StgBlendState.Alpha)
+                    //    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    //    .SetVelocity(2f, angle)
+                    //    .SyncRendererRotation()
+                    //    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
+                    //    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
+                    //    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
+                    //    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
+                    //    .SetAngularVelocity(MathHelper.Pi / 60).Delay(30)
+                    //    .SetAngularVelocity(-MathHelper.Pi / 60).Delay(30)
+                    //    .SetAngularVelocity(0)
+                    //    .Build();
+                }
 
                 // spawnAnimation test
-                bulletManager.Create()
-                    .SetPosition(new Vector2(320, 240))
-                    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                    .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
-                    .SetVelocity(2f, angle).LerpAddVelocityMagnitude(12f, 120, EaseType.Linear)
-                    .SyncRendererRotation()
-                    .Build();
+                {
+                    //bulletManager.Create()
+                    //    .SetPosition(new Vector2(320, 240))
+                    //    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                    //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+                    //    .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
+                    //    .SetVelocity(2f, angle).LerpAddVelocityMagnitude(12f, 120, EaseType.Linear)
+                    //    .SyncRendererRotation()
+                    //    .Build();
+                }
             }
         }
 
-        if (counter == 10)
-        {
-            // target test
-            bulletManager.Create()
-                .SetPosition(new Vector2(400, 400))
-                .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive)
-                .SetCircleCollider(16f).SetCollisionGroup(0b0000_0001).SetTargetGroup(0b0000_0010)
-                .Build();
+        //if (counter == 10)
+        //{
+        //    // target test
+        //    bulletManager.Create()
+        //        .SetPosition(new Vector2(400, 400))
+        //        .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive)
+        //        .SetCircleCollider(16f).SetCollisionGroup(0b0000_0001).SetTargetGroup(0b0000_0010)
+        //        .Build();
 
-            // player sprite test
-            bulletManager.Create()
-                .SetPosition(new Vector2(200, 300))
-                .SetAnimation("reimu_idle", Color.White, 90, StgBlendState.Alpha, 0f)
-                .Build();
-            bulletManager.Create()
-                .SetPosition(new Vector2(250, 300))
-                .SetAnimation("reimu_left", Color.White, 90, StgBlendState.Alpha, 0f)
-                .Build();
-            bulletManager.Create()
-                .SetPosition(new Vector2(300, 300))
-                .SetAnimation("reimu_right", Color.White, 90, StgBlendState.Alpha, 0f)
-                .Build();
-            bulletManager.Create()
-                .SetPosition(new Vector2(350, 300))
-                .SetAnimation("reimu_transition_left", Color.White, 90, StgBlendState.Alpha, 0f)
-                .Build();
-            bulletManager.Create()
-                .SetPosition(new Vector2(400, 300))
-                .SetAnimation("reimu_transition_right", Color.White, 90, StgBlendState.Alpha, 0f)
-                .Build();
+        //    // player sprite test
+        //    bulletManager.Create()
+        //        .SetPosition(new Vector2(200, 300))
+        //        .SetAnimation("reimu_idle", Color.White, 90, StgBlendState.Alpha, 0f)
+        //        .Build();
+        //    bulletManager.Create()
+        //        .SetPosition(new Vector2(250, 300))
+        //        .SetAnimation("reimu_left", Color.White, 90, StgBlendState.Alpha, 0f)
+        //        .Build();
+        //    bulletManager.Create()
+        //        .SetPosition(new Vector2(300, 300))
+        //        .SetAnimation("reimu_right", Color.White, 90, StgBlendState.Alpha, 0f)
+        //        .Build();
+        //    bulletManager.Create()
+        //        .SetPosition(new Vector2(350, 300))
+        //        .SetAnimation("reimu_transition_left", Color.White, 90, StgBlendState.Alpha, 0f)
+        //        .Build();
+        //    bulletManager.Create()
+        //        .SetPosition(new Vector2(400, 300))
+        //        .SetAnimation("reimu_transition_right", Color.White, 90, StgBlendState.Alpha, 0f)
+        //        .Build();
 
-            // walk animatior test
-            reimu = new Entity[1];
+        //    // walk animatior test
+        //    reimu = new Entity[1];
 
-            bulletManager.Create()
-                .SetPosition(new Vector2(200, 200))
-                .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive, 0)
-                .LerpAddPosition(new Vector2(160, 0), 80, EaseType.Linear)
-                .LerpAddPosition(new Vector2(0, 160), 80, EaseType.Linear)
-                .LerpAddPosition(new Vector2(-160, 0), 80, EaseType.Linear)
-                .LerpAddPosition(new Vector2(0, -160), 80, EaseType.Linear)
-                .LerpAddPosition(new Vector2(54, 0), 12, EaseType.Linear)
-                .LerpAddPosition(new Vector2(-108, 0), 24, EaseType.Linear)
-                .LerpAddPosition(new Vector2(54, 0), 12, EaseType.Linear)
-                .Build(reimu);
+        //    bulletManager.Create()
+        //        .SetPosition(new Vector2(200, 200))
+        //        .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive, 0)
+        //        .LerpAddPosition(new Vector2(160, 0), 80, EaseType.Linear)
+        //        .LerpAddPosition(new Vector2(0, 160), 80, EaseType.Linear)
+        //        .LerpAddPosition(new Vector2(-160, 0), 80, EaseType.Linear)
+        //        .LerpAddPosition(new Vector2(0, -160), 80, EaseType.Linear)
+        //        .LerpAddPosition(new Vector2(54, 0), 12, EaseType.Linear)
+        //        .LerpAddPosition(new Vector2(-108, 0), 24, EaseType.Linear)
+        //        .LerpAddPosition(new Vector2(54, 0), 12, EaseType.Linear)
+        //        .Build(reimu);
 
-            world.AddComponent<WalkAnimator>(reimu[0], new WalkAnimator(
-                asset.Get<AnimationAsset>("reimu_idle"),
-                asset.Get<AnimationAsset>("reimu_left"),
-                asset.Get<AnimationAsset>("reimu_right"),
-                asset.Get<AnimationAsset>("reimu_transition_left"),
-                asset.Get<AnimationAsset>("reimu_transition_right")));
+        //    world.AddComponent<WalkAnimator>(reimu[0], new WalkAnimator(
+        //        asset.Get<AnimationAsset>("reimu_idle"),
+        //        asset.Get<AnimationAsset>("reimu_left"),
+        //        asset.Get<AnimationAsset>("reimu_right"),
+        //        asset.Get<AnimationAsset>("reimu_transition_left"),
+        //        asset.Get<AnimationAsset>("reimu_transition_right")));
 
-            // mixed animation test
-            youmu = new Entity[1];
+        //    // mixed animation test
+        //    youmu = new Entity[1];
 
-            bulletManager.Create()
-                .SetPosition(new Vector2(100, 100))
-                .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive, 0)
-                .LerpAddPosition(new Vector2(160, 40), 80, EaseType.SmoothStep)
-                .LerpAddPosition(new Vector2(-200, 40), 80, EaseType.SmoothStep)
-                .Delay(100)
-                .LerpAddPosition(new Vector2(40, -80), 80, EaseType.SmoothStep)
-                .Build(youmu);
+        //    bulletManager.Create()
+        //        .SetPosition(new Vector2(100, 100))
+        //        .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive, 0)
+        //        .LerpAddPosition(new Vector2(160, 40), 80, EaseType.SmoothStep)
+        //        .LerpAddPosition(new Vector2(-200, 40), 80, EaseType.SmoothStep)
+        //        .Delay(100)
+        //        .LerpAddPosition(new Vector2(40, -80), 80, EaseType.SmoothStep)
+        //        .Build(youmu);
 
-            world.AddComponent<SpriteAnimator>(youmu[0], new SpriteAnimator(
-                asset.Get<AnimationAsset>("youmu_slash_right"), false));
+        //    world.AddComponent<SpriteAnimator>(youmu[0], new SpriteAnimator(
+        //        asset.Get<AnimationAsset>("youmu_slash_right"), false));
 
-            world.AddComponent<WalkAnimator>(youmu[0], new WalkAnimator(
-                asset.Get<AnimationAsset>("youmu_idle"),
-                asset.Get<AnimationAsset>("youmu_left"),
-                asset.Get<AnimationAsset>("youmu_right"),
-                asset.Get<AnimationAsset>("youmu_transition_left"),
-                asset.Get<AnimationAsset>("youmu_transition_right")));
-        }
+        //    world.AddComponent<WalkAnimator>(youmu[0], new WalkAnimator(
+        //        asset.Get<AnimationAsset>("youmu_idle"),
+        //        asset.Get<AnimationAsset>("youmu_left"),
+        //        asset.Get<AnimationAsset>("youmu_right"),
+        //        asset.Get<AnimationAsset>("youmu_transition_left"),
+        //        asset.Get<AnimationAsset>("youmu_transition_right")));
+        //}
 
-        // really ugly test code. will be better after we have coroutine
-        if (counter == 200)
-        {
-            var youmu = this.youmu[0];
+        //// really ugly test code. will be better after we have coroutine
+        //if (counter == 200)
+        //{
+        //    var youmu = this.youmu[0];
 
-            ref var walkAnim = ref world.GetComponent<WalkAnimator>(youmu);
-            walkAnim.IsActive = false;
-            ref var animation = ref world.GetComponent<SpriteAnimator>(youmu);
-            animation.IsActive = true;
-        }
+        //    ref var walkAnim = ref world.GetComponent<WalkAnimator>(youmu);
+        //    walkAnim.IsActive = false;
+        //    ref var animation = ref world.GetComponent<SpriteAnimator>(youmu);
+        //    animation.IsActive = true;
+        //}
 
-        if (counter == 240)
-        {
-            var youmu = this.youmu[0];
+        //if (counter == 240)
+        //{
+        //    var youmu = this.youmu[0];
 
-            ref var walkAnim = ref world.GetComponent<WalkAnimator>(youmu);
-            walkAnim.IsActive = false;
-            ref var animation = ref world.GetComponent<SpriteAnimator>(youmu);
-            animation.Animation = asset.Get<AnimationAsset>("youmu_slash_down");
-            animation.Counter = 0;
-            animation.FrameIndex = 0;
-            animation.IsReverse = false;
-            animation.IsActive = true;
-        }
+        //    ref var walkAnim = ref world.GetComponent<WalkAnimator>(youmu);
+        //    walkAnim.IsActive = false;
+        //    ref var animation = ref world.GetComponent<SpriteAnimator>(youmu);
+        //    animation.Animation = asset.Get<AnimationAsset>("youmu_slash_down");
+        //    animation.Counter = 0;
+        //    animation.FrameIndex = 0;
+        //    animation.IsReverse = false;
+        //    animation.IsActive = true;
+        //}
 
-        if (counter == 270)
-        {
-            var youmu = this.youmu[0];
+        //if (counter == 270)
+        //{
+        //    var youmu = this.youmu[0];
 
-            ref var walkAnim = ref world.GetComponent<WalkAnimator>(youmu);
-            walkAnim.IsActive = true;
-            ref var animation = ref world.GetComponent<SpriteAnimator>(youmu);
-            animation.IsActive = false;
-        }
+        //    ref var walkAnim = ref world.GetComponent<WalkAnimator>(youmu);
+        //    walkAnim.IsActive = true;
+        //    ref var animation = ref world.GetComponent<SpriteAnimator>(youmu);
+        //    animation.IsActive = false;
+        //}
 
-        if (counter % 100 == 0)
+        if (counter % 1 == 0)
         {
             // spawn control test
-            bulletManager.Create()
-                .SetPosition(new Vector2(320, 240))
-                .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
-                .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
-                .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
-                .SetVelocity(2f, 0)
-                .SetSpawningCircle(8, 4, 0.5f, 0, 0.01f, 100)
-                .SetSpawningSpreadByDelta(9, MathHelper.Pi / 8, 3)
-                .SetSpawningSpreadByTotal(9, MathHelper.Pi, 3, 0.1f)
-                .Build();
+            {
+                //bulletManager.Create()
+                //    .SetPosition(new Vector2(320, 240))
+                //    .SetSpawnEffect("heart_pink", 2, 0, 0, 11, EaseType.Linear)
+                //    .SetSprite("arrow_pink", Color.White, 100, StgBlendState.Alpha)
+                //    .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
+                //    .SetVelocity(2f, 0)
+                //    .SetSpawningCircle(8, 4, 0.5f, 0, 0.01f, 100)
+                //    .SetSpawningSpreadByDelta(9, MathHelper.Pi / 8, 3)
+                //    .SetSpawningSpreadByTotal(9, MathHelper.Pi, 3, 0.1f)
+                //    .Build();
+            }
 
             // spawnAnimation test
-            bulletManager.Create()
-                .SetPosition(new Vector2(320, 240))
-                .SetSpawnEffect("mist_red", 2, 0, 0, 11, EaseType.Linear)
-                .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
-                .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
-                .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRendererRotation()
-                .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
-                .Build();
+            {
+                //bulletManager.Create()
+                //    .SetPosition(new Vector2(320, 240))
+                //    .SetSpawnEffect("mist_red", 2, 0, 0, 11, EaseType.Linear)
+                //    .SetSprite("heart_red", Color.White, 100, StgBlendState.Alpha)
+                //    .SetVelocity(2f, angleOffset).SetSpawningCircle(500)
+                //    .LerpAddVelocityMagnitude(4f, 6, EaseType.Linear)//.SyncRendererRotation()
+                //    .SetCircleCollider(4f).SetCollisionGroup(0b0000_0010)
+                //    .Build();
+            }
 
             // curvy laser test
-            bulletManager.Create()
-                .SetPosition(new Vector2(320, 240))
-                .SetSprite("curvylaser_lime", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
-                .SetMovement(2f, angleOffset, 0.1f)
-                .SetSpawningCircle(1)
-                .SetAngularVelocity(0.05f)
-                .SetCollisionGroup(0b0000_0010)
-                .MakeCurvyLaser(512, 16f)
-                .Build();
+            {
+                //bulletManager.Create()
+                //    .SetPosition(new Vector2(320, 240))
+                //    .SetSprite("curvylaser_lime", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+                //    .SetMovement(2f, angleOffset, 0.1f)
+                //    .SetSpawningCircle(1)
+                //    .SetAngularVelocity(0.05f)
+                //    .SetCollisionGroup(0b0000_0010)
+                //    .MakeCurvyLaser(512, 16f)
+                //    .Build();
+            }
 
             // curvy laser animation & collision test
-            bulletManager.Create()
-                .SetPosition(new Vector2(320, 240))
-                .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
-                .SetMovement(2f, angleOffset, 0.1f)
-                .SetSpawningCircle(1)
-                .AddMovementAngle(1f).Delay(20)
-                .AddMovementAngle(-1f).Delay(20)
-                .AddMovementAngle(1f).Delay(20)
-                .AddMovementAngle(-1f).Delay(20)
-                .AddMovementAngle(1f).Delay(20)
-                .AddMovementAngle(-1f)
-                .SetCollisionGroup(0b0000_0010)
-                .MakeCurvyLaser(128, 16f)
-                .Build();
+            {
+                bulletManager.Create()
+                    .SetPosition(new Vector2(320, 240))
+                    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+                    .SetMovement(2f, angleOffset, 0.1f)
+                    .SetSpawningCircle(1)
+                    .AddMovementAngle(1f).Delay(20)
+                    .AddMovementAngle(-1f).Delay(20)
+                    .AddMovementAngle(1f).Delay(20)
+                    .AddMovementAngle(-1f).Delay(20)
+                    .AddMovementAngle(1f).Delay(20)
+                    .AddMovementAngle(-1f)
+                    .SetCollisionGroup(0b0000_0010)
+                    .MakeCurvyLaser(128, 16f)
+                    .Build();
+            }
 
             // hierarchy test
-            Span<Entity> parent = stackalloc Entity[1];
-            bulletManager.Create()
-                .SetPosition(new Vector2(200, 200))
-                .SetMovement(1f, angleOffset, 0)
-                .SyncTransformRotation()
-                .Build(parent);
-
-            ref var transform = ref world.GetComponent<Transform>(parent[0]);
-
-            transform.Scale = new Vector2(2, 1);
-
-            const int ChildrenCount = 80;
-
-            Span<Entity> children = stackalloc Entity[ChildrenCount];
-            bulletManager.Create()
-                .SetSpawnEffect("mist_red", 2f, 1f, 0, 12, EaseType.Linear)
-                .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
-                .SetSpawningCircle(ChildrenCount)
-                .SetCollisionGroup(0b0000_0010)
-                .Build(children);
-
-            for (int i = 0; i < ChildrenCount; i++)
             {
-                const float Delta = MathHelper.TwoPi / ChildrenCount;
-                const int Radius = 100;
-                var position = new Vector2(
-                    Radius * MathF.Cos(Delta * i),
-                    Radius * MathF.Sin(Delta * i));
-                engine.SetParentTest(parent[0], children[i], position, Vector2.One, 0);
+                //Span<Entity> parent = stackalloc Entity[1];
+                //bulletManager.Create()
+                //    .SetPosition(new Vector2(200, 200))
+                //    .SetMovement(1f, angleOffset, 0)
+                //    .SyncTransformRotation()
+                //    .Build(parent);
+
+                //ref var transform = ref world.GetComponent<Transform>(parent[0]);
+
+                //transform.Scale = new Vector2(2, 1);
+
+                //const int ChildrenCount = 80;
+
+                //Span<Entity> children = stackalloc Entity[ChildrenCount];
+                //bulletManager.Create()
+                //    .SetSpawnEffect("mist_red", 2f, 1f, 0, 12, EaseType.Linear)
+                //    .SetAnimation("fireball_red", Color.White, 100, StgBlendState.Alpha)
+                //    .SetSpawningCircle(ChildrenCount)
+                //    .Build(children);
+
+                //for (int i = 0; i < ChildrenCount; i++)
+                //{
+                //    const float Delta = MathHelper.TwoPi / ChildrenCount;
+                //    const int Radius = 100;
+                //    var position = new Vector2(
+                //        Radius * MathF.Cos(Delta * i),
+                //        Radius * MathF.Sin(Delta * i));
+                //    engine.SetParentTest(parent[0], children[i], position, Vector2.One, 0);
+                //}
             }
 
             // laser glow test
-            bulletManager.Create()
-                .SetPosition(new Vector2(320, 240))
-                .SetSprite("scale_lightpink", Color.White, 100, StgBlendState.Additive, 0)
-                .SetMovement(4f, angleOffset, 0f)
-                .SetLaserSourceSprite("lasersource_pink", Vector2.One)
-                .SetSpawningCircle(10, distanceToCenter: 50)
-                .SetCollisionGroup(0b0000_0010)
-                .MakeCurvyLaser(64, 8f)
-                .Build();
+            {
+                //bulletManager.Create()
+                //    .SetPosition(new Vector2(320, 240))
+                //    .SetSprite("scale_lightpink", Color.White, 100, StgBlendState.Additive, 0)
+                //    .SetMovement(4f, angleOffset, 0f)
+                //    .SetLaserSourceSprite("lasersource_pink", Vector2.One)
+                //    .SetSpawningCircle(10, distanceToCenter: 50)
+                //    .SetCollisionGroup(0b0000_0010)
+                //    .MakeCurvyLaser(64, 8f)
+                //    .Build();
+            }
         }
 
         counter++;
@@ -451,6 +472,11 @@ public sealed class Engine : Game
 
         renderSystem.Update();
 
+        stgBatch.End();
+
+        stgBatch.Begin(SamplerState.PointClamp, RasterizerState.CullCounterClockwise,
+                     null, projection);
+
         var font = debugFontAsset.GetFont(18);
 
         var entityCount = world.CountEntities(QueryDescriptor.MatchAll);
@@ -468,8 +494,8 @@ public sealed class Engine : Game
             $"F: {frameCounter}",
             new Vector2(572, 4), fpsColor, 200, StgBlendState.Alpha);
 
+        // test strip laser
         var sprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_pink");
-
         stgBatch.DrawStrip(
             sprite.Texture,
             sprite.SourceRect,
