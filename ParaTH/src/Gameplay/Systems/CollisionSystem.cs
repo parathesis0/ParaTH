@@ -18,6 +18,7 @@ public sealed class CollisionSystem : IDisposable
     private struct CollisionNode
     {
         public Vector2 Position;
+        public float Rotation;
         public float BoundingRadius;
         public Collider Collider;
         public Entity Entity;
@@ -25,13 +26,13 @@ public sealed class CollisionSystem : IDisposable
 
     private struct CurvyLaserCollisionNode
     {
+        public UnsafePooledQueue<Vector2> LaserNodes;
         public Vector2 BoundingCenter;
         public float BoundingRadius;
+        public Entity Entity;
+        public float HalfWidth;
         public byte GroupMask;
         public byte TargetGroupMask;
-        public Entity Entity;
-        public UnsafePooledQueue<Vector2> LaserNodes;
-        public float HalfWidth;
     }
 
     private readonly UnsafePooledList<CollisionNode>[] groupLists;
@@ -89,6 +90,7 @@ public sealed class CollisionSystem : IDisposable
                         {
                             Entity = chunk.Entities.UnsafeAt(i),
                             Position = transforms.UnsafeAt(i).Position,
+                            Rotation = transforms.UnsafeAt(i).Rotation,
                             Collider = collider,
                             BoundingRadius = GetBoundingRadius(ref collider)
                         });
@@ -169,7 +171,8 @@ public sealed class CollisionSystem : IDisposable
                         if (dx * dx + dy * dy > radiusSum * radiusSum)
                             continue;
 
-                        if (Collider.Intersects(nodeA.Collider, nodeA.Position, nodeB.Collider, nodeB.Position))
+                        if (Collider.Intersects(nodeA.Collider, nodeA.Position, nodeA.Rotation,
+                                                nodeB.Collider, nodeB.Position, nodeB.Rotation))
                         {
                             // todo: trigger entity's callback?
                             //Console.WriteLine($"Entity {nodeA.Entity.Id} hit Entity {nodeB.Entity.Id}!");
@@ -280,6 +283,7 @@ public sealed class CollisionSystem : IDisposable
         return ref second.UnsafeAt(i - first.Length);
     }
 
+    // todo: this is a little too expensive for a prefilter
     // ritter's bounding-circle over two contiguous spans from ring buffer,
     // inflated by halfWidth
     private static void ComputeRitterBoundingCircle(
@@ -350,24 +354,24 @@ public sealed class CollisionSystem : IDisposable
         // iterate first segment
         for (int i = 0; i < first.Length; i++)
         {
-            ref var lp = ref first.UnsafeAt(i);
+            var lp = first.UnsafeAt(i);
             float dx = lp.X - node.Position.X;
             float dy = lp.Y - node.Position.Y;
             if (dx * dx + dy * dy > rSumSq)
                 continue;
-            if (IntersectsCircleVsShape(circle, lp, ref node.Collider, node.Position))
+            if (IntersectsCircleVsShape(circle, lp, ref node.Collider, node.Position, node.Rotation))
                 return true;
         }
 
         // iterate second segment (wrap-around portion, may be empty)
         for (int i = 0; i < second.Length; i++)
         {
-            ref var lp = ref second.UnsafeAt(i);
+            var lp = first.UnsafeAt(i);
             float dx = lp.X - node.Position.X;
             float dy = lp.Y - node.Position.Y;
             if (dx * dx + dy * dy > rSumSq)
                 continue;
-            if (IntersectsCircleVsShape(circle, lp, ref node.Collider, node.Position))
+            if (IntersectsCircleVsShape(circle, lp, ref node.Collider, node.Position, node.Rotation))
                 return true;
         }
 
@@ -376,14 +380,14 @@ public sealed class CollisionSystem : IDisposable
 
     private static bool IntersectsCircleVsShape(
         Circle circle, Vector2 circlePos,
-        ref Collider collider, Vector2 colliderPos)
+        ref Collider collider, Vector2 colliderPos, float colliderRot)
     {
 #pragma warning disable CS8509
         return collider.ShapeType switch
         {
-            ShapeType.ObbRect => CollisionDetector.Intersects(circle, circlePos, collider.ObbRect, colliderPos),
+            ShapeType.ObbRect => CollisionDetector.Intersects(circle, circlePos, collider.ObbRect, colliderPos, colliderRot),
             ShapeType.Circle => CollisionDetector.Intersects(circle, circlePos, collider.Circle, colliderPos),
-            ShapeType.Ellipse => CollisionDetector.Intersects(circle, circlePos, collider.Ellipse, colliderPos),
+            ShapeType.Ellipse => CollisionDetector.Intersects(circle, circlePos, collider.Ellipse, colliderPos, colliderRot),
         };
 #pragma warning restore CS8509
     }
@@ -401,12 +405,16 @@ public sealed class CollisionSystem : IDisposable
         // test all 4 combinations:
         // firstA x firstB, firstA x secondB,
         // secondA x firstB, secondA x secondB
-        if (TestSpanPairCircles(firstA, firstB, rSumSq)) return true;
-        if (secondB.Length > 0 && TestSpanPairCircles(firstA, secondB, rSumSq)) return true;
+        if (TestSpanPairCircles(firstA, firstB, rSumSq))
+            return true;
+        if (secondB.Length > 0 && TestSpanPairCircles(firstA, secondB, rSumSq))
+            return true;
         if (secondA.Length > 0)
         {
-            if (TestSpanPairCircles(secondA, firstB, rSumSq)) return true;
-            if (secondB.Length > 0 && TestSpanPairCircles(secondA, secondB, rSumSq)) return true;
+            if (TestSpanPairCircles(secondA, firstB, rSumSq))
+                return true;
+            if (secondB.Length > 0 && TestSpanPairCircles(secondA, secondB, rSumSq))
+                return true;
         }
         return false;
     }

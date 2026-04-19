@@ -113,7 +113,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     #endregion
 
     #region Velocity Control
-    // todo: add Set/LerpVelocityAngleToPlayer
+    // todo: add Set/LerpVelocityAngleToEntity, store an entity id
     // convert from magnitude angle to vector for conveniences sake
     [UnscopedRef]
     public ref BulletBuilder SetVelocity(float velocityMagnitude, float angle)
@@ -273,7 +273,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     #endregion
 
     #region Acceleration Control
-    // todo: add Set/LerpAccelerationAngleToPlayer
+    // todo: add Set/LerpAccelerationAngleToEntity, store an entity id
     // convert from magnitude angle to vector for conveniences sake
     [UnscopedRef]
     public ref BulletBuilder SetAcceleration(float accelerationMagnitude, float angle)
@@ -478,7 +478,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         renderer.BlendState = blendState;
         renderer.Rotation = rotation;
         renderer.Scale = scale.Value;
-
         return ref this;
     }
 
@@ -498,7 +497,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         renderer.BlendState = blendState;
         renderer.Rotation = rotation;
         renderer.Scale = scale.Value;
-
         return ref this;
     }
 
@@ -513,7 +511,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         spawnEffect.Duration = duration;
         spawnEffect.TypeX = easeX;
         spawnEffect.TypeY = easeY;
-
         return ref this;
     }
 
@@ -551,11 +548,10 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         return ref this;
     }
     [UnscopedRef]
-    public ref BulletBuilder SetObbCollider(Vector2 halfSize, float rotation = 0f)
+    public ref BulletBuilder SetObbCollider(Vector2 halfSize)
     {
         collider.ShapeType = ShapeType.ObbRect;
         collider.ObbRect.HalfSize = halfSize;
-        collider.ObbRect.Rotation = rotation;
         return ref this;
     }
 
@@ -568,11 +564,10 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetEllipseCollider(Vector2 halfSize, float rotation = 0f)
+    public ref BulletBuilder SetEllipseCollider(Vector2 halfSize)
     {
         collider.ShapeType = ShapeType.Ellipse;
         collider.Ellipse.HalfSize = halfSize;
-        collider.Ellipse.Rotation = rotation;
         return ref this;
     }
     #endregion
@@ -666,42 +661,33 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     #endregion
 
     #region Laser
+    // todo: add more overloads
     [UnscopedRef]
-    public ref BulletBuilder MakeLaser(Vector2 nextNodeRelativePosition, float halfWidth)
+    public ref BulletBuilder MakeLaser(float halfWidth, float rotation)
     {
         if (laserNodes.Count == 0)
             laserNodes.Add(transform.Position);
 
-        var prevPos = laserNodes[^1];
-        laserNodes.Add(prevPos + nextNodeRelativePosition);
+        transform.Rotation = rotation;
         laserHalfWidth = halfWidth;
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder MakeLaser(float length, float angle, float halfWidth)
+    public ref BulletBuilder AppendLaserNode(float length, float relativeRotation)
     {
-        if (laserNodes.Count == 0)
-            laserNodes.Add(transform.Position);
-
-        var nextNodePos = new Vector2(
-            length * MathF.Cos(angle),
-            length * MathF.Sin(angle));
-        var prevPos = laserNodes[^1];
-        laserNodes.Add(prevPos + nextNodePos);
-        laserHalfWidth = halfWidth;
+        var prev = laserNodes[^1];
+        var newRelative = new Vector2(
+            length * MathF.Cos(relativeRotation),
+            length * MathF.Sin(relativeRotation));
+        laserNodes.Add(prev + newRelative);
         return ref this;
     }
 
     [UnscopedRef]
-    public ref BulletBuilder MakeLaserAbsolute(Vector2 nextNodePosition, float halfWidth)
+    public ref BulletBuilder MakeLaser(float length, float halfWidth, float rotation)
     {
-        if (laserNodes.Count == 0)
-            laserNodes.Add(transform.Position);
-
-        laserNodes.Add(nextNodePosition);
-        laserHalfWidth = halfWidth;
-        return ref this;
+        return ref MakeLaser(halfWidth, rotation).AppendLaserNode(length, 0);
     }
     #endregion
 
@@ -825,7 +811,10 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
             if (hasCollider)   colliders[i]  = collider;
             if (hasCurvyLsr)   curvyLsrs[i]  = new () { LaserNodes = new(curvyLaserMaxNodes), MaxNodes = curvyLaserMaxNodes, HalfWidth = curvyLaserHalfWidth };
             if (hasLsrSrcRdr)  lsrSrcRdrs[i] = laserSourceRenderer;
-            if (hasLaser)    { /*lasers[i]     = todo: transform Laser's transform directly instead of transforming nodes*/  }
+            // note that we rely on transform.Rotation for laser's rotation.
+            // so the actual position of the laser nodes is LaserNodes rotated around LaserNodes[0] by transform.Rotation degrees
+            // not sure if this is the best way to do this since it's inconsistent and expensive, needs to be caculated everytime during collision and rendering
+            if (hasLaser)    { /* todo: is this even compatible */}
         }
 
         factory.World.ReserveEntityBulk(entities.AsSpan(), types, out Archetype archetype, out Slot start, out Slot end);

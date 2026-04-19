@@ -8,20 +8,20 @@ public static class CollisionDetector
 {
     // really (early)optimized SAT
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Intersects(ObbRect rectA, Vector2 posA, ObbRect rectB, Vector2 posB)
+    public static bool Intersects(ObbRect rectA, Vector2 posA, float rotA, ObbRect rectB, Vector2 posB, float rotB)
     {
         float dx = posB.X - posA.X;
         float dy = posB.Y - posA.Y;
 
         // we don't use sincos here because it's slow as fuck on intel
         // 7x slower than sin and cos in benchmarks
-        var sinA = MathF.Sin(rectA.Rotation);
-        var cosA = MathF.Cos(rectA.Rotation);
+        var sinA = MathF.Sin(rotA);
+        var cosA = MathF.Cos(rotA);
 
         float tx = dx * cosA + dy * sinA;
         float ty = dy * cosA - dx * sinA;
 
-        float deltaTheta = rectB.Rotation - rectA.Rotation;
+        float deltaTheta = rotB - rotA;
         var sinB = MathF.Sin(deltaTheta);
         var cosB = MathF.Cos(deltaTheta);
 
@@ -45,15 +45,15 @@ public static class CollisionDetector
 
     // transform circle to obb's
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Intersects(ObbRect rect, Vector2 posA, Circle circle, Vector2 posB)
+    public static bool Intersects(ObbRect rect, Vector2 posA, float rotA, Circle circle, Vector2 posB)
     {
-        var sinA = MathF.Sin(rect.Rotation);
-        var cosA = MathF.Cos(rect.Rotation);
+        var sinA = MathF.Sin(rotA);
+        var cosA = MathF.Cos(rotA);
 
         var dx = posB.X - posA.X;
         var dy = posB.Y - posA.Y;
 
-        var dw = Math.Max(0, MathF.Abs(dx *  cosA + dy * sinA) - rect.HalfSize.X);
+        var dw = Math.Max(0, MathF.Abs(dx * cosA + dy * sinA) - rect.HalfSize.X);
         var dh = Math.Max(0, MathF.Abs(dx * -sinA + dy * cosA) - rect.HalfSize.Y);
 
         return dw * dw + dh * dh <= circle.Radius * circle.Radius;
@@ -61,18 +61,18 @@ public static class CollisionDetector
 
     // gemini wrote this approximation
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Intersects(ObbRect rect, Vector2 posA, Ellipse ellipse, Vector2 posB)
+    public static bool Intersects(ObbRect rect, Vector2 posA, float rotA, Ellipse ellipse, Vector2 posB, float rotB)
     {
         float dx = posA.X - posB.X;
         float dy = posA.Y - posB.Y;
 
-        float cosE = MathF.Cos(ellipse.Rotation);
-        float sinE = MathF.Sin(ellipse.Rotation);
+        float cosE = MathF.Cos(rotB);
+        float sinE = MathF.Sin(rotB);
 
         float localX = MathF.Abs(dx * cosE + dy * sinE);
         float localY = MathF.Abs(dy * cosE - dx * sinE);
 
-        float deltaTheta = rect.Rotation - ellipse.Rotation;
+        float deltaTheta = rotA - rotB;
         float cosD = MathF.Abs(MathF.Cos(deltaTheta));
         float sinD = MathF.Abs(MathF.Sin(deltaTheta));
 
@@ -91,9 +91,9 @@ public static class CollisionDetector
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Intersects(Circle circle, Vector2 posA, ObbRect rect, Vector2 posB)
+    public static bool Intersects(Circle circle, Vector2 posA, ObbRect rect, Vector2 posB, float rotB)
     {
-        return Intersects(rect, posB, circle, posA);
+        return Intersects(rect, posB, rotB, circle, posA);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -107,13 +107,13 @@ public static class CollisionDetector
 
     // gemini wrote this approximation
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Intersects(Circle circle, Vector2 posA, Ellipse ellipse, Vector2 posB)
+    public static bool Intersects(Circle circle, Vector2 posA, Ellipse ellipse, Vector2 posB, float rotB)
     {
         float dx = posA.X - posB.X;
         float dy = posA.Y - posB.Y;
 
-        float cosE = MathF.Cos(ellipse.Rotation);
-        float sinE = MathF.Sin(ellipse.Rotation);
+        float cosE = MathF.Cos(rotB);
+        float sinE = MathF.Sin(rotB);
 
         float localX = MathF.Abs(dx * cosE + dy * sinE);
         float localY = MathF.Abs(dy * cosE - dx * sinE);
@@ -132,31 +132,31 @@ public static class CollisionDetector
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Intersects(Ellipse ellipse, Vector2 posA, ObbRect rect, Vector2 posB)
+    public static bool Intersects(Ellipse ellipse, Vector2 posA, float rotA, ObbRect rect, Vector2 posB, float rotB)
     {
-        return Intersects(rect, posB, ellipse, posA);
+        return Intersects(rect, posB, rotB, ellipse, posA, rotA);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Intersects(Ellipse ellipse, Vector2 posA, Circle Circle, Vector2 posB)
+    public static bool Intersects(Ellipse ellipse, Vector2 posA, float rotA, Circle circle, Vector2 posB)
     {
-        return Intersects(Circle, posB, ellipse, posA);
+        return Intersects(circle, posB, ellipse, posA, rotA);
     }
 
     // gemini wrote this approximation
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Intersects(Ellipse ellipseA, Vector2 posA, Ellipse ellipseB, Vector2 posB)
+    public static bool Intersects(Ellipse ellipseA, Vector2 posA, float rotA, Ellipse ellipseB, Vector2 posB, float rotB)
     {
         float dx = posB.X - posA.X;
         float dy = posB.Y - posA.Y;
 
-        float cosA_rot = MathF.Cos(ellipseA.Rotation);
-        float sinA_rot = MathF.Sin(ellipseA.Rotation);
+        float cosA_rot = MathF.Cos(rotA);
+        float sinA_rot = MathF.Sin(rotA);
 
         float localX = MathF.Abs(dx * cosA_rot + dy * sinA_rot);
         float localY = MathF.Abs(dy * cosA_rot - dx * sinA_rot);
 
-        float deltaTheta = ellipseB.Rotation - ellipseA.Rotation;
+        float deltaTheta = rotB - rotA;
         float cosD = MathF.Cos(deltaTheta);
         float sinD = MathF.Sin(deltaTheta);
 
