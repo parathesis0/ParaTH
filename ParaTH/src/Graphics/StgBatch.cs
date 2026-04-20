@@ -71,11 +71,13 @@ public sealed unsafe class StgBatch : IDisposable
 
     private readonly Effect effect;
     private readonly EffectParameter matrixParameter;
+    private readonly Texture2D whitePixel;
     #endregion
 
     #region Public Properties
     public GraphicsDevice GraphicsDevice { get; }
     public bool IsDisposed { get; private set; }
+    public Texture2D WhitePixel => whitePixel;
     #endregion
 
     #region Public Constructor
@@ -121,6 +123,9 @@ public sealed unsafe class StgBatch : IDisposable
         effect = new Effect(GraphicsDevice, effectCode);
         matrixParameter = effect.Parameters["MatrixTransform"];
 
+        whitePixel = new Texture2D(GraphicsDevice, 1, 1);
+        whitePixel.SetData([Color.White]);
+
         hasBegun = false;
     }
     #endregion
@@ -150,6 +155,7 @@ public sealed unsafe class StgBatch : IDisposable
             vertexBuffer.Dispose();
             indexBuffer.Dispose();
             effect.Dispose();
+            whitePixel.Dispose();
         }
 
         IsDisposed = true;
@@ -369,11 +375,10 @@ public sealed unsafe class StgBatch : IDisposable
         textureInfo.UnsafeAt(commandCount++) = texture;
     }
 
-    // bad api, refactor when needed
     public void DrawConvexPolygon(
         Texture2D texture,
-        Vector2[] vertices,
-        Vector2[] textureCoords,
+        ReadOnlySpan<Vector2> vertices,
+        ReadOnlySpan<Vector2> textureCoords,
         Color color,
         byte layerDepth,
         StgBlendState blendState)
@@ -381,9 +386,9 @@ public sealed unsafe class StgBatch : IDisposable
         if (!hasBegun)
             HelperThrow("Draw called before Begin.");
 
-        if (vertices.Length < 3) return;
-
         int vCount = vertices.Length;
+        if (vCount < 3) return;
+
         int triCount = vCount - 2;
         int iCount = triCount * 3;
 
@@ -398,14 +403,31 @@ public sealed unsafe class StgBatch : IDisposable
 
         VertexPositionColorTexture* currVertex = vPtr + vertexCount;
 
-        for (int i = 0; i < vCount; i++)
+        if (textureCoords.IsEmpty)
         {
-            currVertex->Position.X = vertices.UnsafeAt(i).X;
-            currVertex->Position.Y = vertices.UnsafeAt(i).Y;
-            currVertex->Position.Z = 0;
-            currVertex->Color = color;
-            currVertex->TextureCoordinate = textureCoords.UnsafeAt(i);
-            currVertex++;
+            for (int i = 0; i < vCount; i++)
+            {
+                ref readonly var v = ref vertices.UnsafeAt(i);
+                currVertex->Position.X = v.X;
+                currVertex->Position.Y = v.Y;
+                currVertex->Position.Z = 0;
+                currVertex->Color = color;
+                currVertex->TextureCoordinate = Vector2.Zero;
+                currVertex++;
+            }
+        }
+        else
+        {
+            for (int i = 0; i < vCount; i++)
+            {
+                ref readonly var v = ref vertices.UnsafeAt(i);
+                currVertex->Position.X = v.X;
+                currVertex->Position.Y = v.Y;
+                currVertex->Position.Z = 0;
+                currVertex->Color = color;
+                currVertex->TextureCoordinate = textureCoords.UnsafeAt(i);
+                currVertex++;
+            }
         }
 
         short* currIndex = iPtr + indexCount;

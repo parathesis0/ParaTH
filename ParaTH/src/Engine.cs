@@ -329,9 +329,10 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
                 bulletManager.Create()
                     .SetPosition(new Vector2(320, 240))
                     .SetSprite("mediumball_blue", Color.White, 100, StgBlendState.Additive, 0)
-                    .SetLaserSourceSprite("lasersource_pink", Vector2.One)
-                    .SetSpawningCircle(10)
+                    .SetLaserSourceSprite("lasersource_blue", Vector2.One)
+                    .SetSpawningCircle(4)
                     .MakeLaser(16, 0, 100)
+                    .AppendLaserNode(100, MathHelper.PiOver2)
                     .SetCollisionGroup(0b0000_0010)
                     .Build();
             }
@@ -446,6 +447,9 @@ public sealed class Engine : Game
 
         if (Input.IsKeyPressed(Keys.K))
             shouldAdvance = true;
+
+        if (Input.IsKeyPressed(Keys.D))
+            renderSystem.DebugDrawColliders = !renderSystem.DebugDrawColliders;
 
         fpsTimer += gameTime.ElapsedGameTime.TotalSeconds;
         if (fpsTimer >= 1.0)

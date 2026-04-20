@@ -12,6 +12,16 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Renderer>();
 
+    private QueryDescriptor colliderDescriptor = new QueryDescriptor()
+        .WithAll<Transform, Collider>();
+
+    // debug: draw green collider outlines on top of everything
+    public bool DebugDrawColliders;
+
+    private const int DebugCircleSides = 16;
+    private const byte DebugLayer = 255;
+    private static readonly Color DebugColor = new(0, 255, 0, 128);
+
     // 64 bytes
     private struct DeferredDrawData
     {
@@ -401,6 +411,185 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     SpriteEffects.None, d.Layer, d.BlendState);
             }
         }
+
+        if (DebugDrawColliders)
+            DrawColliderDebugOverlay();
+    }
+
+    // ────────────────── Debug Collider Draw ──────────────────
+
+    private void DrawColliderDebugOverlay()
+    {
+        var q = world.GetOrCreateQuery(colliderDescriptor);
+        Span<Vector2> verts = stackalloc Vector2[DebugCircleSides];
+
+        foreach (var archetype in q.GetMatchingArchetypesSpan())
+        {
+            bool hasCurvyLaser = archetype.Has<CurvyLaser>();
+            bool hasLaser = !hasCurvyLaser && archetype.Has<Laser>();
+
+            foreach (ref var chunk in archetype.GetChunksSpan())
+            {
+                chunk.GetFilledComponentSpan<Transform, Collider>(
+                    out var transforms, out var colliders);
+
+                var curvyLasers = hasCurvyLaser ?
+                    chunk.GetFilledComponentSpan<CurvyLaser>() : default;
+                var lasers = hasLaser ?
+                    chunk.GetFilledComponentSpan<Laser>() : default;
+
+                for (int i = 0; i < chunk.EntityCount; i++)
+                {
+                    ref var collider = ref colliders.UnsafeAt(i);
+                    if (!collider.IsActive)
+                        continue;
+
+                    ref var transform = ref transforms.UnsafeAt(i);
+
+                    if (hasCurvyLaser)
+                    {
+                        DrawCurvyLaserColliderDebug(ref curvyLasers.UnsafeAt(i), verts);
+                    }
+                    else if (hasLaser)
+                    {
+                        DrawLaserColliderDebug(ref lasers.UnsafeAt(i), transform.Rotation, verts);
+                    }
+                    else
+                    {
+                        DrawColliderDebug(ref collider, transform.Position, transform.Rotation, verts);
+                    }
+                }
+            }
+        }
+    }
+
+    private void DrawColliderDebug(ref Collider c, Vector2 pos, float rot, Span<Vector2> verts)
+    {
+        switch (c.ShapeType)
+        {
+            case ShapeType.Circle:
+                BuildCirclePolygon(pos, c.Circle.Radius, verts);
+                batch.DrawConvexPolygon(batch.WhitePixel, verts, default, DebugColor, DebugLayer, StgBlendState.Alpha);
+                break;
+            case ShapeType.ObbRect:
+                Span<Vector2> quad = stackalloc Vector2[4];
+                BuildObbPolygon(pos, rot, c.ObbRect.HalfSize, quad);
+                batch.DrawConvexPolygon(batch.WhitePixel, quad, default, DebugColor, DebugLayer, StgBlendState.Alpha);
+                break;
+            case ShapeType.Ellipse:
+                BuildEllipsePolygon(pos, rot, c.Ellipse.HalfSize, verts);
+                batch.DrawConvexPolygon(batch.WhitePixel, verts, default, DebugColor, DebugLayer, StgBlendState.Alpha);
+                break;
+        }
+    }
+
+    private void DrawCurvyLaserColliderDebug(ref CurvyLaser laser, Span<Vector2> verts)
+    {
+        float radius = laser.HalfWidth;
+        laser.LaserNodes.AsSpans(out var first, out var second);
+        DrawNodeCircles(first, radius, verts);
+        DrawNodeCircles(second, radius, verts);
+    }
+
+    private void DrawLaserColliderDebug(ref Laser laser, float rotation, Span<Vector2> verts)
+    {
+        var raw = laser.LaserNodes.AsSpan();
+        int n = raw.Length;
+        if (n == 0) return;
+
+        Vector2 origin = raw.UnsafeAt(0);
+        float cos = MathF.Cos(rotation);
+        float sin = MathF.Sin(rotation);
+
+        // circles at each node
+        BuildCirclePolygon(origin, laser.HalfWidth, verts);
+        batch.DrawConvexPolygon(batch.WhitePixel, verts, default, DebugColor, DebugLayer, StgBlendState.Alpha);
+
+        Span<Vector2> rotated = stackalloc Vector2[n];
+        rotated.UnsafeAt(0) = origin;
+        for (int i = 1; i < n; i++)
+        {
+            Vector2 rel = raw.UnsafeAt(i) - origin;
+            rotated.UnsafeAt(i) = new Vector2(
+                origin.X + rel.X * cos - rel.Y * sin,
+                origin.Y + rel.X * sin + rel.Y * cos);
+
+            BuildCirclePolygon(rotated.UnsafeAt(i), laser.HalfWidth, verts);
+            batch.DrawConvexPolygon(batch.WhitePixel, verts, default, DebugColor, DebugLayer, StgBlendState.Alpha);
+        }
+
+        // obb rects between consecutive nodes
+        Span<Vector2> quad = stackalloc Vector2[4];
+        for (int i = 0; i < n - 1; i++)
+        {
+            var a = rotated.UnsafeAt(i);
+            var b = rotated.UnsafeAt(i + 1);
+            float dx = b.X - a.X;
+            float dy = b.Y - a.Y;
+            float lenSq = dx * dx + dy * dy;
+            if (lenSq < 1e-6f) continue;
+            float len = MathF.Sqrt(lenSq);
+            float halfLen = len * 0.5f;
+            Vector2 center = new(a.X + dx * 0.5f, a.Y + dy * 0.5f);
+            float segRot = MathF.Atan2(dy, dx);
+
+            BuildObbPolygon(center, segRot, new Vector2(halfLen, laser.HalfWidth), quad);
+            batch.DrawConvexPolygon(batch.WhitePixel, quad, default, DebugColor, DebugLayer, StgBlendState.Alpha);
+        }
+    }
+
+    private void DrawNodeCircles(Span<Vector2> nodes, float radius, Span<Vector2> verts)
+    {
+        for (int i = 0; i < nodes.Length; i++)
+        {
+            BuildCirclePolygon(nodes.UnsafeAt(i), radius, verts);
+            batch.DrawConvexPolygon(batch.WhitePixel, verts, default, DebugColor, DebugLayer, StgBlendState.Alpha);
+        }
+    }
+
+    private static void BuildCirclePolygon(Vector2 center, float radius, Span<Vector2> verts)
+    {
+        int n = verts.Length;
+        float step = MathF.PI * 2f / n;
+        for (int i = 0; i < n; i++)
+        {
+            float t = i * step;
+            verts.UnsafeAt(i) = new Vector2(
+                center.X + MathF.Cos(t) * radius,
+                center.Y + MathF.Sin(t) * radius);
+        }
+    }
+
+    private static void BuildEllipsePolygon(Vector2 center, float rotation, Vector2 halfSize, Span<Vector2> verts)
+    {
+        int n = verts.Length;
+        float step = MathF.PI * 2f / n;
+        float cos = MathF.Cos(rotation);
+        float sin = MathF.Sin(rotation);
+
+        for (int i = 0; i < n; i++)
+        {
+            float t = i * step;
+            float lx = MathF.Cos(t) * halfSize.X;
+            float ly = MathF.Sin(t) * halfSize.Y;
+            verts.UnsafeAt(i) = new Vector2(
+                center.X + lx * cos - ly * sin,
+                center.Y + lx * sin + ly * cos);
+        }
+    }
+
+    private static void BuildObbPolygon(Vector2 center, float rotation, Vector2 halfSize, Span<Vector2> verts)
+    {
+        float cos = MathF.Cos(rotation);
+        float sin = MathF.Sin(rotation);
+        float hx = halfSize.X;
+        float hy = halfSize.Y;
+
+        // counter-clockwise winding
+        verts.UnsafeAt(0) = new Vector2(center.X + (-hx) * cos - (-hy) * sin, center.Y + (-hx) * sin + (-hy) * cos);
+        verts.UnsafeAt(1) = new Vector2(center.X + ( hx) * cos - (-hy) * sin, center.Y + ( hx) * sin + (-hy) * cos);
+        verts.UnsafeAt(2) = new Vector2(center.X + ( hx) * cos - ( hy) * sin, center.Y + ( hx) * sin + ( hy) * cos);
+        verts.UnsafeAt(3) = new Vector2(center.X + (-hx) * cos - ( hy) * sin, center.Y + (-hx) * sin + ( hy) * cos);
     }
 
     // ────────────────── Visibility ──────────────────

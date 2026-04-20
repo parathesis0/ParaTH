@@ -828,11 +828,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
                 for (int n = 0; n < src.Length; n++)
                     dst.Add(src.UnsafeAt(n) + shift);
 
-                lasers[i] = new Laser
-                {
-                    LaserNodes = dst,
-                    HalfWidth = laserHalfWidth,
-                };
+                lasers[i] = new Laser { LaserNodes = dst, HalfWidth = laserHalfWidth, };
             }
         }
 
