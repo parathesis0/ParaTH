@@ -19,7 +19,6 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     private readonly UnsafeBitset isReadyToDie = new(4);                                // bitset for checking whether an entity should die
     private readonly UnsafePooledList<Entity> potentialToDestroy = new(256);            // contains entites without curvy laser components
     private readonly UnsafePooledList<Entity> potentialCurvyLaserToDestroy = new(16);   // handled separately because curvy lasers owns resources that need manual disposal
-    private readonly UnsafePooledList<Entity> potentialLaserToDestroy = new(16);        // same as curvy lasers but for static lasers
     private readonly DepthBuckets hierarchyEntityBuckets = new(4);                      // depth-based buckets used for syncing parent and children's lifetimes
     private int maxDepthSeen = -1;
 
@@ -34,13 +33,11 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         var q = world.GetOrCreateQuery(descriptor);
         var potentialToDestroy = this.potentialToDestroy;
         var potentialCurvyLaserToDestroy = this.potentialCurvyLaserToDestroy;
-        var potentialLaserToDestroy = this.potentialLaserToDestroy;
         var hierarchyEntityBuckets = this.hierarchyEntityBuckets;
         var isReadyToDie = this.isReadyToDie;
 
         potentialToDestroy.Clear();
         potentialCurvyLaserToDestroy.Clear();
-        potentialLaserToDestroy.Clear();
         isReadyToDie.Clear();
         isReadyToDie.EnsureCapacity(world.MaxEntityId);
 
@@ -48,7 +45,6 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         {
             bool hasRenderer = archetype.Has<Renderer>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
-            bool hasLaser = !hasCurvyLaser && archetype.Has<Laser>();
             bool hasHrc = archetype.Has<Hierarchy>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
@@ -58,7 +54,6 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
 
                 var renderers = hasRenderer ? chunk.GetFilledComponentSpan<Renderer>() : default;
                 var curvyLasers = hasCurvyLaser ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
-                var lasers = hasLaser ? chunk.GetFilledComponentSpan<Laser>() : default;
                 var hierarchies = hasHrc ? chunk.GetFilledComponentSpan<Hierarchy>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
@@ -72,10 +67,6 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                     if (hasCurvyLaser)
                     {
                         isOffscreen = IsCurvyLaserOffscreen(ref curvyLasers.UnsafeAt(i));
-                    }
-                    else if (hasLaser)
-                    {
-                        isOffscreen = IsLaserOffscreen(ref lasers.UnsafeAt(i), transform.Rotation);
                     }
                     else if (hasRenderer)
                     {
@@ -105,8 +96,6 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                         {
                             if (hasCurvyLaser)
                                 potentialCurvyLaserToDestroy.Add(entity);
-                            else if (hasLaser)
-                                potentialLaserToDestroy.Add(entity);
                             else
                                 potentialToDestroy.Add(entity);
                         }
@@ -185,18 +174,6 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                 world.DestroyEntity(entity);
             }
         }
-
-        // cold path: static lasers
-        for (int i = 0; i < potentialLaserToDestroy.Count; i++)
-        {
-            var entity = potentialLaserToDestroy[i];
-            if (isReadyToDie.IsSet(entity.Id))
-            {
-                ref var laser = ref world.GetComponent<Laser>(entity);
-                laser.LaserNodes.Dispose();
-                world.DestroyEntity(entity);
-            }
-        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -239,35 +216,6 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         return true;
     }
 
-    private bool IsLaserOffscreen(ref Laser laser, float rotation)
-    {
-        var nodes = laser.LaserNodes;
-        if (nodes == null || nodes.Count == 0)
-            return true;
-
-        float radius = laser.HalfWidth * 1.415f;
-        var raw = nodes.AsSpan();
-
-        Vector2 origin = raw.UnsafeAt(0);
-        if (!IsCircleOffscreen(origin, radius))
-            return false;
-
-        float cos = MathF.Cos(rotation);
-        float sin = MathF.Sin(rotation);
-
-        for (int i = 1; i < raw.Length; i++)
-        {
-            Vector2 rel = raw.UnsafeAt(i) - origin;
-            Vector2 rotated = new(
-                origin.X + rel.X * cos - rel.Y * sin,
-                origin.Y + rel.X * sin + rel.Y * cos);
-            if (!IsCircleOffscreen(rotated, radius))
-                return false;
-        }
-
-        return true;
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float CalculateSpriteRadius(ref Transform tf, ref Renderer rnd)
     {
@@ -297,7 +245,6 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         isReadyToDie.Dispose();
         potentialToDestroy.Dispose();
         potentialCurvyLaserToDestroy.Dispose();
-        potentialLaserToDestroy.Dispose();
 
         for (int i = 0; i < hierarchyEntityBuckets.Count; i++)
             hierarchyEntityBuckets[i].Dispose();
