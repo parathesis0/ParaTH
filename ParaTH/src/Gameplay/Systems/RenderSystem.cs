@@ -43,13 +43,32 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                                                         // 2 padding
     }
 
+    // 64 bytes
+    private struct DeferredLaserDrawData
+    {
+        public Texture2D Texture;                       // 8
+        public UnsafePooledList<Vector2> LaserNodes;    // 8
+        public SpriteAsset SourceSprite;                // 8
+        public Vector2 SourceScale;                     // 8: 4 + 4
+        public Rectangle SourceRect;                    // 16: 4 + 4 + 4 + 4
+        public float TextureRotation;                   // 4
+        public float HalfWidth;                         // 4
+        public float Rotation;                          // 4
+        public Color Color;                             // 4
+        public byte Layer;                              // 1
+        public StgBlendState BlendState;                // 1
+                                                        // 6 padding
+    }
+
     // packed to 8 bytes for faster sorting & swapping
     private struct DrawSortKey : IComparable<DrawSortKey>
     {
-        // [63:56] Layer (8)  [55:24] SpawnId (32)  [20] IsCurvyLaser (1)  [19:0] Index (20)
+        // [63:56] Layer (8)  [55:24] SpawnId (32)  [21] IsLaser (1)  [20] IsCurvyLaser (1)  [19:0] Index (20)
         private const int IndexBits = 20;
         private const ulong IndexMask = (1UL << IndexBits) - 1;
-        private const int LaserBit = 20;
+        private const int CurvyLaserBit = 20;
+        private const ulong CurvyLaserFlag = 1UL << CurvyLaserBit;
+        private const int LaserBit = 21;
         private const ulong LaserFlag = 1UL << LaserBit;
         private const int SpawnIdShift = 24;
         private const int LayerShift = 56;
@@ -65,6 +84,14 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         }
 
         public bool IsCurvyLaser
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            readonly get => (packed & CurvyLaserFlag) != 0;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => packed = value ? (packed | CurvyLaserFlag) : (packed & ~CurvyLaserFlag);
+        }
+
+        public bool IsLaser
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             readonly get => (packed & LaserFlag) != 0;
@@ -93,16 +120,19 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
     private readonly UnsafePooledList<DeferredDrawData> deferredDraws = new(16384);
     private readonly UnsafePooledList<DeferredCurvyLaserDrawData> deferredCurvyLaserDraws = new(256);
+    private readonly UnsafePooledList<DeferredLaserDrawData> deferredLaserDraws = new(256);
     private readonly UnsafePooledList<DrawSortKey> sortKeys = new(16384);
 
     public void Update()
     {
         var deferredDraws = this.deferredDraws;
         var deferredCurvyLaserDraws = this.deferredCurvyLaserDraws;
+        var deferredLaserDraws = this.deferredLaserDraws;
         var sortKeys = this.sortKeys;
 
         deferredDraws.Clear();
         deferredCurvyLaserDraws.Clear();
+        deferredLaserDraws.Clear();
         sortKeys.Clear();
 
         int maxLaserLength = 0;
@@ -113,6 +143,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         {
             bool hasSpawnEffect = archetype.Has<SpawnEffect>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
+            bool hasLaser = !hasCurvyLaser && archetype.Has<Laser>();
             bool hasLaserSourceRenderer = archetype.Has<LaserSourceRenderer>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
@@ -124,6 +155,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var curvyLasers = hasCurvyLaser ?
                     chunk.GetFilledComponentSpan<CurvyLaser>() : default;
+                var lasers = hasLaser ?
+                    chunk.GetFilledComponentSpan<Laser>() : default;
                 var laserSources = hasLaserSourceRenderer ?
                     chunk.GetFilledComponentSpan<LaserSourceRenderer>() : default;
 
@@ -131,7 +164,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                 {
                     ref var renderer = ref renderers.UnsafeAt(i);
 
-                    if (!hasCurvyLaser)
+                    if (!hasCurvyLaser && !hasLaser)
                     {
                         ref var transform = ref transforms.UnsafeAt(i);
 
@@ -174,7 +207,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             });
                         }
                     }
-                    else
+                    else if (hasCurvyLaser)
                     {
                         ref var laser = ref curvyLasers.UnsafeAt(i);
 
@@ -217,6 +250,55 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             });
                         }
                     }
+                    else // static laser
+                    {
+                        ref var laser = ref lasers.UnsafeAt(i);
+                        ref var transform = ref transforms.UnsafeAt(i);
+
+                        int nodeCount = laser.LaserNodes.Count;
+                        if (nodeCount == 0)
+                            continue;
+
+                        maxLaserLength = Math.Max(maxLaserLength, nodeCount);
+
+                        if (IsLaserVisible(laser.LaserNodes, transform.Rotation, laser.HalfWidth))
+                        {
+                            int currentIndex = deferredLaserDraws.Count;
+
+                            SpriteAsset sourceSprite = null!;
+                            Vector2 sourceScale = default;
+
+                            if (hasLaserSourceRenderer)
+                            {
+                                ref var glow = ref laserSources.UnsafeAt(i);
+                                sourceSprite = glow.Sprite;
+                                sourceScale = glow.Scale;
+                            }
+
+                            deferredLaserDraws.Add(new DeferredLaserDrawData
+                            {
+                                Texture = renderer.Texture,
+                                SourceRect = renderer.SourceRect,
+                                TextureRotation = renderer.Rotation,
+                                LaserNodes = laser.LaserNodes,
+                                HalfWidth = laser.HalfWidth,
+                                Rotation = transform.Rotation,
+                                Color = renderer.Color,
+                                Layer = renderer.Layer,
+                                BlendState = renderer.BlendState,
+                                SourceSprite = sourceSprite,
+                                SourceScale = sourceScale
+                            });
+
+                            sortKeys.Add(new DrawSortKey
+                            {
+                                SpawnId = renderer.SpawnId,
+                                Layer = renderer.Layer,
+                                Index = currentIndex,
+                                IsLaser = true,
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -226,6 +308,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
         var dataSpan = deferredDraws.AsSpan();
         var laserDataSpan = deferredCurvyLaserDraws.AsSpan();
+        var staticLaserDataSpan = deferredLaserDraws.AsSpan();
 
         Span<Vector2> laserNodeBuffer = stackalloc Vector2[maxLaserLength];
 
@@ -233,15 +316,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         {
             ref var key = ref keysSpan.UnsafeAt(i);
 
-            if (!key.IsCurvyLaser)
-            {
-                ref var d = ref dataSpan.UnsafeAt(key.Index);
-                batch.Draw(
-                    d.Texture, d.Position, d.SourceRect, d.Color,
-                    d.Rotation, d.Anchor, d.Scale,
-                    SpriteEffects.None, d.Layer, d.BlendState);
-            }
-            else
+            if (key.IsCurvyLaser)
             {
                 ref var d = ref laserDataSpan.UnsafeAt(key.Index);
                 int nodeCount = d.LaserNodes.Count;
@@ -285,6 +360,46 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     );
                 }
             }
+            else if (key.IsLaser)
+            {
+                ref var d = ref staticLaserDataSpan.UnsafeAt(key.Index);
+                int nodeCount = d.LaserNodes.Count;
+
+                Span<Vector2> rotated = laserNodeBuffer.Slice(0, nodeCount);
+                RotateLaserNodes(d.LaserNodes.AsSpan(), d.Rotation, rotated);
+
+                batch.DrawStrip(
+                    d.Texture, d.SourceRect, d.TextureRotation,
+                    rotated, d.HalfWidth,
+                    d.Color, d.Layer, d.BlendState);
+
+                if (d.SourceSprite is not null)
+                {
+                    // LaserNodes[0] is invariant under rotation around itself
+                    Vector2 headPosition = d.LaserNodes[0];
+
+                    batch.Draw(
+                        d.SourceSprite.Texture,
+                        headPosition,
+                        d.SourceSprite.SourceRect,
+                        d.Color,
+                        0f,
+                        d.SourceSprite.Anchor,
+                        d.SourceScale,
+                        SpriteEffects.None,
+                        d.Layer,
+                        d.BlendState
+                    );
+                }
+            }
+            else
+            {
+                ref var d = ref dataSpan.UnsafeAt(key.Index);
+                batch.Draw(
+                    d.Texture, d.Position, d.SourceRect, d.Color,
+                    d.Rotation, d.Anchor, d.Scale,
+                    SpriteEffects.None, d.Layer, d.BlendState);
+            }
         }
     }
 
@@ -320,6 +435,55 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool IsLaserVisible(UnsafePooledList<Vector2> nodes, float rotation, float hw)
+    {
+        var raw = nodes.AsSpan();
+        if (raw.Length == 0) return false;
+
+        Vector2 origin = raw.UnsafeAt(0);
+        float cos = MathF.Cos(rotation);
+        float sin = MathF.Sin(rotation);
+        var b = bounds;
+
+        if (origin.X + hw > b.Left && origin.X - hw < b.Right &&
+            origin.Y + hw > b.Top && origin.Y - hw < b.Bottom)
+            return true;
+
+        for (int i = 1; i < raw.Length; i++)
+        {
+            Vector2 rel = raw.UnsafeAt(i) - origin;
+            float x = origin.X + rel.X * cos - rel.Y * sin;
+            float y = origin.Y + rel.X * sin + rel.Y * cos;
+
+            if (x + hw > b.Left && x - hw < b.Right &&
+                y + hw > b.Top && y - hw < b.Bottom)
+                return true;
+        }
+        return false;
+    }
+
+    // rotate raw laser nodes around raw[0] by rotation into dest
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void RotateLaserNodes(Span<Vector2> raw, float rotation, Span<Vector2> dest)
+    {
+        Vector2 origin = raw.UnsafeAt(0);
+        dest.UnsafeAt(0) = origin;
+
+        if (raw.Length == 1) return;
+
+        float cos = MathF.Cos(rotation);
+        float sin = MathF.Sin(rotation);
+
+        for (int i = 1; i < raw.Length; i++)
+        {
+            Vector2 rel = raw.UnsafeAt(i) - origin;
+            dest.UnsafeAt(i) = new Vector2(
+                origin.X + rel.X * cos - rel.Y * sin,
+                origin.Y + rel.X * sin + rel.Y * cos);
+        }
+    }
+
     // ────────────────── Effects ──────────────────
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -347,6 +511,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     {
         deferredDraws.Clear();
         deferredCurvyLaserDraws.Clear();
+        deferredLaserDraws.Clear();
         sortKeys.Clear();
     }
 }

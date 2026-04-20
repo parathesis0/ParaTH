@@ -685,7 +685,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder MakeLaser(float length, float halfWidth, float rotation)
+    public ref BulletBuilder MakeLaser(float halfWidth, float rotation, float length)
     {
         return ref MakeLaser(halfWidth, rotation).AppendLaserNode(length, 0);
     }
@@ -759,6 +759,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         float baseVelAngle = baseVelMag > 0 ? MathF.Atan2(movement.Velocity.Y, movement.Velocity.X) : 0;
         float baseAccMag   = movement.Acceleration.Length();
         float baseAccAngle = baseAccMag > 0 ? MathF.Atan2(movement.Acceleration.Y, movement.Acceleration.X) : baseVelAngle;
+        float baseLsrAngle = transform.Rotation;
 
         var sharedPosInstr   = hasPosCtr   ? positionInstructions.ToArray()     : null;
         var sharedVelInstr   = hasVelCtr   ? velocityInstructions.ToArray()     : null;
@@ -803,18 +804,36 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
 
             if (hasRenderer) { renderers[i]  = renderer; renderers[i].SpawnId = baseSpawnId + (uint)i; }
             if (hasAnimator)   animators[i]  = spriteAnimator;
-            if (hasPosCtr)     posCtrs[i]    = new () { Instructions = sharedPosInstr!,   Index = -1 };
-            if (hasVelCtr)     velCtrs[i]    = new () { Instructions = sharedVelInstr!,   Index = -1 };
-            if (hasAccCtr)     accCtrs[i]    = new () { Instructions = sharedAccInstr!,   Index = -1 };
-            if (hasCurveCtr)   curveCtrs[i]  = new () { Instructions = sharedCurveInstr!, Index = -1 };
+            if (hasPosCtr)     posCtrs[i]    = new() { Instructions = sharedPosInstr!,   Index = -1 };
+            if (hasVelCtr)     velCtrs[i]    = new() { Instructions = sharedVelInstr!,   Index = -1 };
+            if (hasAccCtr)     accCtrs[i]    = new() { Instructions = sharedAccInstr!,   Index = -1 };
+            if (hasCurveCtr)   curveCtrs[i]  = new() { Instructions = sharedCurveInstr!, Index = -1 };
             if (hasSpawnFx)    spawnFxs[i]   = spawnEffect;
             if (hasCollider)   colliders[i]  = collider;
-            if (hasCurvyLsr)   curvyLsrs[i]  = new () { LaserNodes = new(curvyLaserMaxNodes), MaxNodes = curvyLaserMaxNodes, HalfWidth = curvyLaserHalfWidth };
+            if (hasCurvyLsr)   curvyLsrs[i]  = new() { LaserNodes = new(curvyLaserMaxNodes), MaxNodes = curvyLaserMaxNodes, HalfWidth = curvyLaserHalfWidth };
             if (hasLsrSrcRdr)  lsrSrcRdrs[i] = laserSourceRenderer;
-            // note that we rely on transform.Rotation for laser's rotation.
+            // note that we use transform.Rotation for laser's rotation.
             // so the actual position of the laser nodes is LaserNodes rotated around LaserNodes[0] by transform.Rotation degrees
-            // not sure if this is the best way to do this since it's inconsistent and expensive, needs to be caculated everytime during collision and rendering
-            if (hasLaser)    { /* todo: is this even compatible */}
+            // not sure if this is the best way to do this since it's inconsistent and expensive
+            // since the nodes needs to be caculated everytime during collision and rendering
+            if (hasLaser)
+            {
+                transforms[i].Rotation = baseLsrAngle + angle;
+
+                // each spawned entity gets its own UnsafePooledList copy, shifted so
+                // LaserNodes[0] matches the entity's Transform.Position
+                var src = laserNodes.AsSpan();
+                var dst = new UnsafePooledList<Vector2>(src.Length);
+                Vector2 shift = transforms[i].Position - src.UnsafeAt(0);
+                for (int n = 0; n < src.Length; n++)
+                    dst.Add(src.UnsafeAt(n) + shift);
+
+                lasers[i] = new Laser
+                {
+                    LaserNodes = dst,
+                    HalfWidth = laserHalfWidth,
+                };
+            }
         }
 
         factory.World.ReserveEntityBulk(entities.AsSpan(), types, out Archetype archetype, out Slot start, out Slot end);
@@ -831,6 +850,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         if (hasCollider)  archetype.SetRangeWithSpanBulk(start, end, colliders.AsSpan());
         if (hasCurvyLsr)  archetype.SetRangeWithSpanBulk(start, end, curvyLsrs.AsSpan());
         if (hasLsrSrcRdr) archetype.SetRangeWithSpanBulk(start, end, lsrSrcRdrs.AsSpan());
+        if (hasLaser)     archetype.SetRangeWithSpanBulk(start, end, lasers.AsSpan());
 
         if (!outputEntities.IsEmpty)
             entities.AsSpan().CopyTo(outputEntities);
@@ -839,5 +859,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         velocityInstructions.Dispose();
         accelerationInstructions.Dispose();
         curveInstructions.Dispose();
+        laserNodes.Dispose();
     }
 }

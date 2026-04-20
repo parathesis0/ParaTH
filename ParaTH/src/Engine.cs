@@ -219,7 +219,7 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
         //    animation.IsActive = false;
         //}
 
-        if (counter % 1 == 0)
+        if (counter % 100 == 0)
         {
             // spawn control test
             {
@@ -262,20 +262,20 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
 
             // curvy laser animation & collision test
             {
-                bulletManager.Create()
-                    .SetPosition(new Vector2(320, 240))
-                    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
-                    .SetMovement(2f, angleOffset, 0.1f)
-                    .SetSpawningCircle(1)
-                    .AddMovementAngle(1f).Delay(20)
-                    .AddMovementAngle(-1f).Delay(20)
-                    .AddMovementAngle(1f).Delay(20)
-                    .AddMovementAngle(-1f).Delay(20)
-                    .AddMovementAngle(1f).Delay(20)
-                    .AddMovementAngle(-1f)
-                    .SetCollisionGroup(0b0000_0010)
-                    .MakeCurvyLaser(128, 16f)
-                    .Build();
+                //bulletManager.Create()
+                //    .SetPosition(new Vector2(320, 240))
+                //    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+                //    .SetMovement(2f, angleOffset, 0.1f)
+                //    .SetSpawningCircle(1)
+                //    .AddMovementAngle(1f).Delay(20)
+                //    .AddMovementAngle(-1f).Delay(20)
+                //    .AddMovementAngle(1f).Delay(20)
+                //    .AddMovementAngle(-1f).Delay(20)
+                //    .AddMovementAngle(1f).Delay(20)
+                //    .AddMovementAngle(-1f)
+                //    .SetCollisionGroup(0b0000_0010)
+                //    .MakeCurvyLaser(128, 16f)
+                //    .Build();
             }
 
             // hierarchy test
@@ -322,6 +322,18 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
                 //    .SetCollisionGroup(0b0000_0010)
                 //    .MakeCurvyLaser(64, 8f)
                 //    .Build();
+            }
+
+            // laser test
+            {
+                bulletManager.Create()
+                    .SetPosition(new Vector2(320, 240))
+                    .SetSprite("mediumball_blue", Color.White, 100, StgBlendState.Additive, 0)
+                    .SetLaserSourceSprite("lasersource_pink", Vector2.One)
+                    .SetSpawningCircle(10)
+                    .MakeLaser(16, 0, 100)
+                    .SetCollisionGroup(0b0000_0010)
+                    .Build();
             }
         }
 
@@ -495,16 +507,16 @@ public sealed class Engine : Game
             new Vector2(572, 4), fpsColor, 200, StgBlendState.Alpha);
 
         // test strip laser
-        var sprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_pink");
-        stgBatch.DrawStrip(
-            sprite.Texture,
-            sprite.SourceRect,
-            0,
-            [Vector2.Zero, new Vector2(320, 240)],
-            16,
-            Color.White,
-            100,
-            StgBlendState.Additive);
+        //var sprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_pink");
+        //stgBatch.DrawStrip(
+        //    sprite.Texture,
+        //    sprite.SourceRect,
+        //    0,
+        //    [Vector2.Zero, new Vector2(320, 240)],
+        //    16,
+        //    Color.White,
+        //    100,
+        //    StgBlendState.Additive);
 
         stgBatch.End();
 
