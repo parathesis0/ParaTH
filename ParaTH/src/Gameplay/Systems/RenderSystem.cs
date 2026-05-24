@@ -20,7 +20,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
     private const int DebugCircleSides = 16;
     private const byte DebugLayer = 255;
-    private static readonly Color DebugColor = new(0, 255, 0, 128);
+    private static readonly Color DebugColor = new(0, 255, 0, 0);
 
     // 64 bytes
     private struct DeferredDrawData
@@ -182,6 +182,41 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                                 Layer = renderer.Layer,
                                 Index = currentIndex,
                             });
+
+                            // non-CurvyLaser source sprite: draw at transform.Position + Rotate(LocalOffset, transform.Rotation)
+                            if (hasLaserSourceRenderer)
+                            {
+                                ref var src = ref laserSources.UnsafeAt(i);
+                                if (src.Sprite is not null)
+                                {
+                                    float cos = MathF.Cos(transform.Rotation);
+                                    float sin = MathF.Sin(transform.Rotation);
+                                    Vector2 worldOffset = new(
+                                        src.LocalOffset.X * cos - src.LocalOffset.Y * sin,
+                                        src.LocalOffset.X * sin + src.LocalOffset.Y * cos);
+
+                                    int srcIndex = deferredDraws.Count;
+                                    deferredDraws.Add(new DeferredDrawData
+                                    {
+                                        Texture = src.Sprite.Texture,
+                                        SourceRect = src.Sprite.SourceRect,
+                                        Position = transform.Position + worldOffset,
+                                        Anchor = src.Sprite.Anchor,
+                                        Scale = src.Scale,
+                                        Color = renderer.Color,
+                                        Rotation = 0f,
+                                        Layer = renderer.Layer,
+                                        BlendState = renderer.BlendState,
+                                    });
+
+                                    sortKeys.Add(new DrawSortKey
+                                    {
+                                        SpawnId = renderer.SpawnId,
+                                        Layer = renderer.Layer,
+                                        Index = srcIndex,
+                                    });
+                                }
+                            }
                         }
                     }
                     else
@@ -311,7 +346,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
-            bool hasLaser = !hasCurvyLaser && archetype.Has<Laser>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -320,8 +354,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
                 var curvyLasers = hasCurvyLaser ?
                     chunk.GetFilledComponentSpan<CurvyLaser>() : default;
-                var lasers = hasLaser ?
-                    chunk.GetFilledComponentSpan<Laser>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
@@ -332,17 +364,9 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     ref var transform = ref transforms.UnsafeAt(i);
 
                     if (hasCurvyLaser)
-                    {
                         DrawCurvyLaserColliderDebug(ref curvyLasers.UnsafeAt(i), verts);
-                    }
-                    else if (hasLaser)
-                    {
-                        DrawLaserColliderDebug(ref lasers.UnsafeAt(i), transform.Rotation, verts);
-                    }
                     else
-                    {
                         DrawColliderDebug(ref collider, transform.Position, transform.Rotation, verts);
-                    }
                 }
             }
         }
@@ -374,53 +398,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         laser.LaserNodes.AsSpans(out var first, out var second);
         DrawNodeCircles(first, radius, verts);
         DrawNodeCircles(second, radius, verts);
-    }
-
-    private void DrawLaserColliderDebug(ref Laser laser, float rotation, Span<Vector2> verts)
-    {
-        var raw = laser.LaserNodes.AsSpan();
-        int n = raw.Length;
-        if (n == 0) return;
-
-        Vector2 origin = raw.UnsafeAt(0);
-        float cos = MathF.Cos(rotation);
-        float sin = MathF.Sin(rotation);
-
-        // circles at each node
-        BuildCirclePolygon(origin, laser.HalfWidth, verts);
-        batch.DrawConvexPolygon(batch.WhitePixel, verts, default, DebugColor, DebugLayer, StgBlendState.Alpha);
-
-        Span<Vector2> rotated = stackalloc Vector2[n];
-        rotated.UnsafeAt(0) = origin;
-        for (int i = 1; i < n; i++)
-        {
-            Vector2 rel = raw.UnsafeAt(i) - origin;
-            rotated.UnsafeAt(i) = new Vector2(
-                origin.X + rel.X * cos - rel.Y * sin,
-                origin.Y + rel.X * sin + rel.Y * cos);
-
-            BuildCirclePolygon(rotated.UnsafeAt(i), laser.HalfWidth, verts);
-            batch.DrawConvexPolygon(batch.WhitePixel, verts, default, DebugColor, DebugLayer, StgBlendState.Alpha);
-        }
-
-        // obb rects between consecutive nodes
-        Span<Vector2> quad = stackalloc Vector2[4];
-        for (int i = 0; i < n - 1; i++)
-        {
-            var a = rotated.UnsafeAt(i);
-            var b = rotated.UnsafeAt(i + 1);
-            float dx = b.X - a.X;
-            float dy = b.Y - a.Y;
-            float lenSq = dx * dx + dy * dy;
-            if (lenSq < 1e-6f) continue;
-            float len = MathF.Sqrt(lenSq);
-            float halfLen = len * 0.5f;
-            Vector2 center = new(a.X + dx * 0.5f, a.Y + dy * 0.5f);
-            float segRot = MathF.Atan2(dy, dx);
-
-            BuildObbPolygon(center, segRot, new Vector2(halfLen, laser.HalfWidth), quad);
-            batch.DrawConvexPolygon(batch.WhitePixel, quad, default, DebugColor, DebugLayer, StgBlendState.Alpha);
-        }
     }
 
     private void DrawNodeCircles(Span<Vector2> nodes, float radius, Span<Vector2> verts)

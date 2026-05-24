@@ -39,10 +39,8 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     private int curvyLaserMaxNodes = 0;
     private float curvyLaserHalfWidth = 0;
     private LaserSourceRenderer laserSourceRenderer;
-    // todo: an entity probably shouldn't be laser and curvy laser at the same time
-    // optional laser
-    private readonly UnsafePooledList<Vector2> laserNodes = new(2);
-    private float laserHalfWidth;
+    // optional static laser (set by MakeLaser); used to position LaserSource at the emit end
+    private float laserLength = 0;
 
     // spawn settings
     private int way = 1;
@@ -661,33 +659,37 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     #endregion
 
     #region Laser
-    // todo: add more overloads
     [UnscopedRef]
-    public ref BulletBuilder MakeLaser(float halfWidth, float rotation)
+    public ref BulletBuilder MakeLaser(string spriteName, float length, float halfWidth, float rotation,
+                                       Color color, byte layer, StgBlendState blendState)
     {
-        if (laserNodes.Count == 0)
-            laserNodes.Add(transform.Position);
+        var sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
 
+        // shift Position from emit-origin to laser geometric center
+        // (Collider/Renderer are both centered on Transform.Position)
+        transform.Position += new Vector2(MathF.Cos(rotation), MathF.Sin(rotation)) * (length * 0.5f);
         transform.Rotation = rotation;
-        laserHalfWidth = halfWidth;
-        return ref this;
-    }
 
-    [UnscopedRef]
-    public ref BulletBuilder AppendLaserNode(float length, float relativeRotation)
-    {
-        var prev = laserNodes[^1];
-        var newRelative = new Vector2(
-            length * MathF.Cos(relativeRotation),
-            length * MathF.Sin(relativeRotation));
-        laserNodes.Add(prev + newRelative);
-        return ref this;
-    }
+        // renderer: stretch the sprite to (length, halfWidth*2)
+        renderer.Texture = sprite.Texture;
+        renderer.SourceRect = sprite.SourceRect;
+        renderer.Anchor = new Vector2(sprite.SourceRect.Width * 0.5f, sprite.SourceRect.Height * 0.5f);
+        renderer.Scale = new Vector2(length / sprite.SourceRect.Width, halfWidth * 2f / sprite.SourceRect.Height);
+        renderer.Rotation = rotation;
+        renderer.Color = color;
+        renderer.Layer = layer;
+        renderer.BlendState = blendState;
 
-    [UnscopedRef]
-    public ref BulletBuilder MakeLaser(float length, float halfWidth, float rotation)
-    {
-        return ref MakeLaser(halfWidth, rotation).AppendLaserNode(length, 0);
+        // collider: OBB centered on Transform.Position, rotation read from Transform.Rotation at collide time
+        collider.IsActive = true;
+        collider.ShapeType = ShapeType.ObbRect;
+        collider.ObbRect.HalfSize = new Vector2(length * 0.5f, halfWidth);
+
+        // record length so Build() can position any LaserSource at the emit end,
+        // independent of whether SetLaserSourceSprite is called before or after MakeLaser
+        laserLength = length;
+
+        return ref this;
     }
     #endregion
 
@@ -706,8 +708,12 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         bool hasSpawnFx   = spawnEffect.Duration > 0;
         bool hasCollider  = collider.IsActive;
         bool hasCurvyLsr  = curvyLaserMaxNodes > 0;
-        bool hasLsrSrcRdr = !EqualityComparer<LaserSourceRenderer>.Default.Equals(laserSourceRenderer, default);
-        bool hasLaser     = laserNodes.Count > 0;
+        bool hasLsrSrcRdr = laserSourceRenderer.Sprite is not null;
+
+        // resolve LaserSource emit-end offset now that both length (from MakeLaser)
+        // and Sprite (from SetLaserSourceSprite) are available regardless of call order
+        if (hasLsrSrcRdr && laserLength > 0)
+            laserSourceRenderer.LocalOffset = new Vector2(-laserLength * 0.5f, 0);
 
         int typeCount = 3 + Unsafe.As<bool, byte>(ref hasRenderer)
                           + Unsafe.As<bool, byte>(ref hasAnimator)
@@ -718,8 +724,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
                           + Unsafe.As<bool, byte>(ref hasSpawnFx)
                           + Unsafe.As<bool, byte>(ref hasCollider)
                           + Unsafe.As<bool, byte>(ref hasCurvyLsr)
-                          + Unsafe.As<bool, byte>(ref hasLsrSrcRdr)
-                          + Unsafe.As<bool, byte>(ref hasLaser);
+                          + Unsafe.As<bool, byte>(ref hasLsrSrcRdr);
 
         Span<ComponentTypeInfo> types = stackalloc ComponentTypeInfo[typeCount];
         int idx = 0;
@@ -736,7 +741,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         if (hasCollider)  types.UnsafeAt(idx++) = Component<Collider>.TypeInfo;
         if (hasCurvyLsr)  types.UnsafeAt(idx++) = Component<CurvyLaser>.TypeInfo;
         if (hasLsrSrcRdr) types.UnsafeAt(idx++) = Component<LaserSourceRenderer>.TypeInfo;
-        if (hasLaser)     types.UnsafeAt(idx++) = Component<Laser>.TypeInfo;
 
         using var entities   = ScopedPooledArray<Entity>.Rent(amount);
         using var transforms = ScopedPooledArray<Transform>.Rent(amount);
@@ -753,7 +757,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         using var colliders  = hasCollider  ? ScopedPooledArray<Collider>.Rent(amount) : default;
         using var curvyLsrs  = hasCurvyLsr  ? ScopedPooledArray<CurvyLaser>.Rent(amount) : default;
         using var lsrSrcRdrs = hasLsrSrcRdr ? ScopedPooledArray<LaserSourceRenderer>.Rent(amount) : default;
-        using var lasers     = hasLaser     ? ScopedPooledArray<Laser>.Rent(amount) : default;
 
         float baseVelMag   = movement.Velocity.Length();
         float baseVelAngle = baseVelMag > 0 ? MathF.Atan2(movement.Velocity.Y, movement.Velocity.X) : 0;
@@ -811,7 +814,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
             if (hasCollider)   colliders[i]  = collider;
             if (hasCurvyLsr)   curvyLsrs[i]  = new () { LaserNodes = new(curvyLaserMaxNodes), MaxNodes = curvyLaserMaxNodes, HalfWidth = curvyLaserHalfWidth };
             if (hasLsrSrcRdr)  lsrSrcRdrs[i] = laserSourceRenderer;
-            if (hasLaser)    { /* todo: is this even compatible */}
         }
 
         factory.World.ReserveEntityBulk(entities.AsSpan(), types, out Archetype archetype, out Slot start, out Slot end);

@@ -262,20 +262,20 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
 
             // curvy laser animation & collision test
             {
-                bulletManager.Create()
-                    .SetPosition(new Vector2(320, 240))
-                    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
-                    .SetMovement(2f, angleOffset, 0.1f)
-                    .SetSpawningCircle(1)
-                    .AddMovementAngle(1f).Delay(20)
-                    .AddMovementAngle(-1f).Delay(20)
-                    .AddMovementAngle(1f).Delay(20)
-                    .AddMovementAngle(-1f).Delay(20)
-                    .AddMovementAngle(1f).Delay(20)
-                    .AddMovementAngle(-1f)
-                    .SetCollisionGroup(0b0000_0010)
-                    .MakeCurvyLaser(128, 16f)
-                    .Build();
+                //bulletManager.Create()
+                //    .SetPosition(new Vector2(320, 240))
+                //    .SetAnimation("lightning", Color.White, 100, StgBlendState.Additive, MathHelper.Pi)
+                //    .SetMovement(2f, angleOffset, 0.1f)
+                //    .SetSpawningCircle(1)
+                //    .AddMovementAngle(1f).Delay(20)
+                //    .AddMovementAngle(-1f).Delay(20)
+                //    .AddMovementAngle(1f).Delay(20)
+                //    .AddMovementAngle(-1f).Delay(20)
+                //    .AddMovementAngle(1f).Delay(20)
+                //    .AddMovementAngle(-1f)
+                //    .SetCollisionGroup(0b0000_0010)
+                //    .MakeCurvyLaser(128, 16f)
+                //    .Build();
             }
 
             // hierarchy test
@@ -336,6 +336,53 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
             //        .SetCollisionGroup(0b0000_0010)
             //        .Build();
             //}
+
+            // static laser (new MakeLaser API) - one-shot at frame 0
+            if (counter == 0)
+            {
+                // 1) horizontal laser, source sprite at left emit-end
+                bulletManager.Create()
+                    .SetPosition(new Vector2(80, 80))
+                    .MakeLaser("mediumball_red", length: 480, halfWidth: 8, rotation: 0,
+                               Color.White, layer: 100, StgBlendState.Additive)
+                    .SetLaserSourceSprite("lasersource_yellow", Vector2.One)
+                    .SetCollisionGroup(0b0000_0010)
+                    .Build();
+
+                // 2) diagonal laser, narrower, no source sprite (visual-only)
+                bulletManager.Create()
+                    .SetPosition(new Vector2(40, 110))
+                    .MakeLaser("mediumball_green", length: 560, halfWidth: 4,
+                               rotation: MathHelper.Pi / 6f,
+                               Color.White, layer: 100, StgBlendState.Additive)
+                    .SetLaserSourceSprite("lasersource_blue", Vector2.One)
+                    .SetCollisionGroup(0b0000_0010)
+                    .Build();
+
+                // 3) radial fan of 12 lasers from (480, 360)
+                const int Ways = 12;
+                for (int i = 0; i < Ways; i++)
+                {
+                    float angle = MathHelper.TwoPi / Ways * i;
+                    bulletManager.Create()
+                        .SetPosition(new Vector2(480, 360))
+                        .MakeLaser("mediumball_blue", length: 100, halfWidth: 3, rotation: angle,
+                                   Color.White, layer: 99, StgBlendState.Additive)
+                        .SetLaserSourceSprite("lasersource_red", new Vector2(0.5f, 0.5f))
+                        .SetCollisionGroup(0b0000_0010)
+                        .Build();
+                }
+
+                // 4) vertical laser, stretched thicker, taking the right edge of the play area
+                bulletManager.Create()
+                    .SetPosition(new Vector2(600, 40))
+                    .MakeLaser("mediumball_pink", length: 280, halfWidth: 10,
+                               rotation: MathHelper.PiOver2,
+                               Color.White, layer: 100, StgBlendState.Additive)
+                    .SetLaserSourceSprite("lasersource_pink", new Vector2(1.2f, 1.2f))
+                    .SetCollisionGroup(0b0000_0010)
+                    .Build();
+            }
         }
 
         counter++;
@@ -401,6 +448,13 @@ public sealed class Engine : Game
         assetManager.Load<AnimationAsset>("bullet/bullet_animations.txt", "fireball_red");
 
         assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "curvylaser_lime");
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "curvylaser_lightred");
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "curvylaser_lightblue");
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "curvylaser_lightpink");
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "lasersource_yellow");
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "lasersource_red");
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "lasersource_blue");
+        assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "lasersource_pink");
         assetManager.Load<AnimationAsset>("bullet/bullet_animations.txt", "lightning");
 
         assetManager.Load<AnimationAsset>("player/reimu_animations.txt", "reimu_idle");
@@ -432,7 +486,10 @@ public sealed class Engine : Game
 
         movementSystem = new MovementSystem(world);
         animationSystem = new AnimationSystem(world);
-        renderSystem = new RenderSystem(world, stgBatch, gameBounds);
+        renderSystem = new RenderSystem(world, stgBatch, gameBounds)
+        {
+            DebugDrawColliders = true
+        };
         collisionSystem = new CollisionSystem(world);
         lifetimeSystem = new LifetimeSystem(world, gameBounds);
         hierarcySystem = new HierarchySystem(world);
@@ -511,16 +568,16 @@ public sealed class Engine : Game
             new Vector2(572, 4), fpsColor, 200, StgBlendState.Alpha);
 
         // test strip laser
-        var sprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_pink");
-        stgBatch.DrawStrip(
-            sprite.Texture,
-            sprite.SourceRect,
-            0,
-            [Vector2.Zero, new Vector2(320, 240)],
-            16,
-            Color.White,
-            100,
-            StgBlendState.Additive);
+        //var sprite = assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "mediumball_pink");
+        //stgBatch.DrawStrip(
+        //    sprite.Texture,
+        //    sprite.SourceRect,
+        //    0,
+        //    [Vector2.Zero, new Vector2(320, 240)],
+        //    16,
+        //    Color.White,
+        //    100,
+        //    StgBlendState.Additive);
 
         stgBatch.End();
 
