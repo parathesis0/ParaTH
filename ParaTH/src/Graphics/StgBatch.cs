@@ -262,6 +262,8 @@ public sealed unsafe class StgBatch : IDisposable
         if (!hasBegun)
             HelperThrow("Draw called before Begin.");
 
+        color = PrepareColor(color, blendState);
+
         if (vertexCount + 4 > rawVertices.Length ||
             indexCount + 6 > rawIndices.Length)
         {
@@ -389,6 +391,8 @@ public sealed unsafe class StgBatch : IDisposable
         int vCount = vertices.Length;
         if (vCount < 3) return;
 
+        color = PrepareColor(color, blendState);
+
         int triCount = vCount - 2;
         int iCount = triCount * 3;
 
@@ -464,6 +468,8 @@ public sealed unsafe class StgBatch : IDisposable
         int rawCount = nodes.Length;
         if (rawCount < 2)
             return;
+
+        color = PrepareColor(color, blendState);
 
         // filter out overlapping nodes and calculate arc length
         const float kMinSegLen = 0.5f;
@@ -713,6 +719,25 @@ public sealed unsafe class StgBatch : IDisposable
     private static void HelperThrow(string? msg)
     {
         throw new InvalidOperationException(msg);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Color PrepareColor(Color color, StgBlendState blendState)
+    {
+        return blendState == StgBlendState.Alpha ? PremultiplyAlpha(color) : color;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Color PremultiplyAlpha(Color color)
+    {
+        byte a = color.A;
+        if (a == byte.MaxValue)
+            return color;
+
+        color.R = (byte)(color.R * a / byte.MaxValue);
+        color.G = (byte)(color.G * a / byte.MaxValue);
+        color.B = (byte)(color.B * a / byte.MaxValue);
+        return color;
     }
 
     private void FlushBatch()

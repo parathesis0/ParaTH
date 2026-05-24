@@ -19,8 +19,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     public bool DebugDrawColliders;
 
     private const int DebugCircleSides = 16;
-    private const byte DebugLayer = 255;
-    private static readonly Color DebugColor = new(0, 255, 0, 0);
+    private const byte DebugLayer = 0;
+    private static readonly Color DebugColor = new(0, 255, 0, 255);
 
     // 64 bytes
     private struct DeferredDrawData
