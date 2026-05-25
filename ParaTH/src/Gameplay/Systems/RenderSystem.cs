@@ -19,8 +19,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     public bool DebugDrawColliders;
 
     private const int DebugCircleSides = 16;
-    private const byte DebugLayer = 0;
-    private static readonly Color DebugColor = new(0, 255, 0, 255);
+    private const byte DebugLayer = 255;
+    private static readonly Color DebugColor = new(0, 255, 0, 128);
 
     // 64 bytes
     private struct DeferredDrawData
@@ -153,7 +153,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             Anchor = renderer.Anchor,
                             Scale = renderer.Scale,
                             Color = renderer.Color,
-                            Rotation = renderer.Rotation,
+                            Rotation = ResolveRotation(in renderer, transform.Rotation),
                             Layer = renderer.Layer,
                             BlendState = renderer.BlendState,
                         };
@@ -243,7 +243,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             {
                                 Texture = renderer.Texture,
                                 SourceRect = renderer.SourceRect,
-                                TextureRotation = renderer.Rotation,
+                                TextureRotation = ResolveRotation(in renderer, transforms.UnsafeAt(i).Rotation),
                                 LaserNodes = laser.LaserNodes,
                                 HalfWidth = laser.HalfWidth,
                                 Color = renderer.Color,
@@ -489,10 +489,23 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     // ────────────────── Effects ──────────────────
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+    private static float ResolveRotation(in Renderer renderer, float transformRotation)
+#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
+    {
+        return renderer.RotationMode switch
+        {
+            RendererRotationMode.FollowTransform => transformRotation + renderer.Rotation,
+            RendererRotationMode.FollowVelocity => renderer.VelocityRotation + renderer.Rotation,
+            _ => renderer.Rotation,
+        };
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ApplySpawnEffect(
-#pragma warning disable RCS1242
+#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
         ref SpawnEffect effect, in Renderer renderer, ref DeferredDrawData dd)
-#pragma warning restore RCS1242
+#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
     {
         if (effect.Counter >= effect.Duration) return;
 

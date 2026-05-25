@@ -3,18 +3,30 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace ParaTH;
 
-// 56 bytes, huge
+public enum RendererRotationMode : byte
+{
+    // Draw at Renderer.Rotation, ignoring Transform.Rotation.
+    FixedWorld,
+    // Draw at Transform.Rotation + Renderer.Rotation.
+    FollowTransform,
+    // Draw at last non-zero movement direction + Renderer.Rotation.
+    FollowVelocity
+}
+
+// 64 bytes, huge
 public struct Renderer
 {
     public Texture2D Texture;           // 8
     public Rectangle SourceRect;        // 4 + 4 + 4 + 4
     public Vector2 Anchor;              // 4 + 4
     public Vector2 Scale;               // 4 + 4
-    public float Rotation;              // 4
+    public float Rotation;              // 4, fixed angle or offset based on RotationMode
+    public float VelocityRotation;      // 4, cached by MovementSystem for FollowVelocity
     public Color Color;                 // 4
     public uint SpawnId;                // 4 for render order in the same layer, or else destroying entities fucks it up
     public byte Layer;                  // 1
     public StgBlendState BlendState;    // 1
+    public RendererRotationMode RotationMode; // 1
     public bool IsVisible;              // 1
-                                        // 1 padding
+                                        // 4 padding
 }

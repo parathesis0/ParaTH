@@ -21,7 +21,7 @@ public sealed class MovementSystem(World world)
             bool hasAcc = archetype.Has<AccelerationController>();
             bool hasCur = archetype.Has<CurveController>();
             bool hasRot = archetype.Has<RotationController>();
-            bool hasRnd = archetype.Has<Renderer>();     // for syncing rotation
+            bool hasRnd = archetype.Has<Renderer>();     // for velocity-facing renderers
             bool hasSpw = archetype.Has<SpawnEffect>();  // this one has to stay here, spawnAnimation affects velocity
             bool hasCls = archetype.Has<CurvyLaser>();   // techically should have a separate system dedicated to this
             bool hasHrc = archetype.Has<Hierarchy>();    // if an entity has this, use its local position
@@ -93,24 +93,24 @@ public sealed class MovementSystem(World world)
 
                     var velocityNotZero = delta.LengthSquared() >= float.Epsilon;
                     var angle = 0f;
-                    if ((movement.SyncTransformRotation || movement.SyncRendererRotation) && velocityNotZero)
+                    if (velocityNotZero && (movement.SyncTransformRotation ||
+                        (hasRnd && rndSpan.UnsafeAt(i).RotationMode == RendererRotationMode.FollowVelocity)))
+                    {
                         angle = MathF.Atan2(delta.Y, delta.X);
+                    }
 
                     if (movement.SyncTransformRotation && velocityNotZero)
                         transform.Rotation = angle;
-                    if (movement.SyncRendererRotation && hasRnd && velocityNotZero)
+
+                    if (hasRnd && velocityNotZero)
                     {
                         ref var renderer = ref rndSpan.UnsafeAt(i);
-                        renderer.Rotation = angle;
+                        if (renderer.RotationMode == RendererRotationMode.FollowVelocity)
+                            renderer.VelocityRotation = angle;
                     }
 
                     if (hasRot)
-                    {
-                        if (hasRnd)
-                            UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref transform, ref rndSpan.UnsafeAt(i));
-                        else
-                            UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref transform);
-                    }
+                        UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref transform);
 
                     lifetime.AliveFrames++;
                 }
@@ -332,14 +332,6 @@ public sealed class MovementSystem(World world)
     private static void UpdateRotationController(ref RotationController ctrl, ushort currentFrame, ref Transform transform)
     {
         UpdateRotationControllerCore(ref ctrl, currentFrame, ref transform);
-    }
-
-    private static void UpdateRotationController(
-        ref RotationController ctrl, ushort currentFrame, ref Transform transform, ref Renderer renderer)
-    {
-        float oldRotation = transform.Rotation;
-        UpdateRotationControllerCore(ref ctrl, currentFrame, ref transform);
-        renderer.Rotation += transform.Rotation - oldRotation;
     }
 
     private static void UpdateRotationControllerCore(ref RotationController ctrl, ushort currentFrame, ref Transform transform)

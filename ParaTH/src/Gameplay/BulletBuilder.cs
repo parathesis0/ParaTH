@@ -422,7 +422,16 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     [UnscopedRef]
     public ref BulletBuilder SyncRendererRotation()
     {
-        movement.SyncRendererRotation = true;
+        renderer.RotationMode = RendererRotationMode.FollowVelocity;
+        if (movement.Velocity.LengthSquared() >= float.Epsilon)
+            renderer.VelocityRotation = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetRendererRotationMode(RendererRotationMode mode)
+    {
+        renderer.RotationMode = mode;
         return ref this;
     }
 
@@ -454,19 +463,12 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     #endregion
 
     #region Rotation
-    private void AddInitialRotation(float rotationDelta)
-    {
-        transform.Rotation += rotationDelta;
-        if (renderer.Texture is not null)
-            renderer.Rotation += rotationDelta;
-    }
-
     [UnscopedRef]
     public ref BulletBuilder SetRotation(float newRotation)
     {
         if (currentFrame == 0)
         {
-            AddInitialRotation(newRotation - transform.Rotation);
+            transform.Rotation = newRotation;
             return ref this;
         }
 
@@ -480,7 +482,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     {
         if (currentFrame == 0)
         {
-            AddInitialRotation(rotationDelta);
+            transform.Rotation += rotationDelta;
             return ref this;
         }
 
@@ -546,7 +548,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         renderer.Color = color;
         renderer.Layer = layer;
         renderer.BlendState = blendState;
-        renderer.Rotation = rotation + transform.Rotation;
+        renderer.Rotation = rotation;
         renderer.Scale = scale.Value;
         return ref this;
     }
@@ -565,7 +567,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         renderer.Color = color;
         renderer.Layer = layer;
         renderer.BlendState = blendState;
-        renderer.Rotation = rotation + transform.Rotation;
+        renderer.Rotation = rotation;
         renderer.Scale = scale.Value;
         return ref this;
     }
@@ -747,7 +749,8 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         renderer.SourceRect = sprite.SourceRect;
         renderer.Anchor = new Vector2(sprite.SourceRect.Width * 0.5f, sprite.SourceRect.Height * 0.5f);
         renderer.Scale = new Vector2(length / sprite.SourceRect.Width, halfWidth * 2f / sprite.SourceRect.Height);
-        renderer.Rotation = rotation;
+        renderer.Rotation = 0;
+        renderer.RotationMode = RendererRotationMode.FollowTransform;
         renderer.Color = color;
         renderer.Layer = layer;
         renderer.BlendState = blendState;
@@ -877,11 +880,16 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
                                           transform.Rotation);
             movements[i] = new Movement(velDir * curVelMag,
                                         accDir * curAccMag,
-                                        movement.SyncRendererRotation,
                                         movement.SyncTransformRotation);
             lifetimes[i] = lifetime;
 
-            if (hasRenderer) { renderers[i]  = renderer; renderers[i].SpawnId = baseSpawnId + (uint)i; }
+            if (hasRenderer)
+            {
+                renderers[i] = renderer;
+                renderers[i].SpawnId = baseSpawnId + (uint)i;
+                if (renderers[i].RotationMode == RendererRotationMode.FollowVelocity)
+                    renderers[i].VelocityRotation = angle;
+            }
             if (hasAnimator)   animators[i]  = spriteAnimator;
             if (hasPosCtr)     posCtrs[i]    = new () { Instructions = sharedPosInstr!,   Index = -1 };
             if (hasVelCtr)     velCtrs[i]    = new () { Instructions = sharedVelInstr!,   Index = -1 };
