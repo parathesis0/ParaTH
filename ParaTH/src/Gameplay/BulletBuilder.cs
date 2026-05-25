@@ -31,6 +31,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     private readonly UnsafePooledList<VelocityInstruction> velocityInstructions = new(4);
     private readonly UnsafePooledList<AccelerationInstruction> accelerationInstructions = new(4);
     private readonly UnsafePooledList<CurveInstruction> curveInstructions = new(4);
+    private readonly UnsafePooledList<RotationInstruction> rotationInstructions = new(4);
 
     // optional
     private SpawnEffect spawnEffect;
@@ -452,6 +453,70 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     }
     #endregion
 
+    #region Rotation
+    [UnscopedRef]
+    public ref BulletBuilder SetRotation(float newRotation)
+    {
+        if (currentFrame == 0)
+        {
+            transform.Rotation = newRotation;
+            return ref this;
+        }
+
+        rotationInstructions.Add(new(currentFrame,
+            newRotation, 0, EaseType.Linear, RotationInstruction.Ops.SetRotation));
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder AddRotation(float rotationDelta)
+    {
+        if (currentFrame == 0)
+        {
+            transform.Rotation += rotationDelta;
+            return ref this;
+        }
+
+        rotationInstructions.Add(new(currentFrame,
+            rotationDelta, 0, EaseType.Linear, RotationInstruction.Ops.AddRotation));
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder LerpToRotation(float newRotation, ushort duration, EaseType easeType)
+    {
+        rotationInstructions.Add(new(currentFrame,
+            newRotation, duration, easeType, RotationInstruction.Ops.SetRotation));
+        currentFrame += duration;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder LerpAddRotation(float rotationDelta, ushort duration, EaseType easeType)
+    {
+        rotationInstructions.Add(new(currentFrame,
+            rotationDelta, duration, easeType, RotationInstruction.Ops.AddRotation));
+        currentFrame += duration;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder SetRotationalVelocity(float newRotationalVelocity)
+    {
+        rotationInstructions.Add(new(currentFrame,
+            newRotationalVelocity, 0, EaseType.Linear, RotationInstruction.Ops.SetRotationalVelocity));
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref BulletBuilder AddRotationalVelocity(float rotationalVelocityDelta)
+    {
+        rotationInstructions.Add(new(currentFrame,
+            rotationalVelocityDelta, 0, EaseType.Linear, RotationInstruction.Ops.AddRotationalVelocity));
+        return ref this;
+    }
+    #endregion
+
     #region Lifetime
     [UnscopedRef]
     public ref BulletBuilder SetOffscreenLifeTime(short frames)
@@ -683,7 +748,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         // collider: OBB centered on Transform.Position, rotation read from Transform.Rotation at collide time
         collider.IsActive = true;
         collider.ShapeType = ShapeType.ObbRect;
-        collider.ObbRect.HalfSize = new Vector2(length * 0.5f, halfWidth);
+        collider.ObbRect.HalfSize = new Vector2(length * 0.5f, halfWidth * 0.5f);
 
         // record length so Build() can position any LaserSource at the emit end,
         // independent of whether SetLaserSourceSprite is called before or after MakeLaser
@@ -705,6 +770,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         bool hasVelCtr    = velocityInstructions.Count > 0;
         bool hasAccCtr    = accelerationInstructions.Count > 0;
         bool hasCurveCtr  = curveInstructions.Count > 0;
+        bool hasRotCtr    = rotationInstructions.Count > 0;
         bool hasSpawnFx   = spawnEffect.Duration > 0;
         bool hasCollider  = collider.IsActive;
         bool hasCurvyLsr  = curvyLaserMaxNodes > 0;
@@ -721,6 +787,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
                           + Unsafe.As<bool, byte>(ref hasVelCtr)
                           + Unsafe.As<bool, byte>(ref hasAccCtr)
                           + Unsafe.As<bool, byte>(ref hasCurveCtr)
+                          + Unsafe.As<bool, byte>(ref hasRotCtr)
                           + Unsafe.As<bool, byte>(ref hasSpawnFx)
                           + Unsafe.As<bool, byte>(ref hasCollider)
                           + Unsafe.As<bool, byte>(ref hasCurvyLsr)
@@ -737,6 +804,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         if (hasVelCtr)    types.UnsafeAt(idx++) = Component<VelocityController>.TypeInfo;
         if (hasAccCtr)    types.UnsafeAt(idx++) = Component<AccelerationController>.TypeInfo;
         if (hasCurveCtr)  types.UnsafeAt(idx++) = Component<CurveController>.TypeInfo;
+        if (hasRotCtr)    types.UnsafeAt(idx++) = Component<RotationController>.TypeInfo;
         if (hasSpawnFx)   types.UnsafeAt(idx++) = Component<SpawnEffect>.TypeInfo;
         if (hasCollider)  types.UnsafeAt(idx++) = Component<Collider>.TypeInfo;
         if (hasCurvyLsr)  types.UnsafeAt(idx++) = Component<CurvyLaser>.TypeInfo;
@@ -753,6 +821,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         using var velCtrs    = hasVelCtr    ? ScopedPooledArray<VelocityController>.Rent(amount) : default;
         using var accCtrs    = hasAccCtr    ? ScopedPooledArray<AccelerationController>.Rent(amount) : default;
         using var curveCtrs  = hasCurveCtr  ? ScopedPooledArray<CurveController>.Rent(amount) : default;
+        using var rotCtrs    = hasRotCtr    ? ScopedPooledArray<RotationController>.Rent(amount) : default;
         using var spawnFxs   = hasSpawnFx   ? ScopedPooledArray<SpawnEffect>.Rent(amount) : default;
         using var colliders  = hasCollider  ? ScopedPooledArray<Collider>.Rent(amount) : default;
         using var curvyLsrs  = hasCurvyLsr  ? ScopedPooledArray<CurvyLaser>.Rent(amount) : default;
@@ -767,6 +836,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         var sharedVelInstr   = hasVelCtr   ? velocityInstructions.ToArray()     : null;
         var sharedAccInstr   = hasAccCtr   ? accelerationInstructions.ToArray() : null;
         var sharedCurveInstr = hasCurveCtr ? curveInstructions.ToArray()        : null;
+        var sharedRotInstr   = hasRotCtr   ? rotationInstructions.ToArray()      : null;
 
         uint baseSpawnId = factory.GlobalSpawnCounter;
         factory.GlobalSpawnCounter += (uint)amount;
@@ -810,6 +880,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
             if (hasVelCtr)     velCtrs[i]    = new () { Instructions = sharedVelInstr!,   Index = -1 };
             if (hasAccCtr)     accCtrs[i]    = new () { Instructions = sharedAccInstr!,   Index = -1 };
             if (hasCurveCtr)   curveCtrs[i]  = new () { Instructions = sharedCurveInstr!, Index = -1 };
+            if (hasRotCtr)     rotCtrs[i]    = new () { Instructions = sharedRotInstr!,   Index = -1 };
             if (hasSpawnFx)    spawnFxs[i]   = spawnEffect;
             if (hasCollider)   colliders[i]  = collider;
             if (hasCurvyLsr)   curvyLsrs[i]  = new () { LaserNodes = new(curvyLaserMaxNodes), MaxNodes = curvyLaserMaxNodes, HalfWidth = curvyLaserHalfWidth };
@@ -826,6 +897,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         if (hasVelCtr)    archetype.SetRangeWithSpanBulk(start, end, velCtrs.AsSpan());
         if (hasAccCtr)    archetype.SetRangeWithSpanBulk(start, end, accCtrs.AsSpan());
         if (hasCurveCtr)  archetype.SetRangeWithSpanBulk(start, end, curveCtrs.AsSpan());
+        if (hasRotCtr)    archetype.SetRangeWithSpanBulk(start, end, rotCtrs.AsSpan());
         if (hasSpawnFx)   archetype.SetRangeWithSpanBulk(start, end, spawnFxs.AsSpan());
         if (hasCollider)  archetype.SetRangeWithSpanBulk(start, end, colliders.AsSpan());
         if (hasCurvyLsr)  archetype.SetRangeWithSpanBulk(start, end, curvyLsrs.AsSpan());
@@ -838,5 +910,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         velocityInstructions.Dispose();
         accelerationInstructions.Dispose();
         curveInstructions.Dispose();
+        rotationInstructions.Dispose();
     }
 }

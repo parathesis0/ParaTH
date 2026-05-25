@@ -20,6 +20,7 @@ public sealed class MovementSystem(World world)
             bool hasVel = archetype.Has<VelocityController>();
             bool hasAcc = archetype.Has<AccelerationController>();
             bool hasCur = archetype.Has<CurveController>();
+            bool hasRot = archetype.Has<RotationController>();
             bool hasRnd = archetype.Has<Renderer>();     // for syncing rotation
             bool hasSpw = archetype.Has<SpawnEffect>();  // this one has to stay here, spawnAnimation affects velocity
             bool hasCls = archetype.Has<CurvyLaser>();   // techically should have a separate system dedicated to this
@@ -35,6 +36,7 @@ public sealed class MovementSystem(World world)
                 var velSpan = hasVel ? chunk.GetFilledComponentSpan<VelocityController>() : default;
                 var accSpan = hasAcc ? chunk.GetFilledComponentSpan<AccelerationController>() : default;
                 var curSpan = hasCur ? chunk.GetFilledComponentSpan<CurveController>() : default;
+                var rotSpan = hasRot ? chunk.GetFilledComponentSpan<RotationController>() : default;
                 var rndSpan = hasRnd ? chunk.GetFilledComponentSpan<Renderer>() : default;
                 var spwSpan = hasSpw ? chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var clsSpan = hasCls ? chunk.GetFilledComponentSpan<CurvyLaser>() : default;
@@ -68,6 +70,9 @@ public sealed class MovementSystem(World world)
 
                     if (hasPos)
                         UpdatePositionController(ref posSpan.UnsafeAt(i), currentFrame, ref position);
+
+                    if (hasRot)
+                        UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref transform);
 
                     var velocityMultiplier = 1.0f;
                     if (hasSpw)
@@ -315,6 +320,67 @@ public sealed class MovementSystem(World world)
                 var y = movement.Velocity.Y;
                 movement.Velocity.X = x * cos - y * sin;
                 movement.Velocity.Y = x * sin + y * cos;
+            }
+        }
+    }
+
+    private static void UpdateRotationController(ref RotationController ctrl, ushort currentFrame, ref Transform transform)
+    {
+        var insts = ctrl.Instructions;
+        // handle instruction advance
+        while (ctrl.Index < insts.Length - 1 && currentFrame >= insts.UnsafeAt(ctrl.Index + 1).TriggerFrame)
+        {
+            ctrl.Index++;
+            var inst = insts.UnsafeAt(ctrl.Index);
+
+            switch (inst.Op)
+            {
+                case RotationInstruction.Ops.SetRotation:
+                    ctrl.StartValue = transform.Rotation;
+                    ctrl.EndValue = inst.Params; // newRotation
+                    break;
+                case RotationInstruction.Ops.SetRotationalVelocity:
+                    // rotational velocity is stored directly, no lerp state needed
+                    ctrl.EndValue = inst.Params; // newRotationalVelocity
+                    break;
+                case RotationInstruction.Ops.AddRotation:
+                    ctrl.StartValue = transform.Rotation;
+                    ctrl.EndValue = transform.Rotation + inst.Params; // rotationDelta
+                    break;
+                case RotationInstruction.Ops.AddRotationalVelocity:
+                    ctrl.EndValue += inst.Params; // rotationalVelocityDelta
+                    break;
+            }
+
+            // instruction takes 0 frame
+            // update rotation immediately to ensure the next op can get the correct value
+            if (inst.Duration == 0)
+            {
+                if (inst.Op == RotationInstruction.Ops.SetRotation || inst.Op == RotationInstruction.Ops.AddRotation)
+                    transform.Rotation = ctrl.EndValue;
+                // for velocity ops, EndValue is the velocity itself, applied below
+            }
+        }
+
+        if (ctrl.Index >= 0)
+        {
+            var inst = insts.UnsafeAt(ctrl.Index);
+            int relativeTick = currentFrame - inst.TriggerFrame;
+
+            if (inst.Op == RotationInstruction.Ops.SetRotation || inst.Op == RotationInstruction.Ops.AddRotation)
+            {
+                // lerp rotation
+                if (relativeTick < inst.Duration)
+                {
+                    var t = (float)(relativeTick + 1) / inst.Duration;
+                    t = Easing.Evaluate(inst.EaseType, t);
+                    transform.Rotation = float.Lerp(ctrl.StartValue, ctrl.EndValue, t);
+                }
+            }
+            else
+            {
+                // apply rotational velocity (SetRotationalVelocity / AddRotationalVelocity)
+                transform.Rotation += ctrl.EndValue;
             }
         }
     }
