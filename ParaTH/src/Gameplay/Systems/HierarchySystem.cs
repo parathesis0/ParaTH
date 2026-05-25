@@ -95,7 +95,9 @@ public sealed class HierarchySystem(World world) : IDisposable
                     parentTransform.Position.X + (localX * cos - localY * sin),
                     parentTransform.Position.Y + (localX * sin + localY * cos));
 
-                childTransform.Rotation = parentTransform.Rotation + local.LocalRotation;
+                if (!local.PreserveTransformRotation)
+                    childTransform.Rotation = parentTransform.Rotation + local.LocalRotation;
+
                 childTransform.Scale = parentTransform.Scale * local.LocalScale;
             }
 
