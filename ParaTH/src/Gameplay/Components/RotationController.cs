@@ -18,12 +18,13 @@ public struct RotationInstruction(ushort triggerFrame, float @params, ushort dur
                                                 // 2 padding
 }
 
-// 20 bytes
+// 24 bytes
 public struct RotationController
 {
-    public RotationInstruction[] Instructions;  // 8
-    public float StartValue;                    // 4
-    public float EndValue;                      // 4
-    public sbyte Index;                         // 1
-                                                // 3 padding
+    public RotationInstruction[] Instructions;      // 8
+    public float StartRotation;                     // 4
+    public float EndRotation;                       // 4
+    public float RotationalVelocity;                // 4
+    public sbyte Index;                             // 1
+                                                    // 3 padding
 }

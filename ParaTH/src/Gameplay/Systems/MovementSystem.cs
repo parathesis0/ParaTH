@@ -71,9 +71,6 @@ public sealed class MovementSystem(World world)
                     if (hasPos)
                         UpdatePositionController(ref posSpan.UnsafeAt(i), currentFrame, ref position);
 
-                    if (hasRot)
-                        UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref transform);
-
                     var velocityMultiplier = 1.0f;
                     if (hasSpw)
                     {
@@ -101,10 +98,18 @@ public sealed class MovementSystem(World world)
 
                     if (movement.SyncTransformRotation && velocityNotZero)
                         transform.Rotation = angle;
-                    if (movement.SyncRendererRotation && velocityNotZero)
+                    if (movement.SyncRendererRotation && hasRnd && velocityNotZero)
                     {
                         ref var renderer = ref rndSpan.UnsafeAt(i);
                         renderer.Rotation = angle;
+                    }
+
+                    if (hasRot)
+                    {
+                        if (hasRnd)
+                            UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref transform, ref rndSpan.UnsafeAt(i));
+                        else
+                            UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref transform);
                     }
 
                     lifetime.AliveFrames++;
@@ -326,6 +331,19 @@ public sealed class MovementSystem(World world)
 
     private static void UpdateRotationController(ref RotationController ctrl, ushort currentFrame, ref Transform transform)
     {
+        UpdateRotationControllerCore(ref ctrl, currentFrame, ref transform);
+    }
+
+    private static void UpdateRotationController(
+        ref RotationController ctrl, ushort currentFrame, ref Transform transform, ref Renderer renderer)
+    {
+        float oldRotation = transform.Rotation;
+        UpdateRotationControllerCore(ref ctrl, currentFrame, ref transform);
+        renderer.Rotation += transform.Rotation - oldRotation;
+    }
+
+    private static void UpdateRotationControllerCore(ref RotationController ctrl, ushort currentFrame, ref Transform transform)
+    {
         var insts = ctrl.Instructions;
         // handle instruction advance
         while (ctrl.Index < insts.Length - 1 && currentFrame >= insts.UnsafeAt(ctrl.Index + 1).TriggerFrame)
@@ -336,19 +354,18 @@ public sealed class MovementSystem(World world)
             switch (inst.Op)
             {
                 case RotationInstruction.Ops.SetRotation:
-                    ctrl.StartValue = transform.Rotation;
-                    ctrl.EndValue = inst.Params; // newRotation
+                    ctrl.StartRotation = transform.Rotation;
+                    ctrl.EndRotation = transform.Rotation + MathHelper.WrapAngle(inst.Params - transform.Rotation); // newRotation
                     break;
                 case RotationInstruction.Ops.SetRotationalVelocity:
-                    // rotational velocity is stored directly, no lerp state needed
-                    ctrl.EndValue = inst.Params; // newRotationalVelocity
+                    ctrl.RotationalVelocity = inst.Params; // newRotationalVelocity
                     break;
                 case RotationInstruction.Ops.AddRotation:
-                    ctrl.StartValue = transform.Rotation;
-                    ctrl.EndValue = transform.Rotation + inst.Params; // rotationDelta
+                    ctrl.StartRotation = transform.Rotation;
+                    ctrl.EndRotation = transform.Rotation + inst.Params; // rotationDelta
                     break;
                 case RotationInstruction.Ops.AddRotationalVelocity:
-                    ctrl.EndValue += inst.Params; // rotationalVelocityDelta
+                    ctrl.RotationalVelocity += inst.Params; // rotationalVelocityDelta
                     break;
             }
 
@@ -357,8 +374,7 @@ public sealed class MovementSystem(World world)
             if (inst.Duration == 0)
             {
                 if (inst.Op == RotationInstruction.Ops.SetRotation || inst.Op == RotationInstruction.Ops.AddRotation)
-                    transform.Rotation = ctrl.EndValue;
-                // for velocity ops, EndValue is the velocity itself, applied below
+                    transform.Rotation = ctrl.EndRotation;
             }
         }
 
@@ -374,15 +390,12 @@ public sealed class MovementSystem(World world)
                 {
                     var t = (float)(relativeTick + 1) / inst.Duration;
                     t = Easing.Evaluate(inst.EaseType, t);
-                    transform.Rotation = float.Lerp(ctrl.StartValue, ctrl.EndValue, t);
+                    transform.Rotation = float.Lerp(ctrl.StartRotation, ctrl.EndRotation, t);
                 }
             }
-            else
-            {
-                // apply rotational velocity (SetRotationalVelocity / AddRotationalVelocity)
-                transform.Rotation += ctrl.EndValue;
-            }
         }
+
+        transform.Rotation += ctrl.RotationalVelocity;
     }
 
     private static void UpdateCurvyLaser(ref CurvyLaser curvyLaser, Vector2 currentPos)

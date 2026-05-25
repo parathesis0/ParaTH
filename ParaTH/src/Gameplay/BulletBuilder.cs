@@ -454,12 +454,19 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     #endregion
 
     #region Rotation
+    private void AddInitialRotation(float rotationDelta)
+    {
+        transform.Rotation += rotationDelta;
+        if (renderer.Texture is not null)
+            renderer.Rotation += rotationDelta;
+    }
+
     [UnscopedRef]
     public ref BulletBuilder SetRotation(float newRotation)
     {
         if (currentFrame == 0)
         {
-            transform.Rotation = newRotation;
+            AddInitialRotation(newRotation - transform.Rotation);
             return ref this;
         }
 
@@ -473,7 +480,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     {
         if (currentFrame == 0)
         {
-            transform.Rotation += rotationDelta;
+            AddInitialRotation(rotationDelta);
             return ref this;
         }
 
@@ -539,7 +546,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         renderer.Color = color;
         renderer.Layer = layer;
         renderer.BlendState = blendState;
-        renderer.Rotation = rotation;
+        renderer.Rotation = rotation + transform.Rotation;
         renderer.Scale = scale.Value;
         return ref this;
     }
@@ -558,7 +565,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         renderer.Color = color;
         renderer.Layer = layer;
         renderer.BlendState = blendState;
-        renderer.Rotation = rotation;
+        renderer.Rotation = rotation + transform.Rotation;
         renderer.Scale = scale.Value;
         return ref this;
     }
@@ -764,7 +771,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         if (amount <= 0)
             return;
 
-        bool hasRenderer  = !EqualityComparer<Renderer>.Default.Equals(renderer, default);
+        bool hasRenderer  = renderer.Texture is not null;
         bool hasAnimator  = !EqualityComparer<SpriteAnimator>.Default.Equals(spriteAnimator, default);
         bool hasPosCtr    = positionInstructions.Count > 0;
         bool hasVelCtr    = velocityInstructions.Count > 0;
