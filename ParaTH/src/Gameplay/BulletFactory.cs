@@ -12,4 +12,9 @@ public sealed class BulletFactory(World world, AssetManager asset)
     {
         return new BulletBuilder(this);
     }
+
+    public LaserBuilder CreateLaser()
+    {
+        return new LaserBuilder(this);
+    }
 }

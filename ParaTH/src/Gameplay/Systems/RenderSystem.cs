@@ -123,7 +123,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         {
             bool hasSpawnEffect = archetype.Has<SpawnEffect>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
-            bool hasLaserSourceRenderer = archetype.Has<LaserSourceRenderer>();
+            bool hasLaserSourceRenderer = hasCurvyLaser && archetype.Has<LaserSourceRenderer>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -161,8 +161,8 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                         if (hasSpawnEffect)
                             ApplySpawnEffect(ref spawnAnims.UnsafeAt(i), in renderer, ref dd);
 
-                        float halfW = dd.SourceRect.Width * 0.5f;
-                        float halfH = dd.SourceRect.Height * 0.5f;
+                        float halfW = dd.SourceRect.Width * MathF.Abs(dd.Scale.X) * 0.5f;
+                        float halfH = dd.SourceRect.Height * MathF.Abs(dd.Scale.Y) * 0.5f;
                         float radius = (halfW > halfH ? halfW : halfH) * 1.415f;
 
                         float px = dd.Position.X;
@@ -183,40 +183,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                                 Index = currentIndex,
                             });
 
-                            // non-CurvyLaser source sprite: draw at transform.Position + Rotate(LocalOffset, transform.Rotation)
-                            if (hasLaserSourceRenderer)
-                            {
-                                ref var src = ref laserSources.UnsafeAt(i);
-                                if (src.Sprite is not null)
-                                {
-                                    float cos = MathF.Cos(transform.Rotation);
-                                    float sin = MathF.Sin(transform.Rotation);
-                                    Vector2 worldOffset = new(
-                                        src.LocalOffset.X * cos - src.LocalOffset.Y * sin,
-                                        src.LocalOffset.X * sin + src.LocalOffset.Y * cos);
-
-                                    int srcIndex = deferredDraws.Count;
-                                    deferredDraws.Add(new DeferredDrawData
-                                    {
-                                        Texture = src.Sprite.Texture,
-                                        SourceRect = src.Sprite.SourceRect,
-                                        Position = transform.Position + worldOffset,
-                                        Anchor = src.Sprite.Anchor,
-                                        Scale = src.Scale,
-                                        Color = renderer.Color,
-                                        Rotation = 0f,
-                                        Layer = renderer.Layer,
-                                        BlendState = renderer.BlendState,
-                                    });
-
-                                    sortKeys.Add(new DrawSortKey
-                                    {
-                                        SpawnId = renderer.SpawnId,
-                                        Layer = renderer.Layer,
-                                        Index = srcIndex,
-                                    });
-                                }
-                            }
                         }
                     }
                     else
@@ -495,9 +461,9 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     {
         return renderer.RotationMode switch
         {
+            RendererRotationMode.FixedWorld => renderer.Rotation,
             RendererRotationMode.FollowTransform => transformRotation + renderer.Rotation,
-            RendererRotationMode.FollowVelocity => renderer.VelocityRotation + renderer.Rotation,
-            _ => renderer.Rotation,
+            _ => default,
         };
     }
 

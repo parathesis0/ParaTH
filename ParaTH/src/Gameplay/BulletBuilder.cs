@@ -40,8 +40,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     private int curvyLaserMaxNodes = 0;
     private float curvyLaserHalfWidth = 0;
     private LaserSourceRenderer laserSourceRenderer;
-    // optional static laser (set by MakeLaser); used to position LaserSource at the emit end
-    private float laserLength = 0;
 
     // spawn settings
     private int way = 1;
@@ -420,15 +418,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SyncRendererRotation()
-    {
-        renderer.RotationMode = RendererRotationMode.FollowVelocity;
-        if (movement.Velocity.LengthSquared() >= float.Epsilon)
-            renderer.VelocityRotation = MathF.Atan2(movement.Velocity.Y, movement.Velocity.X);
-        return ref this;
-    }
-
-    [UnscopedRef]
     public ref BulletBuilder SetRendererRotationMode(RendererRotationMode mode)
     {
         renderer.RotationMode = mode;
@@ -732,47 +721,14 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     }
     #endregion
 
-    #region Laser
-    [UnscopedRef]
-    public ref BulletBuilder MakeLaser(string spriteName, float length, float halfWidth, float rotation,
-                                       Color color, byte layer, StgBlendState blendState)
-    {
-        var sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
-
-        // shift Position from emit-origin to laser geometric center
-        // (Collider/Renderer are both centered on Transform.Position)
-        transform.Position += new Vector2(MathF.Cos(rotation), MathF.Sin(rotation)) * (length * 0.5f);
-        transform.Rotation = rotation;
-
-        // renderer: stretch the sprite to (length, halfWidth*2)
-        renderer.Texture = sprite.Texture;
-        renderer.SourceRect = sprite.SourceRect;
-        renderer.Anchor = new Vector2(sprite.SourceRect.Width * 0.5f, sprite.SourceRect.Height * 0.5f);
-        renderer.Scale = new Vector2(length / sprite.SourceRect.Width, halfWidth * 2f / sprite.SourceRect.Height);
-        renderer.Rotation = 0;
-        renderer.RotationMode = RendererRotationMode.FollowTransform;
-        renderer.Color = color;
-        renderer.Layer = layer;
-        renderer.BlendState = blendState;
-
-        // collider: OBB centered on Transform.Position, rotation read from Transform.Rotation at collide time
-        collider.IsActive = true;
-        collider.ShapeType = ShapeType.ObbRect;
-        collider.ObbRect.HalfSize = new Vector2(length * 0.5f, halfWidth * 0.5f);
-
-        // record length so Build() can position any LaserSource at the emit end,
-        // independent of whether SetLaserSourceSprite is called before or after MakeLaser
-        laserLength = length;
-
-        return ref this;
-    }
-    #endregion
-
     public void Build(scoped Span<Entity> outputEntities = default)
     {
         int amount = way * layer;
         if (amount <= 0)
+        {
+            DisposeInstructions();
             return;
+        }
 
         bool hasRenderer  = renderer.Texture is not null;
         bool hasAnimator  = !EqualityComparer<SpriteAnimator>.Default.Equals(spriteAnimator, default);
@@ -784,12 +740,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         bool hasSpawnFx   = spawnEffect.Duration > 0;
         bool hasCollider  = collider.IsActive;
         bool hasCurvyLsr  = curvyLaserMaxNodes > 0;
-        bool hasLsrSrcRdr = laserSourceRenderer.Sprite is not null;
-
-        // resolve LaserSource emit-end offset now that both length (from MakeLaser)
-        // and Sprite (from SetLaserSourceSprite) are available regardless of call order
-        if (hasLsrSrcRdr && laserLength > 0)
-            laserSourceRenderer.LocalOffset = new Vector2(-laserLength * 0.5f, 0);
+        bool hasLsrSrcRdr = hasCurvyLsr && laserSourceRenderer.Sprite is not null;
 
         int typeCount = 3 + Unsafe.As<bool, byte>(ref hasRenderer)
                           + Unsafe.As<bool, byte>(ref hasAnimator)
@@ -883,13 +834,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
                                         movement.SyncTransformRotation);
             lifetimes[i] = lifetime;
 
-            if (hasRenderer)
-            {
-                renderers[i] = renderer;
-                renderers[i].SpawnId = baseSpawnId + (uint)i;
-                if (renderers[i].RotationMode == RendererRotationMode.FollowVelocity)
-                    renderers[i].VelocityRotation = angle;
-            }
+            if (hasRenderer) { renderers[i] = renderer; renderers[i].SpawnId = baseSpawnId + (uint)i; }
             if (hasAnimator)   animators[i]  = spriteAnimator;
             if (hasPosCtr)     posCtrs[i]    = new () { Instructions = sharedPosInstr!,   Index = -1 };
             if (hasVelCtr)     velCtrs[i]    = new () { Instructions = sharedVelInstr!,   Index = -1 };
@@ -921,6 +866,11 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         if (!outputEntities.IsEmpty)
             entities.AsSpan().CopyTo(outputEntities);
 
+        DisposeInstructions();
+    }
+
+    private readonly void DisposeInstructions()
+    {
         positionInstructions.Dispose();
         velocityInstructions.Dispose();
         accelerationInstructions.Dispose();

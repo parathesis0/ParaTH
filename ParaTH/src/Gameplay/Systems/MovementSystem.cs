@@ -93,21 +93,11 @@ public sealed class MovementSystem(World world)
 
                     var velocityNotZero = delta.LengthSquared() >= float.Epsilon;
                     var angle = 0f;
-                    if (velocityNotZero && (movement.SyncTransformRotation ||
-                        (hasRnd && rndSpan.UnsafeAt(i).RotationMode == RendererRotationMode.FollowVelocity)))
-                    {
+                    if (velocityNotZero && movement.SyncTransformRotation)
                         angle = MathF.Atan2(delta.Y, delta.X);
-                    }
 
                     if (movement.SyncTransformRotation && velocityNotZero)
                         transform.Rotation = angle;
-
-                    if (hasRnd && velocityNotZero)
-                    {
-                        ref var renderer = ref rndSpan.UnsafeAt(i);
-                        if (renderer.RotationMode == RendererRotationMode.FollowVelocity)
-                            renderer.VelocityRotation = angle;
-                    }
 
                     if (hasRot)
                         UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref transform);

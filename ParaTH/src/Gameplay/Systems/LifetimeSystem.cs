@@ -70,7 +70,7 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                     }
                     else if (hasRenderer)
                     {
-                        float radius = CalculateSpriteRadius(ref transform, ref renderers.UnsafeAt(i));
+                        float radius = CalculateSpriteRadius(ref renderers.UnsafeAt(i));
                         isOffscreen = IsCircleOffscreen(transform.Position, radius);
                     }
                     else
@@ -217,13 +217,12 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float CalculateSpriteRadius(ref Transform tf, ref Renderer rnd)
+    private static float CalculateSpriteRadius(ref Renderer rnd)
     {
-        float w = rnd.SourceRect.Width;
-        float h = rnd.SourceRect.Height;
+        float w = rnd.SourceRect.Width * MathF.Abs(rnd.Scale.X);
+        float h = rnd.SourceRect.Height * MathF.Abs(rnd.Scale.Y);
         float baseRadius = (w > h ? w : h) * 0.5f;
-        float maxScale = tf.Scale.X > tf.Scale.Y ? tf.Scale.X : tf.Scale.Y;
-        return baseRadius * maxScale * 1.415f;
+        return baseRadius * 1.415f;
     }
 
     public void SetBounds(Rectangle newBounds)
