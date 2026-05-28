@@ -17,7 +17,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
     // debug: draw green collider outlines on top of everything
     public bool DebugDrawColliders;
-
     private const int DebugCircleSides = 16;
     private const byte DebugLayer = 255;
     private static readonly Color DebugColor = new(0, 255, 0, 128);
@@ -153,7 +152,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             Anchor = renderer.Anchor,
                             Scale = renderer.Scale,
                             Color = renderer.Color,
-                            Rotation = ResolveRotation(in renderer, transform.Rotation),
+                            Rotation = renderer.IsFixedRotation ? renderer.Rotation : transform.Rotation + renderer.Rotation,
                             Layer = renderer.Layer,
                             BlendState = renderer.BlendState,
                         };
@@ -209,7 +208,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             {
                                 Texture = renderer.Texture,
                                 SourceRect = renderer.SourceRect,
-                                TextureRotation = ResolveRotation(in renderer, transforms.UnsafeAt(i).Rotation),
+                                TextureRotation = renderer.Rotation,
                                 LaserNodes = laser.LaserNodes,
                                 HalfWidth = laser.HalfWidth,
                                 Color = renderer.Color,
@@ -302,8 +301,69 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
             DrawColliderDebugOverlay();
     }
 
-    // ────────────────── Debug Collider Draw ──────────────────
+    // ────────────────── Visibility ──────────────────
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool IsCurvyLaserVisible(UnsafePooledQueue<Vector2> nodes, float hw)
+    {
+        nodes.AsSpans(out var first, out var second);
+        var b = bounds;
+
+        if (AnyNodeInBounds(first, hw, b))
+            return true;
+
+        if (second.Length > 0 && AnyNodeInBounds(second, hw, b))
+            return true;
+
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool AnyNodeInBounds(Span<Vector2> nodes, float hw, Rectangle b)
+    {
+        for (int i = 0; i < nodes.Length; i++)
+        {
+            ref var n = ref nodes.UnsafeAt(i);
+            if (n.X + hw > b.Left && n.X - hw < b.Right &&
+                n.Y + hw > b.Top && n.Y - hw < b.Bottom)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ────────────────── Effects ──────────────────
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ApplySpawnEffect(
+#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+        ref SpawnEffect effect, in Renderer renderer, ref DeferredDrawData dd)
+#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
+    {
+        if (effect.Counter >= effect.Duration) return;
+
+        dd.Texture = effect.Sprite.Texture;
+        dd.SourceRect = effect.Sprite.SourceRect;
+        dd.Anchor = effect.Sprite.Anchor;
+
+        float t = (float)(effect.Counter + 1) / effect.Duration;
+        dd.Scale.X = MathHelper.Lerp(
+            effect.StartScale.X, renderer.Scale.X, Easing.Evaluate(effect.TypeX, t));
+        dd.Scale.Y = MathHelper.Lerp(
+            effect.StartScale.Y, renderer.Scale.Y, Easing.Evaluate(effect.TypeY, t));
+        dd.Color.A = (byte)MathHelper.Lerp(
+            (float)effect.StartAlpha * 255f, renderer.Color.A, t);
+    }
+
+    public void Dispose()
+    {
+        deferredDraws.Clear();
+        deferredCurvyLaserDraws.Clear();
+        sortKeys.Clear();
+    }
+
+    #region Debug Collider Draw
     private void DrawColliderDebugOverlay()
     {
         var q = world.GetOrCreateQuery(colliderDescriptor);
@@ -415,83 +475,9 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
 
         // counter-clockwise winding
         verts.UnsafeAt(0) = new Vector2(center.X + (-hx) * cos - (-hy) * sin, center.Y + (-hx) * sin + (-hy) * cos);
-        verts.UnsafeAt(1) = new Vector2(center.X + ( hx) * cos - (-hy) * sin, center.Y + ( hx) * sin + (-hy) * cos);
-        verts.UnsafeAt(2) = new Vector2(center.X + ( hx) * cos - ( hy) * sin, center.Y + ( hx) * sin + ( hy) * cos);
-        verts.UnsafeAt(3) = new Vector2(center.X + (-hx) * cos - ( hy) * sin, center.Y + (-hx) * sin + ( hy) * cos);
+        verts.UnsafeAt(1) = new Vector2(center.X + (hx) * cos - (-hy) * sin, center.Y + (hx) * sin + (-hy) * cos);
+        verts.UnsafeAt(2) = new Vector2(center.X + (hx) * cos - (hy) * sin, center.Y + (hx) * sin + (hy) * cos);
+        verts.UnsafeAt(3) = new Vector2(center.X + (-hx) * cos - (hy) * sin, center.Y + (-hx) * sin + (hy) * cos);
     }
-
-    // ────────────────── Visibility ──────────────────
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool IsCurvyLaserVisible(UnsafePooledQueue<Vector2> nodes, float hw)
-    {
-        nodes.AsSpans(out var first, out var second);
-        var b = bounds;
-
-        if (AnyNodeInBounds(first, hw, b))
-            return true;
-
-        if (second.Length > 0 && AnyNodeInBounds(second, hw, b))
-            return true;
-
-        return false;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool AnyNodeInBounds(Span<Vector2> nodes, float hw, Rectangle b)
-    {
-        for (int i = 0; i < nodes.Length; i++)
-        {
-            ref var n = ref nodes.UnsafeAt(i);
-            if (n.X + hw > b.Left && n.X - hw < b.Right &&
-                n.Y + hw > b.Top && n.Y - hw < b.Bottom)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // ────────────────── Effects ──────────────────
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
-    private static float ResolveRotation(in Renderer renderer, float transformRotation)
-#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
-    {
-        return renderer.RotationMode switch
-        {
-            RendererRotationMode.FixedWorld => renderer.Rotation,
-            RendererRotationMode.FollowTransform => transformRotation + renderer.Rotation,
-            _ => default,
-        };
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ApplySpawnEffect(
-#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
-        ref SpawnEffect effect, in Renderer renderer, ref DeferredDrawData dd)
-#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
-    {
-        if (effect.Counter >= effect.Duration) return;
-
-        dd.Texture = effect.Sprite.Texture;
-        dd.SourceRect = effect.Sprite.SourceRect;
-        dd.Anchor = effect.Sprite.Anchor;
-
-        float t = (float)(effect.Counter + 1) / effect.Duration;
-        dd.Scale.X = MathHelper.Lerp(
-            effect.StartScale.X, renderer.Scale.X, Easing.Evaluate(effect.TypeX, t));
-        dd.Scale.Y = MathHelper.Lerp(
-            effect.StartScale.Y, renderer.Scale.Y, Easing.Evaluate(effect.TypeY, t));
-        dd.Color.A = (byte)MathHelper.Lerp(
-            (float)effect.StartAlpha * 255f, renderer.Color.A, t);
-    }
-
-    public void Dispose()
-    {
-        deferredDraws.Clear();
-        deferredCurvyLaserDraws.Clear();
-        sortKeys.Clear();
-    }
+    #endregion
 }

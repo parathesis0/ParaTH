@@ -4,13 +4,12 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
-// this is a fucking piece of shit written by a dumb clanker, rewrite this
+// this is a fucking piece of shit, rewrite
 internal struct StraightLaserConfig
 {
     public SpriteAsset Sprite;
     public float Length;
     public float RenderHalfWidth;
-    public float Rotation;
     public Color Color;
     public byte Layer;
     public StgBlendState BlendState;
@@ -33,10 +32,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
     private Hierarchy sourceHierarchy;
 
     private ushort currentFrame = 0;
-    private readonly UnsafePooledList<PositionInstruction> positionInstructions = new(4);
-    private readonly UnsafePooledList<VelocityInstruction> velocityInstructions = new(4);
-    private readonly UnsafePooledList<AccelerationInstruction> accelerationInstructions = new(4);
-    private readonly UnsafePooledList<CurveInstruction> curveInstructions = new(4);
     private readonly UnsafePooledList<RotationInstruction> rotationInstructions = new(4);
 
     private int way = 1;
@@ -49,7 +44,15 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
     private float spreadDelta = 0;
     private SpawningType spawningType = SpawningType.None;
 
-    #region Motion
+    // TEMP
+    [UnscopedRef]
+    public ref LaserBuilder SetPosition(Vector2 position)
+    {
+        sourceTransform.Position = position;
+        return ref this;
+    }
+
+    #region Rotation
     [UnscopedRef]
     public ref LaserBuilder Delay(ushort frames)
     {
@@ -58,80 +61,48 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
     }
 
     [UnscopedRef]
-    public ref LaserBuilder SetPosition(Vector2 newPosition)
-    {
-        if (currentFrame == 0)
-        {
-            if (hasSourceHierarchy)
-                sourceHierarchy.LocalPosition = newPosition;
-            else
-                sourceTransform.Position = newPosition;
-            return ref this;
-        }
-
-        positionInstructions.Add(new(currentFrame,
-            newPosition, 0, EaseType.Linear, PositionInstruction.Ops.Set));
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref LaserBuilder SetVelocity(float velocityMagnitude, float angle)
-    {
-        return ref SetVelocity(new Vector2(
-            velocityMagnitude * MathF.Cos(angle),
-            velocityMagnitude * MathF.Sin(angle)));
-    }
-
-    [UnscopedRef]
-    public ref LaserBuilder SetVelocity(Vector2 newVelocity)
-    {
-        if (currentFrame == 0)
-        {
-            sourceMovement.Velocity = newVelocity;
-            return ref this;
-        }
-
-        velocityInstructions.Add(new(currentFrame,
-            newVelocity, 0, EaseType.Linear, VelocityInstruction.Ops.SetVelocity));
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref LaserBuilder SetAcceleration(Vector2 newAcceleration)
-    {
-        if (currentFrame == 0)
-        {
-            sourceMovement.Acceleration = newAcceleration;
-            return ref this;
-        }
-
-        accelerationInstructions.Add(new(currentFrame,
-            newAcceleration, AccelerationInstruction.Ops.SetAcceleration));
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref LaserBuilder SetMovement(Vector2 velocity, Vector2 acceleration)
-    {
-        SetVelocity(velocity);
-        SetAcceleration(acceleration);
-        return ref this;
-    }
-
-    [UnscopedRef]
     public ref LaserBuilder SetRotation(float newRotation)
     {
         if (currentFrame == 0)
         {
-            if (hasSourceHierarchy)
-                sourceHierarchy.LocalRotation = newRotation;
-            else
-                sourceTransform.Rotation = newRotation;
+            sourceTransform.Rotation = newRotation;
             return ref this;
         }
 
         rotationInstructions.Add(new(currentFrame,
             newRotation, 0, EaseType.Linear, RotationInstruction.Ops.SetRotation));
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref LaserBuilder AddRotation(float rotationDelta)
+    {
+        if (currentFrame == 0)
+        {
+            sourceTransform.Rotation += rotationDelta;
+            return ref this;
+        }
+
+        rotationInstructions.Add(new(currentFrame,
+            rotationDelta, 0, EaseType.Linear, RotationInstruction.Ops.AddRotation));
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref LaserBuilder LerpToRotation(float newRotation, ushort duration, EaseType easeType)
+    {
+        rotationInstructions.Add(new(currentFrame,
+            newRotation, duration, easeType, RotationInstruction.Ops.SetRotation));
+        currentFrame += duration;
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref LaserBuilder LerpAddRotation(float rotationDelta, ushort duration, EaseType easeType)
+    {
+        rotationInstructions.Add(new(currentFrame,
+            rotationDelta, duration, easeType, RotationInstruction.Ops.AddRotation));
+        currentFrame += duration;
         return ref this;
     }
 
@@ -144,9 +115,10 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
     }
 
     [UnscopedRef]
-    public ref LaserBuilder SyncTransformRotation()
+    public ref LaserBuilder AddRotationalVelocity(float rotationalVelocityDelta)
     {
-        sourceMovement.SyncTransformRotation = true;
+        rotationInstructions.Add(new(currentFrame,
+            rotationalVelocityDelta, 0, EaseType.Linear, RotationInstruction.Ops.AddRotationalVelocity));
         return ref this;
     }
     #endregion
@@ -168,7 +140,7 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
     }
     #endregion
 
-    #region Visual
+    #region Main
     [UnscopedRef]
     public ref LaserBuilder MakeLaser(string spriteName, float length, float halfWidth, float rotation,
                                       Color color, byte layer, StgBlendState blendState)
@@ -176,7 +148,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
         laser.Sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
         laser.Length = length;
         laser.RenderHalfWidth = halfWidth;
-        laser.Rotation = rotation;
         laser.Color = color;
         laser.Layer = layer;
         laser.BlendState = blendState;
@@ -310,8 +281,7 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
 
         BuildCore(factory, sourceTransform, sourceMovement, lifetime,
             collider, sourceRenderer, laser,
-            positionInstructions, velocityInstructions, accelerationInstructions,
-            curveInstructions, rotationInstructions,
+            rotationInstructions,
             spawningType, way, layer, layerVelocityDelta, layerAccelerationDelta,
             layerAngleOffset, distanceToCenter, totalSpread, spreadDelta,
             hasSourceHierarchy, sourceHierarchy, outputEntities);
@@ -327,10 +297,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
         Collider baseCollider,
         LaserSourceRenderer sourceRenderer,
         StraightLaserConfig laser,
-        UnsafePooledList<PositionInstruction> positionInstructions,
-        UnsafePooledList<VelocityInstruction> velocityInstructions,
-        UnsafePooledList<AccelerationInstruction> accelerationInstructions,
-        UnsafePooledList<CurveInstruction> curveInstructions,
         UnsafePooledList<RotationInstruction> rotationInstructions,
         SpawningType spawningType,
         int way,
@@ -350,18 +316,10 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
             return;
 
         bool hasSourceRenderer = sourceRenderer.Sprite is not null;
-        bool hasPosCtr = positionInstructions.Count > 0;
-        bool hasVelCtr = velocityInstructions.Count > 0;
-        bool hasAccCtr = accelerationInstructions.Count > 0;
-        bool hasCurveCtr = curveInstructions.Count > 0;
         bool hasRotCtr = rotationInstructions.Count > 0;
         bool hasCollider = baseCollider.IsActive;
 
         int sourceTypeCount = 3 + Unsafe.As<bool, byte>(ref hasSourceRenderer)
-                                + Unsafe.As<bool, byte>(ref hasPosCtr)
-                                + Unsafe.As<bool, byte>(ref hasVelCtr)
-                                + Unsafe.As<bool, byte>(ref hasAccCtr)
-                                + Unsafe.As<bool, byte>(ref hasCurveCtr)
                                 + Unsafe.As<bool, byte>(ref hasRotCtr)
                                 + Unsafe.As<bool, byte>(ref hasSourceHierarchy);
 
@@ -371,10 +329,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
         sourceTypes.UnsafeAt(idx++) = Component<Movement>.TypeInfo;
         sourceTypes.UnsafeAt(idx++) = Component<Lifetime>.TypeInfo;
         if (hasSourceRenderer) sourceTypes.UnsafeAt(idx++) = Component<Renderer>.TypeInfo;
-        if (hasPosCtr) sourceTypes.UnsafeAt(idx++) = Component<PositionController>.TypeInfo;
-        if (hasVelCtr) sourceTypes.UnsafeAt(idx++) = Component<VelocityController>.TypeInfo;
-        if (hasAccCtr) sourceTypes.UnsafeAt(idx++) = Component<AccelerationController>.TypeInfo;
-        if (hasCurveCtr) sourceTypes.UnsafeAt(idx++) = Component<CurveController>.TypeInfo;
         if (hasRotCtr) sourceTypes.UnsafeAt(idx++) = Component<RotationController>.TypeInfo;
         if (hasSourceHierarchy) sourceTypes.UnsafeAt(idx++) = Component<Hierarchy>.TypeInfo;
 
@@ -400,10 +354,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
 
         using var sourceRenderers = hasSourceRenderer ? ScopedPooledArray<Renderer>.Rent(amount) : default;
         using var sourceHierarchies = hasSourceHierarchy ? ScopedPooledArray<Hierarchy>.Rent(amount) : default;
-        using var posCtrs = hasPosCtr ? ScopedPooledArray<PositionController>.Rent(amount) : default;
-        using var velCtrs = hasVelCtr ? ScopedPooledArray<VelocityController>.Rent(amount) : default;
-        using var accCtrs = hasAccCtr ? ScopedPooledArray<AccelerationController>.Rent(amount) : default;
-        using var curveCtrs = hasCurveCtr ? ScopedPooledArray<CurveController>.Rent(amount) : default;
         using var rotCtrs = hasRotCtr ? ScopedPooledArray<RotationController>.Rent(amount) : default;
         using var bodyColliders = hasCollider ? ScopedPooledArray<Collider>.Rent(amount) : default;
 
@@ -412,10 +362,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
         float baseAccMag = baseSourceMovement.Acceleration.Length();
         float baseAccAngle = baseAccMag > 0 ? MathF.Atan2(baseSourceMovement.Acceleration.Y, baseSourceMovement.Acceleration.X) : baseVelAngle;
 
-        var sharedPosInstr = hasPosCtr ? positionInstructions.ToArray() : null;
-        var sharedVelInstr = hasVelCtr ? velocityInstructions.ToArray() : null;
-        var sharedAccInstr = hasAccCtr ? accelerationInstructions.ToArray() : null;
-        var sharedCurveInstr = hasCurveCtr ? curveInstructions.ToArray() : null;
         var sharedRotInstr = hasRotCtr ? rotationInstructions.ToArray() : null;
 
         uint baseSpawnId = factory.GlobalSpawnCounter;
@@ -431,7 +377,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
             Scale = new Vector2(laser.Length / laserSprite.SourceRect.Width,
                                 laser.RenderHalfWidth * 2f / laserSprite.SourceRect.Height),
             Rotation = 0,
-            RotationMode = RendererRotationMode.FollowTransform,
             Color = laser.Color,
             Layer = laser.Layer,
             BlendState = laser.BlendState
@@ -503,18 +448,13 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
                     Anchor = sprite.Anchor,
                     Scale = sourceRenderer.Scale,
                     Rotation = 0,
-                    RotationMode = RendererRotationMode.FollowTransform,
                     Color = laser.Color,
-                    SpawnId = bodySpawnId + 1,  // why the fuck isn't unique
+                    SpawnId = bodySpawnId + 1,  // why the fuck isn't this unique
                     Layer = laser.Layer,
                     BlendState = laser.BlendState
                 };
             }
 
-            if (hasPosCtr) posCtrs[i] = new() { Instructions = sharedPosInstr!, Index = -1 };
-            if (hasVelCtr) velCtrs[i] = new() { Instructions = sharedVelInstr!, Index = -1 };
-            if (hasAccCtr) accCtrs[i] = new() { Instructions = sharedAccInstr!, Index = -1 };
-            if (hasCurveCtr) curveCtrs[i] = new() { Instructions = sharedCurveInstr!, Index = -1 };
             if (hasRotCtr) rotCtrs[i] = new() { Instructions = sharedRotInstr!, Index = -1 };
 
             bodyTransforms[i] = CalculateChildTransform(sourceTransform, bodyHierarchy);
@@ -526,10 +466,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
         factory.World.ReserveEntityBulk(sourceEntities.AsSpan(), sourceTypes, out Archetype sourceArchetype, out Slot sourceStart, out Slot sourceEnd);
         sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceTransforms.AsSpan(), sourceMovements.AsSpan(), sourceLifetimes.AsSpan());
         if (hasSourceRenderer) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceRenderers.AsSpan());
-        if (hasPosCtr) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, posCtrs.AsSpan());
-        if (hasVelCtr) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, velCtrs.AsSpan());
-        if (hasAccCtr) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, accCtrs.AsSpan());
-        if (hasCurveCtr) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, curveCtrs.AsSpan());
         if (hasRotCtr) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, rotCtrs.AsSpan());
         if (hasSourceHierarchy) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceHierarchies.AsSpan());
 
@@ -584,10 +520,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
 
     private readonly void DisposeInstructions()
     {
-        positionInstructions.Dispose();
-        velocityInstructions.Dispose();
-        accelerationInstructions.Dispose();
-        curveInstructions.Dispose();
         rotationInstructions.Dispose();
     }
 }

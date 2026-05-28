@@ -321,11 +321,6 @@ public sealed class MovementSystem(World world)
 
     private static void UpdateRotationController(ref RotationController ctrl, ushort currentFrame, ref Transform transform)
     {
-        UpdateRotationControllerCore(ref ctrl, currentFrame, ref transform);
-    }
-
-    private static void UpdateRotationControllerCore(ref RotationController ctrl, ushort currentFrame, ref Transform transform)
-    {
         var insts = ctrl.Instructions;
         // handle instruction advance
         while (ctrl.Index < insts.Length - 1 && currentFrame >= insts.UnsafeAt(ctrl.Index + 1).TriggerFrame)

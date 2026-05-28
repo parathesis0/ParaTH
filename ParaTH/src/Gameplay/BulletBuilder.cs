@@ -418,9 +418,9 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     }
 
     [UnscopedRef]
-    public ref BulletBuilder SetRendererRotationMode(RendererRotationMode mode)
+    public ref BulletBuilder SetRendererRotation(bool isFixedRotation)
     {
-        renderer.RotationMode = mode;
+        renderer.IsFixedRotation = isFixedRotation;
         return ref this;
     }
 

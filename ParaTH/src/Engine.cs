@@ -343,7 +343,7 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
                 // 1) horizontal laser, source sprite at left emit-end
                 bulletManager.CreateLaser()
                     .SetPosition(new Vector2(80, 80))
-                    .MakeLaser("mediumball_red", length: 480, halfWidth: 8, rotation: 0,
+                    .MakeLaser("longlaser_lightred", length: 480, halfWidth: 8, rotation: 0,
                                Color.White, layer: 100, StgBlendState.Additive)
                     .SetLaserSourceSprite("lasersource_red", Vector2.One)
                     .SetCollisionGroup(0b0000_0010)
@@ -352,11 +352,27 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
                 // 2) diagonal laser, narrower, no source sprite (visual-only)
                 bulletManager.CreateLaser()
                     .SetPosition(new Vector2(40, 110))
-                    .MakeLaser("mediumball_green", length: 560, halfWidth: 4,
+                    .MakeLaser("longlaser_lightgreen", length: 560, halfWidth: 8,
                                rotation: MathHelper.Pi / 6f,
                                Color.White, layer: 100, StgBlendState.Additive)
                     .SetLaserSourceSprite("lasersource_green", Vector2.One)
                     .SetCollisionGroup(0b0000_0010)
+                    .SetRotationalVelocity(0.01f)
+                    .Delay(100)
+                    .SetRotationalVelocity(-0.01f)
+                    .Delay(100)
+                    .SetRotationalVelocity(0.01f)
+                    .Delay(100)
+                    .SetRotationalVelocity(-0.01f)
+                    .Delay(100)
+                    .SetRotationalVelocity(0.01f)
+                    .Delay(100)
+                    .SetRotationalVelocity(-0.01f)
+                    .Delay(100)
+                    .SetRotationalVelocity(0.01f)
+                    .Delay(100)
+                    .SetRotationalVelocity(-0.01f)
+                    .Delay(100)
                     .Build();
 
                 // 3) radial fan of 12 lasers from (480, 360)
@@ -366,17 +382,18 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
                     float angle = MathHelper.TwoPi / Ways * i;
                     bulletManager.CreateLaser()
                         .SetPosition(new Vector2(480, 360))
-                        .MakeLaser("mediumball_blue", length: 100, halfWidth: 3, rotation: angle,
+                        .MakeLaser("longlaser_lightblue", length: 100, halfWidth: 8, rotation: angle,
                                    Color.White, layer: 99, StgBlendState.Additive)
                         .SetLaserSourceSprite("lasersource_blue", new Vector2(0.5f, 0.5f))
                         .SetCollisionGroup(0b0000_0010)
+                        .SetRotationalVelocity(0.01f)
                         .Build();
                 }
 
                 // 4) vertical laser, stretched thicker, taking the right edge of the play area
                 bulletManager.CreateLaser()
                     .SetPosition(new Vector2(600, 40))
-                    .MakeLaser("mediumball_pink", length: 280, halfWidth: 10,
+                    .MakeLaser("longlaser_lightpink", length: 280, halfWidth: 8,
                                rotation: MathHelper.PiOver2,
                                Color.White, layer: 100, StgBlendState.Additive)
                     .SetLaserSourceSprite("lasersource_pink", new Vector2(1.2f, 1.2f))
@@ -444,6 +461,7 @@ public sealed class Engine : Game
 
         assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "heart_pink");
         assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "arrow_pink");
+        assetManager.Load<SpriteAsset>("bullet/laser_sprites_test.txt", "longlaser_lightred");
 
         assetManager.Load<AnimationAsset>("bullet/bullet_animations.txt", "fireball_red");
 
@@ -488,7 +506,7 @@ public sealed class Engine : Game
         animationSystem = new AnimationSystem(world);
         renderSystem = new RenderSystem(world, stgBatch, gameBounds)
         {
-            DebugDrawColliders = true
+            DebugDrawColliders = false
         };
         collisionSystem = new CollisionSystem(world);
         lifetimeSystem = new LifetimeSystem(world, gameBounds);
