@@ -109,6 +109,21 @@ public sealed class UnsafePooledList<T> : IDisposable
         items = newItems;
     }
 
+    // pops the last element. asserts non-empty; clears the slot only when T holds references.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void RemoveLast()
+    {
+        int count = this.count;
+        if (count == 0)
+            return;
+
+        count--;
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            items.UnsafeAt(count) = default!;
+
+        this.count = count;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Span<T> AsSpan()
     {

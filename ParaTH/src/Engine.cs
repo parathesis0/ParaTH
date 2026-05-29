@@ -421,6 +421,7 @@ public sealed class Engine : Game
     private CollisionSystem collisionSystem = null!;
     private LifetimeSystem lifetimeSystem = null!;
     private HierarchySystem hierarcySystem = null!;
+    private HierarchyManager hierarchyManager = null!;
 
     private Rectangle gameBounds = new(0, 0, 640, 480); // new(640 / 4, 480 / 4, 640 / 2, 480 / 2);
 
@@ -511,6 +512,7 @@ public sealed class Engine : Game
         collisionSystem = new CollisionSystem(world);
         lifetimeSystem = new LifetimeSystem(world, gameBounds);
         hierarcySystem = new HierarchySystem(world);
+        hierarchyManager = new HierarchyManager(world);
 
         script = new(bulletFactory, world, this, assetManager);
     }
@@ -609,6 +611,7 @@ public sealed class Engine : Game
         collisionSystem.Dispose();
         lifetimeSystem.Dispose();
         hierarcySystem.Dispose();
+        hierarchyManager.Dispose();
         base.UnloadContent();
     }
 
@@ -616,38 +619,20 @@ public sealed class Engine : Game
     // todo: should these be in a separate class/system?
     public void SetParentTest(Entity parent, Entity children, Vector2 localPosition, Vector2 localScale, float rotation = 0)
     {
-        world.AddComponent<Hierarchy>(children, new() {
-            Parent = parent,
-            LocalPosition = localPosition,
-            LocalScale = localScale,
-            LocalRotation = rotation
-        });
+        // route through the manager so Depth + parent->child links stay correct.
+        // keep-local mode, then stamp the explicit local TRS the caller asked for.
+        hierarchyManager.SetParent(children, parent, worldPositionStays: false);
+        ref var hierarchy = ref world.GetComponent<Hierarchy>(children);
+        hierarchy.LocalPosition = localPosition;
+        hierarchy.LocalScale = localScale;
+        hierarchy.LocalRotation = rotation;
     }
 
     public void SetParentTest(Entity parent, Entity children, bool keepWorldTransform)
     {
-        if (!world.TryGetComponent<Transform>(children, out var transform))
+        if (!world.HasComponent<Transform>(children))
             return;
 
-        if (keepWorldTransform)
-        {
-            ref var parentTransform = ref world.GetComponent<Transform>(parent);
-            world.AddComponent<Hierarchy>(children, new() {
-                Parent = parent,
-                LocalPosition = transform.Position - parentTransform.Position,
-                LocalScale = transform.Scale / parentTransform.Scale,
-                LocalRotation = transform.Rotation - parentTransform.Rotation
-            });
-        }
-        else
-        {
-            world.AddComponent<Hierarchy>(children, new()
-            {
-                Parent = parent,
-                LocalPosition = transform.Position,
-                LocalScale = transform.Scale,
-                LocalRotation = transform.Rotation
-            });
-        }
+        hierarchyManager.SetParent(parent: parent, child: children, worldPositionStays: keepWorldTransform);
     }
 }
