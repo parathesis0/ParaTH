@@ -18,4 +18,10 @@ public struct Renderer
     public bool IsFixedRotation;        // 1
     public bool IsVisible;              // 1
                                         // 4 padding
+
+    // resolves the angle the sprite is drawn at.
+    // IsFixedRotation: the renderer's own Rotation is an absolute world angle, ignoring the entity's facing.
+    // otherwise: renderer.Rotation is an offset added on top of the entity's Transform.Rotation.
+    public readonly float ResolveRenderRotation(float transformRotation)
+        => IsFixedRotation ? Rotation : transformRotation + Rotation;
 }

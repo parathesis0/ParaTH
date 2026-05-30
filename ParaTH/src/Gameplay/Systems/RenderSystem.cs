@@ -152,7 +152,7 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                             Anchor = renderer.Anchor,
                             Scale = renderer.Scale,
                             Color = renderer.Color,
-                            Rotation = renderer.IsFixedRotation ? renderer.Rotation : transform.Rotation + renderer.Rotation,
+                            Rotation = renderer.ResolveRenderRotation(transform.Rotation),
                             Layer = renderer.Layer,
                             BlendState = renderer.BlendState,
                         };

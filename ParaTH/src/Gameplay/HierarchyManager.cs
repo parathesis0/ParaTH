@@ -37,7 +37,8 @@ public sealed class HierarchyManager(World world) : IDisposable
     // make `parent` the parent of `child`. pass default(Entity) for parent to unparent (-> root).
     // worldPositionStays: true keeps the child's world transform (local TRS is recomputed from world,
     // Unity's default); false keeps the child's local TRS (its world transform jumps under the new parent).
-    public void SetParent(Entity child, Entity parent, bool worldPositionStays = true)
+    public void SetParent(Entity child, Entity parent, bool worldPositionStays = true,
+                          bool preserveTransformRotation = false)
     {
         Debug.Assert(world.IsAlive(child));
 
@@ -59,16 +60,16 @@ public sealed class HierarchyManager(World world) : IDisposable
         {
             // same parent: just refresh local TRS per the requested mode, no relink/depth change.
             ref var existing = ref world.GetComponent<Hierarchy>(child);
+            existing.PreserveTransformRotation = preserveTransformRotation;
             WriteLocalTransform(ref existing, child, parent, worldPositionStays, hadHierarchy: true);
             return;
         }
         if (oldParent != default)
             UnlinkChild(oldParent, child);
 
-        int parentDepth = world.HasComponent<Hierarchy>(parent)
-            ? world.GetComponent<Hierarchy>(parent).Depth
-            : 0;
-        int childDepth = parentDepth + 1;
+        int childDepth = world.HasComponent<Hierarchy>(parent)
+            ? world.GetComponent<Hierarchy>(parent).Depth + 1  // child of a hierarchy node
+            : 0;                                               // child of a root (matches LaserBuilder.GetChildDepth)
 
         bool hadHierarchy = world.HasComponent<Hierarchy>(child);
         if (hadHierarchy)
@@ -76,11 +77,15 @@ public sealed class HierarchyManager(World world) : IDisposable
             ref var hierarchy = ref world.GetComponent<Hierarchy>(child);
             hierarchy.Parent = parent;
             hierarchy.Depth = childDepth;
+            hierarchy.PreserveTransformRotation = preserveTransformRotation;
             WriteLocalTransform(ref hierarchy, child, parent, worldPositionStays, hadHierarchy: true);
         }
         else
         {
-            var hierarchy = new Hierarchy(parent, Vector2.Zero, Vector2.One, 0) { Depth = childDepth };
+            var hierarchy = new Hierarchy(parent, Vector2.Zero, Vector2.One, 0, preserveTransformRotation)
+            {
+                Depth = childDepth
+            };
             WriteLocalTransform(ref hierarchy, child, parent, worldPositionStays, hadHierarchy: false);
             world.AddComponent(child, hierarchy); // structural: moves child to a +Hierarchy archetype
         }

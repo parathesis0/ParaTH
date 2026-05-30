@@ -10,6 +10,8 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
     Entity[] reimu = null!;
     Entity[] youmu = null!;
 
+    Entity sweepEmitter; // Pattern D: RotationController-driven sweeping emitter
+
     int counter;
 
     public void Update()
@@ -337,72 +339,164 @@ public sealed class TestScript(BulletFactory bulletManager, World world, Engine 
             //        .Build();
             //}
 
-            // static laser (new MakeLaser API) - one-shot at frame 0
+            // ============================================================
+            // Flag demonstration patterns.
+            // Exercises Movement.SyncTransformRotation, Renderer.IsFixedRotation,
+            // Hierarchy.PreserveTransformRotation, driven by RotationController.
+            // ============================================================
+
+            // one-shot anchored patterns (spin/orbit in place, never go offscreen)
             if (counter == 0)
             {
-                // 1) horizontal laser, source sprite at left emit-end
-                bulletManager.CreateLaser()
-                    .SetPosition(new Vector2(80, 80))
-                    .MakeLaser("longlaser_lightred", length: 480, halfWidth: 8, rotation: 0,
-                               Color.White, layer: 100, StgBlendState.Additive)
-                    .SetLaserSourceSprite("lasersource_red", Vector2.One)
-                    .SetCollisionGroup(0b0000_0010)
-                    .Build();
-
-                // 2) diagonal laser, narrower, no source sprite (visual-only)
-                bulletManager.CreateLaser()
-                    .SetPosition(new Vector2(40, 110))
-                    .MakeLaser("longlaser_lightgreen", length: 560, halfWidth: 8,
-                               rotation: MathHelper.Pi / 6f,
-                               Color.White, layer: 100, StgBlendState.Additive)
-                    .SetLaserSourceSprite("lasersource_green", Vector2.One)
-                    .SetCollisionGroup(0b0000_0010)
-                    .SetRotationalVelocity(0.01f)
-                    .Delay(100)
-                    .SetRotationalVelocity(-0.01f)
-                    .Delay(100)
-                    .SetRotationalVelocity(0.01f)
-                    .Delay(100)
-                    .SetRotationalVelocity(-0.01f)
-                    .Delay(100)
-                    .SetRotationalVelocity(0.01f)
-                    .Delay(100)
-                    .SetRotationalVelocity(-0.01f)
-                    .Delay(100)
-                    .SetRotationalVelocity(0.01f)
-                    .Delay(100)
-                    .SetRotationalVelocity(-0.01f)
-                    .Delay(100)
-                    .Build();
-
-                // 3) radial fan of 12 lasers from (480, 360)
-                const int Ways = 12;
-                for (int i = 0; i < Ways; i++)
-                {
-                    float angle = MathHelper.TwoPi / Ways * i;
-                    bulletManager.CreateLaser()
-                        .SetPosition(new Vector2(480, 360))
-                        .MakeLaser("longlaser_lightblue", length: 100, halfWidth: 8, rotation: angle,
-                                   Color.White, layer: 99, StgBlendState.Additive)
-                        .SetLaserSourceSprite("lasersource_blue", new Vector2(0.5f, 0.5f))
-                        .SetCollisionGroup(0b0000_0010)
-                        .SetRotationalVelocity(0.01f)
-                        .Build();
-                }
-
-                // 4) vertical laser, stretched thicker, taking the right edge of the play area
-                bulletManager.CreateLaser()
-                    .SetPosition(new Vector2(600, 40))
-                    .MakeLaser("longlaser_lightpink", length: 280, halfWidth: 8,
-                               rotation: MathHelper.PiOver2,
-                               Color.White, layer: 100, StgBlendState.Additive)
-                    .SetLaserSourceSprite("lasersource_pink", new Vector2(1.2f, 1.2f))
-                    .SetCollisionGroup(0b0000_0010)
-                    .Build();
+                SetupPatternB_IsFixedRotation();
+                SetupPatternC_PreserveTransformRotation();
+                SetupPatternD_SweepingEmitter();
             }
+
+            // Pattern A: curving arrows, sync-rotation ON vs OFF, refreshed periodically
+            if (counter % 90 == 0)
+                FirePatternA_SyncTransformRotation();
+
+            // Pattern D: emitter sweeps via RotationController; fire along its current facing
+            if (counter % 4 == 0)
+                FirePatternD_Sweep();
         }
 
         counter++;
+    }
+
+    // ----------------------------------------------------------------
+    // Pattern A — Movement.SyncTransformRotation
+    // Two arrows launched together on the same curving path (CurveController rotates
+    // their velocity). The SYNC arrow turns to face its velocity each frame; the
+    // NO-SYNC arrow keeps its launch rotation. Side-by-side the difference is obvious.
+    // ----------------------------------------------------------------
+    private void FirePatternA_SyncTransformRotation()
+    {
+        Vector2 origin = new(320, 60);
+
+        // SYNC ON: transform.Rotation is overwritten to atan2(velocity) every frame
+        bulletManager.Create()
+            .SetPosition(origin - new Vector2(20, 0))
+            .SetSprite("arrow_green", Color.White, 100, StgBlendState.Alpha, rotation: 0f)
+            .SetVelocity(2.5f, MathHelper.PiOver2)
+            .SetAngularVelocity(0.03f)            // curve the velocity so facing changes
+            .SyncTransformRotation()
+            .SetOffscreenLifeTime(0)
+            .Build();
+
+        // SYNC OFF: same curving path, but rotation stays fixed at launch
+        bulletManager.Create()
+            .SetPosition(origin + new Vector2(20, 0))
+            .SetSprite("arrow_yellow", Color.White, 100, StgBlendState.Alpha, rotation: 0f)
+            .SetVelocity(2.5f, MathHelper.PiOver2)
+            .SetAngularVelocity(0.03f)
+            .SetOffscreenLifeTime(0)
+            .Build();
+    }
+
+    // ----------------------------------------------------------------
+    // Pattern B — Renderer.IsFixedRotation
+    // A ring of rice bullets, each spun in place by a RotationController. Alternating
+    // bullets set IsFixedRotation: FIXED ones keep their sprite angle while the transform
+    // spins underneath; NON-FIXED ones visibly rotate with the transform.
+    // ----------------------------------------------------------------
+    private void SetupPatternB_IsFixedRotation()
+    {
+        Vector2 center = new(480, 360);
+        const int Count = 10;
+        const float Radius = 55;
+
+        for (int i = 0; i < Count; i++)
+        {
+            float a = MathHelper.TwoPi / Count * i;
+            var pos = center + new Vector2(Radius * MathF.Cos(a), Radius * MathF.Sin(a));
+            bool isFixed = (i & 1) == 0;
+
+            bulletManager.Create()
+                .SetPosition(pos)
+                .SetSprite(isFixed ? "rice_lightgreen" : "rice_orange",
+                           Color.White, 100, StgBlendState.Alpha, rotation: 0f)
+                .SetRendererRotation(isFixed)     // IsFixedRotation = true on greens
+                .SetRotationalVelocity(0.05f)     // RotationController spins the transform
+                .Build();
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // Pattern C — Hierarchy.PreserveTransformRotation
+    // A spinning parent (RotationController) with kunai children orbiting it. Children all
+    // orbit (position follows parent rotation), but PRESERVE children keep their own world
+    // rotation while NON-PRESERVE children rotate with the parent.
+    // ----------------------------------------------------------------
+    private void SetupPatternC_PreserveTransformRotation()
+    {
+        Vector2 center = new(160, 360);
+
+        Span<Entity> parentSpan = stackalloc Entity[1];
+        bulletManager.Create()
+            .SetPosition(center)
+            .SetSprite("bigball_red", Color.White, 90, StgBlendState.Additive, rotation: 0f)
+            .SetRotationalVelocity(0.02f)         // parent spins -> children orbit
+            .Build(parentSpan);
+        var parent = parentSpan[0];
+
+        const int Count = 8;
+        const float Radius = 75;
+        Span<Entity> childSpan = stackalloc Entity[1];
+        for (int i = 0; i < Count; i++)
+        {
+            float a = MathHelper.TwoPi / Count * i;
+            var pos = center + new Vector2(Radius * MathF.Cos(a), Radius * MathF.Sin(a));
+            bool preserve = (i & 1) == 0;
+
+            bulletManager.Create()
+                .SetPosition(pos)
+                .SetSprite(preserve ? "kunai_lightblue" : "kunai_lightred",
+                           Color.White, 100, StgBlendState.Alpha, rotation: 0f)
+                .Build(childSpan);
+
+            // worldPositionStays bakes the orbit offset from current world pos;
+            // preserveTransformRotation decides whether the child keeps its own rotation.
+            engine.Hierarchy.SetParent(childSpan[0], parent,
+                worldPositionStays: true, preserveTransformRotation: preserve);
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // Pattern D — Integration: RotationController-driven sweeping emitter
+    // A turret pinned at center spins via RotationController. Each tick we read its
+    // current facing and fire a 3-way spread of velocity-facing rice along it, producing
+    // a sweeping fan. Ties RotationController + SyncTransformRotation together.
+    // ----------------------------------------------------------------
+    private void SetupPatternD_SweepingEmitter()
+    {
+        Span<Entity> span = stackalloc Entity[1];
+        bulletManager.Create()
+            .SetPosition(new Vector2(320, 240))
+            .SetSprite("mediumball_blue", Color.White, 95, StgBlendState.Additive, rotation: 0f)
+            .SetRotationalVelocity(0.04f)         // turret sweep speed
+            .Build(span);
+        sweepEmitter = span[0];
+    }
+
+    private void FirePatternD_Sweep()
+    {
+        if (!world.IsAlive(sweepEmitter))
+            return;
+
+        ref var emitter = ref world.GetComponent<Transform>(sweepEmitter);
+        float facing = emitter.Rotation;
+        Vector2 pos = emitter.Position;
+
+        bulletManager.Create()
+            .SetPosition(pos)
+            .SetSprite("rice_lightcyan", Color.White, 100, StgBlendState.Additive, rotation: 0f)
+            .SetVelocity(3f, facing)
+            .SetSpawningSpreadByDelta(3, MathHelper.Pi / 16f)   // 3-way fan around facing
+            .SyncTransformRotation()                            // each rice faces its own velocity
+            .SetOffscreenLifeTime(0)
+            .Build();
     }
 }
 
@@ -422,6 +516,9 @@ public sealed class Engine : Game
     private LifetimeSystem lifetimeSystem = null!;
     private HierarchySystem hierarcySystem = null!;
     private HierarchyManager hierarchyManager = null!;
+
+    // exposed so scripts can do runtime Unity-like reparenting
+    public HierarchyManager Hierarchy => hierarchyManager;
 
     private Rectangle gameBounds = new(0, 0, 640, 480); // new(640 / 4, 480 / 4, 640 / 2, 480 / 2);
 
