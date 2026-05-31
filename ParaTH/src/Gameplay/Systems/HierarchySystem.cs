@@ -43,7 +43,12 @@ public sealed class HierarchySystem(World world) : IDisposable
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
-                    int depth = hierarchies.UnsafeAt(i).Depth;
+                    ref var hierarchy = ref hierarchies.UnsafeAt(i);
+                    var parent = hierarchy.Parent;
+                    if (parent == default)
+                        continue;
+
+                    int depth = hierarchy.Depth;
 
                     if (depth > maxDepthSeen)
                     {
@@ -58,7 +63,7 @@ public sealed class HierarchySystem(World world) : IDisposable
                         Archetype = archetype,
                         ChunkIndex = ci,
                         Index = i,
-                        Parent = hierarchies.UnsafeAt(i).Parent
+                        Parent = parent
                     });
                 }
             }

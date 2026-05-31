@@ -256,7 +256,8 @@ public static class LogicTests
 
         manager.Unparent(b);
 
-        Check(!world.HasComponent<Hierarchy>(b), "unparent: b has no Hierarchy");
+        Check(manager.GetParent(b) == default, "unparent: b has no parent");
+        Check(world.HasComponent<Hierarchy>(b), "unparent: b keeps Hierarchy for child list");
         Check(manager.GetChildCount(a) == 0, "unparent: a has no children");
         Check(manager.GetParent(c) == b, "unparent: c still child of b");
         Check(world.GetComponent<Hierarchy>(c).Depth == 0, "unparent: c re-rooted to depth 0");

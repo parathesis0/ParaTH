@@ -6,11 +6,9 @@ namespace ParaTH;
 
 // Unity-like runtime parenting on top of the Hierarchy component.
 //
-// the Hierarchy component stores the child -> parent link + local TRS and is what
-// HierarchySystem/LifetimeSystem/MovementSystem already consume. it has no parent -> child link,
-// which is needed to (a) walk a subtree to fix Depth after a reparent and (b) enumerate children.
-// this manager owns that missing adjacency externally (keyed by entity id) so the component layout
-// and the three systems stay untouched.
+// Hierarchy is now an intrusive node: the same component stores child -> parent
+// local TRS and parent -> children sibling links. This changes the component
+// semantic from "has a parent" to "has a parent or has children".
 //
 // structural moves (Add/Remove<Hierarchy>) happen here, so do NOT call SetParent/Unparent while a
 // system is mid-iteration over archetypes. call it from script/builder/gameplay code, same as entity
@@ -19,18 +17,7 @@ namespace ParaTH;
 [SkipLocalsInit]
 public sealed class HierarchyManager(World world) : IDisposable
 {
-    // intrusive sibling linked list, one entry per entity that participates in a hierarchy.
-    // default(Entity) (PackedValue 0, Version 0) is the null sentinel — live entities always have Version >= 1.
-    private struct Links
-    {
-        public Entity FirstChild;
-        public Entity NextSibling;
-        public Entity PrevSibling;
-        public int ChildCount;
-    }
-
     private readonly World world = world;
-    private readonly SparsePagedArray<Links> links = new(pageSize: 256);
     private readonly UnsafePooledList<Entity> depthFixStack = new(64);
 
     #region Public API
@@ -44,7 +31,7 @@ public sealed class HierarchyManager(World world) : IDisposable
 
         if (parent == default)
         {
-            Unparent(child, worldPositionStays);
+            Unparent(child);
             return;
         }
 
@@ -52,33 +39,30 @@ public sealed class HierarchyManager(World world) : IDisposable
         Debug.Assert(child != parent, "an entity cannot parent itself.");
         Debug.Assert(!WouldCreateCycle(child, parent), "SetParent would create a cycle.");
 
-        EnsureLinkCapacity();
-
-        // detach from the current parent (if any) before relinking.
         Entity oldParent = GetParent(child);
         if (oldParent == parent)
         {
             // same parent: just refresh local TRS per the requested mode, no relink/depth change.
             ref var existing = ref world.GetComponent<Hierarchy>(child);
             existing.PreserveTransformRotation = preserveTransformRotation;
-            WriteLocalTransform(ref existing, child, parent, worldPositionStays, hadHierarchy: true);
+            WriteLocalTransform(ref existing, child, parent, worldPositionStays, hadParent: true);
             return;
         }
+
         if (oldParent != default)
             UnlinkChild(oldParent, child);
 
-        int childDepth = world.HasComponent<Hierarchy>(parent)
-            ? world.GetComponent<Hierarchy>(parent).Depth + 1  // child of a hierarchy node
-            : 0;                                               // child of a root (matches LaserBuilder.GetChildDepth)
+        EnsureHierarchy(parent);
+        int childDepth = GetDepthAsChildOf(parent);
+        bool hadParent = oldParent != default;
 
-        bool hadHierarchy = world.HasComponent<Hierarchy>(child);
-        if (hadHierarchy)
+        if (world.HasComponent<Hierarchy>(child))
         {
             ref var hierarchy = ref world.GetComponent<Hierarchy>(child);
             hierarchy.Parent = parent;
             hierarchy.Depth = childDepth;
             hierarchy.PreserveTransformRotation = preserveTransformRotation;
-            WriteLocalTransform(ref hierarchy, child, parent, worldPositionStays, hadHierarchy: true);
+            WriteLocalTransform(ref hierarchy, child, parent, worldPositionStays, hadParent);
         }
         else
         {
@@ -86,7 +70,7 @@ public sealed class HierarchyManager(World world) : IDisposable
             {
                 Depth = childDepth
             };
-            WriteLocalTransform(ref hierarchy, child, parent, worldPositionStays, hadHierarchy: false);
+            WriteLocalTransform(ref hierarchy, child, parent, worldPositionStays, hadParent: false);
             world.AddComponent(child, hierarchy); // structural: moves child to a +Hierarchy archetype
         }
 
@@ -94,30 +78,34 @@ public sealed class HierarchyManager(World world) : IDisposable
         FixSubtreeDepth(child);
     }
 
-    // detach `child` from its parent, making it a root. removes the Hierarchy component.
-    // the child's Transform already holds its world transform (HierarchySystem keeps it baked),
-    // so its on-screen pose is preserved regardless of worldPositionStays.
-    public void Unparent(Entity child, bool worldPositionStays = true)
+    // detach `child` from its parent, making it a root. if the node still has children, its Hierarchy
+    // component is kept for the intrusive child list; otherwise it is removed.
+    public void Unparent(Entity child)
     {
         Debug.Assert(world.IsAlive(child));
-        _ = worldPositionStays; // world transform is always already baked into Transform; kept for API symmetry
 
         if (!world.HasComponent<Hierarchy>(child))
             return;
 
         Entity oldParent = world.GetComponent<Hierarchy>(child).Parent;
-        if (oldParent != default)
-            UnlinkChild(oldParent, child);
+        if (oldParent == default)
+        {
+            RemoveHierarchyIfDetachedLeaf(child);
+            return;
+        }
 
-        // children of `child` are now rooted under a node that loses its own parent link.
-        // its subtree depths shift up by one level relative to it; recompute from depth 0.
-        ref var childLinks = ref links.TryGetRef(child.Id);
-        bool hasChildren = !Unsafe.IsNullRef(ref childLinks) && childLinks.FirstChild != default;
+        UnlinkChild(oldParent, child);
 
-        world.RemoveComponent<Hierarchy>(child); // structural: moves child to a -Hierarchy archetype
+        ref var hierarchy = ref world.GetComponent<Hierarchy>(child);
+        hierarchy.Parent = default;
+        hierarchy.PrevSibling = default;
+        hierarchy.NextSibling = default;
+        hierarchy.Depth = 0;
 
-        if (hasChildren)
-            FixSubtreeDepthFromRoot(child);
+        if (hierarchy.FirstChild != default)
+            FixSubtreeDepth(child);
+        else
+            world.RemoveComponent<Hierarchy>(child); // structural: moves child to a -Hierarchy archetype
     }
 
     public Entity GetParent(Entity child)
@@ -131,20 +119,23 @@ public sealed class HierarchyManager(World world) : IDisposable
 
     public int GetChildCount(Entity parent)
     {
-        ref var l = ref links.TryGetRef(parent.Id);
-        return Unsafe.IsNullRef(ref l) ? 0 : l.ChildCount;
+        if (world.TryGetComponent<Hierarchy>(parent, out var hierarchy))
+            return hierarchy.ChildCount;
+        return 0;
     }
 
     public Entity GetFirstChild(Entity parent)
     {
-        ref var l = ref links.TryGetRef(parent.Id);
-        return Unsafe.IsNullRef(ref l) ? default : l.FirstChild;
+        if (world.TryGetComponent<Hierarchy>(parent, out var hierarchy))
+            return hierarchy.FirstChild;
+        return default;
     }
 
     public Entity GetNextSibling(Entity child)
     {
-        ref var l = ref links.TryGetRef(child.Id);
-        return Unsafe.IsNullRef(ref l) ? default : l.NextSibling;
+        if (world.TryGetComponent<Hierarchy>(child, out var hierarchy))
+            return hierarchy.NextSibling;
+        return default;
     }
 
     // O(index) walk. returns default if out of range.
@@ -188,7 +179,7 @@ public sealed class HierarchyManager(World world) : IDisposable
     #region Transform math
     // compute and store the child's local TRS for the chosen reparent mode.
     private void WriteLocalTransform(
-        ref Hierarchy hierarchy, Entity child, Entity parent, bool worldPositionStays, bool hadHierarchy)
+        ref Hierarchy hierarchy, Entity child, Entity parent, bool worldPositionStays, bool hadParent)
     {
         if (worldPositionStays)
         {
@@ -196,7 +187,7 @@ public sealed class HierarchyManager(World world) : IDisposable
             ref var parentTransform = ref world.GetComponent<Transform>(parent);
             LocalFromWorld(in parentTransform, in childTransform, ref hierarchy);
         }
-        else if (!hadHierarchy)
+        else if (!hadParent)
         {
             // was a root: its current Transform is its world == its new local (world will jump).
             ref var childTransform = ref world.GetComponent<Transform>(child);
@@ -204,7 +195,7 @@ public sealed class HierarchyManager(World world) : IDisposable
             hierarchy.LocalScale = childTransform.Scale;
             hierarchy.LocalRotation = childTransform.Rotation;
         }
-        // else: already had a Hierarchy and worldPositionStays == false -> keep existing local TRS untouched.
+        // else: already had a parent and worldPositionStays == false -> keep existing local TRS untouched.
     }
 
     // inverse of HierarchySystem's forward transform: recover local TRS that reproduces the child's
@@ -236,7 +227,8 @@ public sealed class HierarchyManager(World world) : IDisposable
     #endregion
 
     #region Depth maintenance
-    // re-derive depths for the whole subtree rooted at `node`, whose own Depth is already finalized.
+    // re-derive depths for the whole subtree rooted at `node`, whose own Depth is already finalized
+    // when it has a parent. parentless roots use virtual depth -1, so direct children become depth 0.
     private void FixSubtreeDepth(Entity node)
     {
         var stack = depthFixStack;
@@ -248,105 +240,91 @@ public sealed class HierarchyManager(World world) : IDisposable
             var current = stack[stack.Count - 1];
             stack.RemoveLast();
 
-            int currentDepth = world.GetComponent<Hierarchy>(current).Depth;
+            ref var currentHierarchy = ref world.GetComponent<Hierarchy>(current);
+            int currentDepth = currentHierarchy.Parent != default ? currentHierarchy.Depth : -1;
 
-            ref var l = ref links.TryGetRef(current.Id);
-            if (Unsafe.IsNullRef(ref l))
-                continue;
-
-            var c = l.FirstChild;
+            var c = currentHierarchy.FirstChild;
             while (c != default)
             {
                 ref var childHierarchy = ref world.GetComponent<Hierarchy>(c);
                 childHierarchy.Depth = currentDepth + 1;
                 stack.Add(c);
-                c = links[c.Id].NextSibling;
+                c = childHierarchy.NextSibling;
             }
-        }
-    }
-
-    // `node` just lost its Hierarchy (it is now a root at depth 0). its children become depth 0 roots-of-subtree
-    // re-anchored: each direct child's depth becomes 0, and the rest cascade. used on Unparent.
-    private void FixSubtreeDepthFromRoot(Entity node)
-    {
-        ref var l = ref links.TryGetRef(node.Id);
-        if (Unsafe.IsNullRef(ref l))
-            return;
-
-        var c = l.FirstChild;
-        while (c != default)
-        {
-            ref var childHierarchy = ref world.GetComponent<Hierarchy>(c);
-            childHierarchy.Depth = 0;
-            FixSubtreeDepth(c);
-            c = links[c.Id].NextSibling;
         }
     }
     #endregion
 
     #region Link maintenance
-    // push `child` to the front of `parent`'s child list. both ids are assumed in-capacity.
+    // push `child` to the front of `parent`'s child list.
     private void LinkChild(Entity parent, Entity child)
     {
-        EnsureLinkSlot(parent.Id);
-        EnsureLinkSlot(child.Id);
+        ref var parentHierarchy = ref world.GetComponent<Hierarchy>(parent);
+        Entity oldFirst = parentHierarchy.FirstChild;
 
-        ref var parentLinks = ref links[parent.Id];
-        ref var childLinks = ref links[child.Id];
+        ref var childHierarchy = ref world.GetComponent<Hierarchy>(child);
+        childHierarchy.PrevSibling = default;
+        childHierarchy.NextSibling = oldFirst;
 
-        Entity oldFirst = parentLinks.FirstChild;
-
-        childLinks.PrevSibling = default;
-        childLinks.NextSibling = oldFirst;
         if (oldFirst != default)
-            links[oldFirst.Id].PrevSibling = child;
+            world.GetComponent<Hierarchy>(oldFirst).PrevSibling = child;
 
-        parentLinks.FirstChild = child;
-        parentLinks.ChildCount++;
+        parentHierarchy.FirstChild = child;
+        parentHierarchy.ChildCount++;
     }
 
     private void UnlinkChild(Entity parent, Entity child)
     {
-        ref var childLinks = ref links.TryGetRef(child.Id);
-        if (Unsafe.IsNullRef(ref childLinks))
+        if (!world.HasComponent<Hierarchy>(child))
             return;
 
-        Entity prev = childLinks.PrevSibling;
-        Entity next = childLinks.NextSibling;
+        ref var childHierarchy = ref world.GetComponent<Hierarchy>(child);
+        Entity prev = childHierarchy.PrevSibling;
+        Entity next = childHierarchy.NextSibling;
 
         if (prev != default)
-            links[prev.Id].NextSibling = next;
-        else
-        {
-            ref var parentLinks = ref links.TryGetRef(parent.Id);
-            if (!Unsafe.IsNullRef(ref parentLinks))
-                parentLinks.FirstChild = next;
-        }
+            world.GetComponent<Hierarchy>(prev).NextSibling = next;
+        else if (world.HasComponent<Hierarchy>(parent))
+            world.GetComponent<Hierarchy>(parent).FirstChild = next;
 
         if (next != default)
-            links[next.Id].PrevSibling = prev;
+            world.GetComponent<Hierarchy>(next).PrevSibling = prev;
 
-        childLinks.PrevSibling = default;
-        childLinks.NextSibling = default;
+        childHierarchy.PrevSibling = default;
+        childHierarchy.NextSibling = default;
 
-        ref var pLinks = ref links.TryGetRef(parent.Id);
-        if (!Unsafe.IsNullRef(ref pLinks) && pLinks.ChildCount > 0)
-            pLinks.ChildCount--;
+        if (world.HasComponent<Hierarchy>(parent))
+        {
+            ref var parentHierarchy = ref world.GetComponent<Hierarchy>(parent);
+            if (parentHierarchy.ChildCount > 0)
+                parentHierarchy.ChildCount--;
+        }
+
+        RemoveHierarchyIfDetachedLeaf(parent);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void EnsureLinkSlot(int id)
+    private ref Hierarchy EnsureHierarchy(Entity entity)
     {
-        if (!links.ContainsKey(id))
-            links.Add(id, default);
+        if (!world.HasComponent<Hierarchy>(entity))
+            world.AddComponent(entity, new Hierarchy(default, Vector2.Zero, Vector2.One, 0));
+        return ref world.GetComponent<Hierarchy>(entity);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void EnsureLinkCapacity()
+    private void RemoveHierarchyIfDetachedLeaf(Entity entity)
     {
-        int max = world.MaxEntityId;
-        if (max >= 0)
-            links.EnsureCapacity(max + 1);
+        if (!world.HasComponent<Hierarchy>(entity))
+            return;
+
+        ref var hierarchy = ref world.GetComponent<Hierarchy>(entity);
+        if (hierarchy.Parent == default && hierarchy.FirstChild == default)
+            world.RemoveComponent<Hierarchy>(entity);
+    }
+
+    private int GetDepthAsChildOf(Entity parent)
+    {
+        ref var hierarchy = ref world.GetComponent<Hierarchy>(parent);
+        return hierarchy.Parent != default ? hierarchy.Depth + 1 : 0;
     }
     #endregion
 
@@ -367,7 +345,7 @@ public sealed class HierarchyManager(World world) : IDisposable
 
     public void TrimExcess()
     {
-        links.TrimExcess();
+        depthFixStack.Clear();
     }
 
     public void Dispose()

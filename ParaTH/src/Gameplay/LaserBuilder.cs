@@ -319,18 +319,17 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
         bool hasRotCtr = rotationInstructions.Count > 0;
         bool hasCollider = baseCollider.IsActive;
 
-        int sourceTypeCount = 3 + Unsafe.As<bool, byte>(ref hasSourceRenderer)
-                                + Unsafe.As<bool, byte>(ref hasRotCtr)
-                                + Unsafe.As<bool, byte>(ref hasSourceHierarchy);
+        int sourceTypeCount = 4 + Unsafe.As<bool, byte>(ref hasSourceRenderer)
+                                + Unsafe.As<bool, byte>(ref hasRotCtr);
 
         Span<ComponentTypeInfo> sourceTypes = stackalloc ComponentTypeInfo[sourceTypeCount];
         int idx = 0;
         sourceTypes.UnsafeAt(idx++) = Component<Transform>.TypeInfo;
         sourceTypes.UnsafeAt(idx++) = Component<Movement>.TypeInfo;
         sourceTypes.UnsafeAt(idx++) = Component<Lifetime>.TypeInfo;
+        sourceTypes.UnsafeAt(idx++) = Component<Hierarchy>.TypeInfo;
         if (hasSourceRenderer) sourceTypes.UnsafeAt(idx++) = Component<Renderer>.TypeInfo;
         if (hasRotCtr) sourceTypes.UnsafeAt(idx++) = Component<RotationController>.TypeInfo;
-        if (hasSourceHierarchy) sourceTypes.UnsafeAt(idx++) = Component<Hierarchy>.TypeInfo;
 
         int bodyTypeCount = 4 + Unsafe.As<bool, byte>(ref hasCollider);
         Span<ComponentTypeInfo> bodyTypes = stackalloc ComponentTypeInfo[bodyTypeCount];
@@ -353,7 +352,7 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
         using var bodyHierarchies = ScopedPooledArray<Hierarchy>.Rent(amount);
 
         using var sourceRenderers = hasSourceRenderer ? ScopedPooledArray<Renderer>.Rent(amount) : default;
-        using var sourceHierarchies = hasSourceHierarchy ? ScopedPooledArray<Hierarchy>.Rent(amount) : default;
+        using var sourceHierarchies = ScopedPooledArray<Hierarchy>.Rent(amount);
         using var rotCtrs = hasRotCtr ? ScopedPooledArray<RotationController>.Rent(amount) : default;
         using var bodyColliders = hasCollider ? ScopedPooledArray<Collider>.Rent(amount) : default;
 
@@ -426,6 +425,7 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
             else
             {
                 sourceTransform.Position += velDir * distanceToCenter;
+                sourceHierarchies[i] = new Hierarchy(default, Vector2.Zero, Vector2.One, 0);
             }
 
             sourceTransforms[i] = sourceTransform;
@@ -464,15 +464,23 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
         }
 
         factory.World.ReserveEntityBulk(sourceEntities.AsSpan(), sourceTypes, out Archetype sourceArchetype, out Slot sourceStart, out Slot sourceEnd);
-        sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceTransforms.AsSpan(), sourceMovements.AsSpan(), sourceLifetimes.AsSpan());
-        if (hasSourceRenderer) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceRenderers.AsSpan());
-        if (hasRotCtr) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, rotCtrs.AsSpan());
-        if (hasSourceHierarchy) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceHierarchies.AsSpan());
+        factory.World.ReserveEntityBulk(bodyEntities.AsSpan(), bodyTypes, out Archetype bodyArchetype, out Slot bodyStart, out Slot bodyEnd);
 
         for (int i = 0; i < amount; i++)
+        {
+            sourceHierarchies[i].FirstChild = bodyEntities[i];
+            sourceHierarchies[i].ChildCount = 1;
             bodyHierarchies[i].Parent = sourceEntities[i];
+        }
 
-        factory.World.ReserveEntityBulk(bodyEntities.AsSpan(), bodyTypes, out Archetype bodyArchetype, out Slot bodyStart, out Slot bodyEnd);
+        if (hasSourceHierarchy)
+            LinkSourcesToParent(factory.World, sourceEntities.AsSpan(), sourceHierarchies.AsSpan());
+
+        sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceTransforms.AsSpan(), sourceMovements.AsSpan(),
+            sourceLifetimes.AsSpan(), sourceHierarchies.AsSpan());
+        if (hasSourceRenderer) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceRenderers.AsSpan());
+        if (hasRotCtr) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, rotCtrs.AsSpan());
+
         bodyArchetype.SetRangeWithSpanBulk(bodyStart, bodyEnd, bodyTransforms.AsSpan(), bodyLifetimes.AsSpan(),
             bodyRenderers.AsSpan(), bodyHierarchies.AsSpan());
         if (hasCollider) bodyArchetype.SetRangeWithSpanBulk(bodyStart, bodyEnd, bodyColliders.AsSpan());
@@ -514,8 +522,34 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
     private static int GetChildDepth(World world, Entity parent)
     {
         if (world.TryGetComponent<Hierarchy>(parent, out var hierarchy))
-            return hierarchy.Depth + 1;
+            return hierarchy.Parent != default ? hierarchy.Depth + 1 : 0;
         return 0;
+    }
+
+    private static void LinkSourcesToParent(World world, Span<Entity> sourceEntities, Span<Hierarchy> sourceHierarchies)
+    {
+        if (sourceHierarchies.IsEmpty)
+            return;
+
+        Entity parent = sourceHierarchies[0].Parent;
+        if (!world.HasComponent<Hierarchy>(parent))
+            world.AddComponent(parent, new Hierarchy(default, Vector2.Zero, Vector2.One, 0));
+
+        ref var parentHierarchy = ref world.GetComponent<Hierarchy>(parent);
+        Entity oldFirst = parentHierarchy.FirstChild;
+        int lastIndex = sourceHierarchies.Length - 1;
+
+        for (int i = 0; i < sourceHierarchies.Length; i++)
+        {
+            sourceHierarchies[i].PrevSibling = i == lastIndex ? default : sourceEntities[i + 1];
+            sourceHierarchies[i].NextSibling = i == 0 ? oldFirst : sourceEntities[i - 1];
+        }
+
+        if (oldFirst != default)
+            world.GetComponent<Hierarchy>(oldFirst).PrevSibling = sourceEntities[0];
+
+        parentHierarchy.FirstChild = sourceEntities[lastIndex];
+        parentHierarchy.ChildCount += sourceHierarchies.Length;
     }
 
     private readonly void DisposeInstructions()

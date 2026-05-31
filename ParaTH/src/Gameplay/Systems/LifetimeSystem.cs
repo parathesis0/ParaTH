@@ -101,11 +101,13 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                         }
                     }
 
-                    // if an entity has hierarchy, it is someone's children and could be someone's parent
-                    // add to depth buckets for hierarchy processing
+                    // only parented hierarchy nodes participate in group lifetime propagation
                     if (hasHrc)
                     {
                         ref var hierarchy = ref hierarchies.UnsafeAt(i);
+                        if (hierarchy.Parent == default)
+                            continue;
+
                         var depth = hierarchy.Depth;
                         var parent = hierarchy.Parent;
 

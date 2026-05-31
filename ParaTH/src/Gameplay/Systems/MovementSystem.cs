@@ -24,7 +24,7 @@ public sealed class MovementSystem(World world)
             bool hasRnd = archetype.Has<Renderer>();     // for velocity-facing renderers
             bool hasSpw = archetype.Has<SpawnEffect>();  // this one has to stay here, spawnAnimation affects velocity
             bool hasCls = archetype.Has<CurvyLaser>();   // techically should have a separate system dedicated to this
-            bool hasHrc = archetype.Has<Hierarchy>();    // if an entity has this, use its local position
+            bool hasHrc = archetype.Has<Hierarchy>();    // if Parent is set, use its local position
             bool hasWlk = archetype.Has<WalkAnimator>(); // for setting animation direction
 
             foreach (ref var chunk in archetype.GetChunksSpan())
@@ -49,7 +49,13 @@ public sealed class MovementSystem(World world)
                     ref var movement = ref movements.UnsafeAt(i);
                     ref var lifetime = ref lifetimes.UnsafeAt(i);
 
-                    ref Vector2 position = ref (hasHrc ? ref hrcSpan.UnsafeAt(i).LocalPosition : ref transform.Position);
+                    ref Vector2 position = ref transform.Position;
+                    if (hasHrc)
+                    {
+                        ref var hierarchy = ref hrcSpan.UnsafeAt(i);
+                        if (hierarchy.Parent != default)
+                            position = ref hierarchy.LocalPosition;
+                    }
 
                     var currentFrame = lifetime.AliveFrames;
                     var oldPosition = position;
