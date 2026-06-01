@@ -181,6 +181,7 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool IsPointOffscreen(Vector2 position)
     {
+        var bounds = this.bounds;
         return position.X < bounds.Left ||
                position.X > bounds.Right ||
                position.Y < bounds.Top ||
@@ -190,6 +191,7 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool IsCircleOffscreen(Vector2 position, float radius)
     {
+        var bounds = this.bounds;
         return position.X + radius < bounds.Left ||
                position.X - radius > bounds.Right ||
                position.Y + radius < bounds.Top ||

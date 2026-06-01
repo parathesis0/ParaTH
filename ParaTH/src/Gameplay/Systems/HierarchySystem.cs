@@ -3,127 +3,97 @@ using Microsoft.Xna.Framework;
 
 namespace ParaTH;
 
-using DepthBuckets = UnsafePooledList<UnsafePooledList<HierarchySystem.ChildSlot>>;
-
 // handles hierarchy transform, children's transform are based off its parents
 [SkipLocalsInit]
 public sealed class HierarchySystem(World world) : IDisposable
 {
-    // compact handle to a child's location in the archetype chunk storage
-    // avoids EntityDataMap round-trip for the child's own Hierarchy+Transform
-    public struct ChildSlot
-    {
-        public Archetype Archetype;
-        public int ChunkIndex;
-        public int Index;
-        public Entity Parent;
-    }
-
     private readonly World world = world;
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Hierarchy>();
 
-    private readonly DepthBuckets childrenEntityBuckets = new();
-    private int maxDepthSeen = -1;
+    private readonly UnsafePooledList<Entity> traversalStack = new(64);
 
     public void Update()
     {
-        var buckets = childrenEntityBuckets;
-
         var q = world.GetOrCreateQuery(descriptor);
+        var stack = traversalStack;
 
-        // pass 1: bucket entities by depth, capturing their chunk location
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
-            var chunks = archetype.GetChunksSpan();
-            for (int ci = 0; ci < chunks.Length; ci++)
+            foreach (ref var chunk in archetype.GetChunksSpan())
             {
-                ref var chunk = ref chunks.UnsafeAt(ci);
                 chunk.GetFilledComponentSpan<Hierarchy>(out var hierarchies);
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
                     ref var hierarchy = ref hierarchies.UnsafeAt(i);
-                    var parent = hierarchy.Parent;
-                    if (parent == default)
+                    if (hierarchy.Parent != default || hierarchy.FirstChild == default)
                         continue;
 
-                    int depth = hierarchy.Depth;
-
-                    if (depth > maxDepthSeen)
-                    {
-                        for (int d = maxDepthSeen + 1; d <= depth; d++)
-                            buckets.Add(new UnsafePooledList<ChildSlot>(64));
-
-                        maxDepthSeen = depth;
-                    }
-
-                    buckets[depth].Add(new ChildSlot
-                    {
-                        Archetype = archetype,
-                        ChunkIndex = ci,
-                        Index = i,
-                        Parent = parent
-                    });
+                    stack.Clear();
+                    stack.Add(chunk.Entities.UnsafeAt(i));
+                    PropagateSubtree(stack);
                 }
             }
         }
+    }
 
-        // pass 2: propagate transforms top-down
-        // only the parent Transform lookup is a true random access (via World.GetComponent)
-        // the child's Hierarchy+Transform are accessed directly from the stored chunk location
-        for (int depth = 0; depth <= maxDepthSeen; depth++)
+    private void PropagateSubtree(UnsafePooledList<Entity> stack)
+    {
+        while (stack.Count > 0)
         {
-            var bucket = buckets[depth];
-            var bucketSpan = bucket.AsSpan();
+            var parent = stack[^1];
+            stack.RemoveLast();
 
-            for (int i = 0; i < bucketSpan.Length; i++)
+            ref var parentHierarchy = ref world.GetComponent<Hierarchy>(parent);
+            ref var parentTransform = ref world.GetComponent<Transform>(parent);
+
+            float cos = MathF.Cos(parentTransform.Rotation);
+            float sin = MathF.Sin(parentTransform.Rotation);
+
+            Entity child = parentHierarchy.FirstChild;
+            while (child != default)
             {
-                ref var slot = ref bucketSpan.UnsafeAt(i);
+                ref var childHierarchy = ref world.GetComponent<Hierarchy>(child);
+                Entity next = childHierarchy.NextSibling;
 
-                // direct chunk access — no EntityDataMap lookup
-                ref var chunk = ref slot.Archetype.GetChunk(slot.ChunkIndex);
-                ref var local = ref chunk.Get<Hierarchy>(slot.Index);
-                ref var childTransform = ref chunk.Get<Transform>(slot.Index);
+                ref var childTransform = ref world.GetComponent<Transform>(child);
+                ApplyParentTransform(in parentTransform, ref childHierarchy, ref childTransform, cos, sin);
 
-                // only random access: parent's transform
-                ref var parentTransform = ref world.GetComponent<Transform>(slot.Parent);
+                if (childHierarchy.FirstChild != default)
+                    stack.Add(child);
 
-                // apply parent's transform
-                float cos = MathF.Cos(parentTransform.Rotation);
-                float sin = MathF.Sin(parentTransform.Rotation);
-
-                float localX = local.LocalPosition.X * parentTransform.Scale.X;
-                float localY = local.LocalPosition.Y * parentTransform.Scale.Y;
-
-                childTransform.Position = new Vector2(
-                    parentTransform.Position.X + (localX * cos - localY * sin),
-                    parentTransform.Position.Y + (localX * sin + localY * cos));
-
-                if (!local.PreserveTransformRotation)
-                    childTransform.Rotation = parentTransform.Rotation + local.LocalRotation;
-
-                childTransform.Scale = parentTransform.Scale * local.LocalScale;
+                child = next;
             }
-
-            bucket.Clear();
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ApplyParentTransform(
+#pragma warning disable RCS1242 // Do not pass non-read-only struct by read-only reference
+        in Transform parentTransform, ref Hierarchy local, ref Transform childTransform, float cos, float sin)
+#pragma warning restore RCS1242 // Do not pass non-read-only struct by read-only reference
+    {
+        float localX = local.LocalPosition.X * parentTransform.Scale.X;
+        float localY = local.LocalPosition.Y * parentTransform.Scale.Y;
+
+        childTransform.Position = new Vector2(
+            parentTransform.Position.X + (localX * cos - localY * sin),
+            parentTransform.Position.Y + (localX * sin + localY * cos));
+
+        if (!local.PreserveTransformRotation)
+            childTransform.Rotation = parentTransform.Rotation + local.LocalRotation;
+
+        childTransform.Scale = parentTransform.Scale * local.LocalScale;
     }
 
     public void TrimExcess()
     {
-        for (int i = 0; i < childrenEntityBuckets.Count; i++)
-            childrenEntityBuckets[i].Dispose();
-
-        childrenEntityBuckets.Clear();
-        maxDepthSeen = -1;
+        traversalStack.Clear();
     }
 
     public void Dispose()
     {
-        for (int i = 0; i < childrenEntityBuckets.Count; i++)
-            childrenEntityBuckets[i].Dispose();
-
-        childrenEntityBuckets.Dispose();
+        traversalStack.Dispose();
     }
 }

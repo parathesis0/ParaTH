@@ -43,6 +43,8 @@ public static class LogicTests
         Test_Hierarchy_Reparent_UpdatesSubtreeDepth();
         Test_Hierarchy_Unparent_ReRootsChildren();
         Test_Hierarchy_ChildTraversal();
+        Test_Lifetime_Hierarchy_AnyAliveSavesGroup();
+        Test_Lifetime_Hierarchy_AllReadyDestroysGroup();
 
         Test_RotationController_RotationalVelocity();
         Test_RotationController_SetRotation_Immediate();
@@ -109,6 +111,7 @@ public static class LogicTests
     private static void Test_PreserveTransformRotation_False_InheritsParent()
     {
         using var world = NewWorld();
+        var manager = new HierarchyManager(world);
         var hierarchySys = new HierarchySystem(world);
 
         var parent = world.CreateEntity(
@@ -118,9 +121,8 @@ public static class LogicTests
 
         // child rotation should be overwritten to parent.Rotation + LocalRotation
         var child = world.CreateEntity(
-            new Transform(new Vector2(0, 0), Vector2.One, rotation: 5.0f),
-            new Hierarchy(parent, new Vector2(10, 0), Vector2.One, localRotation: 0.2f,
-                          preserveTransformRotation: false));
+            new Transform(new Vector2(10, 0), Vector2.One, rotation: 0.2f));
+        manager.SetParent(child, parent, worldPositionStays: false, preserveTransformRotation: false);
 
         hierarchySys.Update();
         ApproxEq(world.GetComponent<Transform>(child).Rotation, 1.0f + 0.2f,
@@ -130,6 +132,7 @@ public static class LogicTests
     private static void Test_PreserveTransformRotation_True_KeepsOwn()
     {
         using var world = NewWorld();
+        var manager = new HierarchyManager(world);
         var hierarchySys = new HierarchySystem(world);
 
         var parent = world.CreateEntity(
@@ -139,9 +142,8 @@ public static class LogicTests
 
         const float ChildRot = 5.0f;
         var child = world.CreateEntity(
-            new Transform(new Vector2(0, 0), Vector2.One, rotation: ChildRot),
-            new Hierarchy(parent, new Vector2(10, 0), Vector2.One, localRotation: 0.2f,
-                          preserveTransformRotation: true));
+            new Transform(new Vector2(10, 0), Vector2.One, rotation: ChildRot));
+        manager.SetParent(child, parent, worldPositionStays: false, preserveTransformRotation: true);
 
         hierarchySys.Update();
         ApproxEq(world.GetComponent<Transform>(child).Rotation, ChildRot,
@@ -299,6 +301,40 @@ public static class LogicTests
     }
     #endregion
 
+    #region Hierarchy lifetime
+    private static void Test_Lifetime_Hierarchy_AnyAliveSavesGroup()
+    {
+        using var world = NewWorld();
+        var manager = new HierarchyManager(world);
+        var lifetime = new LifetimeSystem(world, new Rectangle(0, 0, 100, 100));
+
+        var parent = MakeNode(world, new Vector2(200, 200), offscreenFramesToLive: 0);
+        var child = MakeNode(world, new Vector2(50, 50), offscreenFramesToLive: 0);
+        manager.SetParent(child, parent, worldPositionStays: true);
+
+        lifetime.Update();
+
+        Check(world.IsAlive(parent), "lifetime hierarchy: child saves offscreen parent");
+        Check(world.IsAlive(child), "lifetime hierarchy: onscreen child remains alive");
+    }
+
+    private static void Test_Lifetime_Hierarchy_AllReadyDestroysGroup()
+    {
+        using var world = NewWorld();
+        var manager = new HierarchyManager(world);
+        var lifetime = new LifetimeSystem(world, new Rectangle(0, 0, 100, 100));
+
+        var parent = MakeNode(world, new Vector2(200, 200), offscreenFramesToLive: 0);
+        var child = MakeNode(world, new Vector2(220, 220), offscreenFramesToLive: 0);
+        manager.SetParent(child, parent, worldPositionStays: true);
+
+        lifetime.Update();
+
+        Check(!world.IsAlive(parent), "lifetime hierarchy: ready parent destroyed");
+        Check(!world.IsAlive(child), "lifetime hierarchy: ready child destroyed");
+    }
+    #endregion
+
     #region RotationController
     private static void Test_RotationController_RotationalVelocity()
     {
@@ -389,10 +425,12 @@ public static class LogicTests
     #endregion
 
     #region helpers
-    private static Entity MakeNode(World world) => world.CreateEntity(
-        new Transform(Vector2.Zero, Vector2.One, 0f),
+    private static Entity MakeNode(World world) => MakeNode(world, Vector2.Zero, 60);
+
+    private static Entity MakeNode(World world, Vector2 position, short offscreenFramesToLive) => world.CreateEntity(
+        new Transform(position, Vector2.One, 0f),
         new Movement(Vector2.Zero, Vector2.Zero, false),
-        new Lifetime(60));
+        new Lifetime(offscreenFramesToLive));
 
     private static void Check(bool cond, string name)
     {

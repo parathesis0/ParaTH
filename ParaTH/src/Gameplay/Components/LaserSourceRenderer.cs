@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 
 namespace ParaTH;
 
+// probably redundant
 // 16 bytes
 public struct LaserSourceRenderer(SpriteAsset sprite, Vector2 scale)
 {

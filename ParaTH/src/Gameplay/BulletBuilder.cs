@@ -797,7 +797,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         var sharedVelInstr   = hasVelCtr   ? velocityInstructions.ToArray()     : null;
         var sharedAccInstr   = hasAccCtr   ? accelerationInstructions.ToArray() : null;
         var sharedCurveInstr = hasCurveCtr ? curveInstructions.ToArray()        : null;
-        var sharedRotInstr   = hasRotCtr   ? rotationInstructions.ToArray()      : null;
+        var sharedRotInstr   = hasRotCtr   ? rotationInstructions.ToArray()     : null;
 
         uint baseSpawnId = factory.GlobalSpawnCounter;
         factory.GlobalSpawnCounter += (uint)amount;
