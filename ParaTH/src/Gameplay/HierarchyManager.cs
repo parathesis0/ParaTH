@@ -237,7 +237,7 @@ public sealed class HierarchyManager(World world) : IDisposable
 
         while (stack.Count > 0)
         {
-            var current = stack[stack.Count - 1];
+            var current = stack[^1];
             stack.RemoveLast();
 
             ref var currentHierarchy = ref world.GetComponent<Hierarchy>(current);

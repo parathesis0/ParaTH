@@ -6,8 +6,6 @@ public sealed class BulletFactory(World world, AssetManager asset)
 
     public AssetManager AssetManager { get; } = asset;
 
-    public uint GlobalSpawnCounter = 0;
-
     public BulletBuilder Create()
     {
         return new BulletBuilder(this);

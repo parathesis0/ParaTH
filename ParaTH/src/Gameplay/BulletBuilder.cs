@@ -39,7 +39,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     // optional curvy laser
     private int curvyLaserMaxNodes = 0;
     private float curvyLaserHalfWidth = 0;
-    private LaserSourceRenderer laserSourceRenderer;
+    private Renderer curvyLaserSourceRenderer;
 
     // spawn settings
     private int way = 1;
@@ -539,6 +539,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         renderer.BlendState = blendState;
         renderer.Rotation = rotation;
         renderer.Scale = scale.Value;
+        renderer.IsVisible = true;
         return ref this;
     }
 
@@ -558,6 +559,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         renderer.BlendState = blendState;
         renderer.Rotation = rotation;
         renderer.Scale = scale.Value;
+        renderer.IsVisible = true;
         return ref this;
     }
 
@@ -586,8 +588,16 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
     [UnscopedRef]
     public ref BulletBuilder SetLaserSourceSprite(string spriteName, Vector2 scale)
     {
-        laserSourceRenderer.Sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
-        laserSourceRenderer.Scale = scale;
+        var sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
+        curvyLaserSourceRenderer.Texture = sprite.Texture;
+        curvyLaserSourceRenderer.SourceRect = sprite.SourceRect;
+        curvyLaserSourceRenderer.Anchor = sprite.Anchor;
+        curvyLaserSourceRenderer.Scale = scale;
+        curvyLaserSourceRenderer.Color = renderer.Color;
+        curvyLaserSourceRenderer.Layer = renderer.Layer;
+        curvyLaserSourceRenderer.BlendState = renderer.BlendState;
+        curvyLaserSourceRenderer.IsFixedRotation = true;
+        curvyLaserSourceRenderer.IsVisible = true;
         return ref this;
     }
     #endregion
@@ -740,7 +750,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         bool hasSpawnFx   = spawnEffect.Duration > 0;
         bool hasCollider  = collider.IsActive;
         bool hasCurvyLsr  = curvyLaserMaxNodes > 0;
-        bool hasLsrSrcRdr = hasCurvyLsr && laserSourceRenderer.Sprite is not null;
+        bool hasLsrSrcRdr = hasCurvyLsr && curvyLaserSourceRenderer.Texture is not null;
 
         int typeCount = 3 + Unsafe.As<bool, byte>(ref hasRenderer)
                           + Unsafe.As<bool, byte>(ref hasAnimator)
@@ -751,8 +761,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
                           + Unsafe.As<bool, byte>(ref hasRotCtr)
                           + Unsafe.As<bool, byte>(ref hasSpawnFx)
                           + Unsafe.As<bool, byte>(ref hasCollider)
-                          + Unsafe.As<bool, byte>(ref hasCurvyLsr)
-                          + Unsafe.As<bool, byte>(ref hasLsrSrcRdr);
+                          + Unsafe.As<bool, byte>(ref hasCurvyLsr);
 
         Span<ComponentTypeInfo> types = stackalloc ComponentTypeInfo[typeCount];
         int idx = 0;
@@ -769,7 +778,6 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         if (hasSpawnFx)   types.UnsafeAt(idx++) = Component<SpawnEffect>.TypeInfo;
         if (hasCollider)  types.UnsafeAt(idx++) = Component<Collider>.TypeInfo;
         if (hasCurvyLsr)  types.UnsafeAt(idx++) = Component<CurvyLaser>.TypeInfo;
-        if (hasLsrSrcRdr) types.UnsafeAt(idx++) = Component<LaserSourceRenderer>.TypeInfo;
 
         using var entities   = ScopedPooledArray<Entity>.Rent(amount);
         using var transforms = ScopedPooledArray<Transform>.Rent(amount);
@@ -786,7 +794,11 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         using var spawnFxs   = hasSpawnFx   ? ScopedPooledArray<SpawnEffect>.Rent(amount) : default;
         using var colliders  = hasCollider  ? ScopedPooledArray<Collider>.Rent(amount) : default;
         using var curvyLsrs  = hasCurvyLsr  ? ScopedPooledArray<CurvyLaser>.Rent(amount) : default;
-        using var lsrSrcRdrs = hasLsrSrcRdr ? ScopedPooledArray<LaserSourceRenderer>.Rent(amount) : default;
+
+        using var sourceEntities = hasLsrSrcRdr ? ScopedPooledArray<Entity>.Rent(amount) : default;
+        using var sourceTransforms = hasLsrSrcRdr ? ScopedPooledArray<Transform>.Rent(amount) : default;
+        using var sourceLifetimes = hasLsrSrcRdr ? ScopedPooledArray<Lifetime>.Rent(amount) : default;
+        using var sourceRenderers = hasLsrSrcRdr ? ScopedPooledArray<Renderer>.Rent(amount) : default;
 
         float baseVelMag   = movement.Velocity.Length();
         float baseVelAngle = baseVelMag > 0 ? MathF.Atan2(movement.Velocity.Y, movement.Velocity.X) : 0;
@@ -799,8 +811,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         var sharedCurveInstr = hasCurveCtr ? curveInstructions.ToArray()        : null;
         var sharedRotInstr   = hasRotCtr   ? rotationInstructions.ToArray()     : null;
 
-        uint baseSpawnId = factory.GlobalSpawnCounter;
-        factory.GlobalSpawnCounter += (uint)amount;
+        uint spawnId = SpawnId.NextBlock((uint)((hasRenderer ? amount : 0) + (hasLsrSrcRdr ? amount : 0)));
 
         for (int i = 0; i < amount; i++)
         {
@@ -834,7 +845,7 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
                                         movement.SyncTransformRotation);
             lifetimes[i] = lifetime;
 
-            if (hasRenderer) { renderers[i] = renderer; renderers[i].SpawnId = baseSpawnId + (uint)i; }
+            if (hasRenderer) { renderers[i] = renderer; renderers[i].SpawnId = spawnId++; }
             if (hasAnimator)   animators[i]  = spriteAnimator;
             if (hasPosCtr)     posCtrs[i]    = new () { Instructions = sharedPosInstr!,   Index = -1 };
             if (hasVelCtr)     velCtrs[i]    = new () { Instructions = sharedVelInstr!,   Index = -1 };
@@ -844,7 +855,16 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
             if (hasSpawnFx)    spawnFxs[i]   = spawnEffect;
             if (hasCollider)   colliders[i]  = collider;
             if (hasCurvyLsr)   curvyLsrs[i]  = new () { LaserNodes = new(curvyLaserMaxNodes), MaxNodes = curvyLaserMaxNodes, HalfWidth = curvyLaserHalfWidth };
-            if (hasLsrSrcRdr)  lsrSrcRdrs[i] = laserSourceRenderer;
+            if (hasLsrSrcRdr)
+            {
+                sourceTransforms[i] = new Transform(transforms[i].Position, Vector2.One, 0);
+                sourceLifetimes[i] = new Lifetime(-1, (ushort)curvyLaserMaxNodes);
+                sourceRenderers[i] = curvyLaserSourceRenderer;
+                sourceRenderers[i].Color = renderer.Color;
+                sourceRenderers[i].Layer = renderer.Layer;
+                sourceRenderers[i].BlendState = renderer.BlendState;
+                sourceRenderers[i].SpawnId = spawnId++;
+            }
         }
 
         factory.World.ReserveEntityBulk(entities.AsSpan(), types, out Archetype archetype, out Slot start, out Slot end);
@@ -861,7 +881,19 @@ public ref struct BulletBuilder(BulletFactory bulletFactory)
         if (hasSpawnFx)   archetype.SetRangeWithSpanBulk(start, end, spawnFxs.AsSpan());
         if (hasCollider)  archetype.SetRangeWithSpanBulk(start, end, colliders.AsSpan());
         if (hasCurvyLsr)  archetype.SetRangeWithSpanBulk(start, end, curvyLsrs.AsSpan());
-        if (hasLsrSrcRdr) archetype.SetRangeWithSpanBulk(start, end, lsrSrcRdrs.AsSpan());
+
+        if (hasLsrSrcRdr)
+        {
+            Span<ComponentTypeInfo> sourceTypes = stackalloc ComponentTypeInfo[3];
+            sourceTypes.UnsafeAt(0) = Component<Transform>.TypeInfo;
+            sourceTypes.UnsafeAt(1) = Component<Lifetime>.TypeInfo;
+            sourceTypes.UnsafeAt(2) = Component<Renderer>.TypeInfo;
+
+            factory.World.ReserveEntityBulk(sourceEntities.AsSpan(), sourceTypes,
+                out Archetype sourceArchetype, out Slot sourceStart, out Slot sourceEnd);
+            sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd,
+                sourceTransforms.AsSpan(), sourceLifetimes.AsSpan(), sourceRenderers.AsSpan());
+        }
 
         if (!outputEntities.IsEmpty)
             entities.AsSpan().CopyTo(outputEntities);

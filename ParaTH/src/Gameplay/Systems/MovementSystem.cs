@@ -9,8 +9,17 @@ public sealed class MovementSystem(World world)
 {
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Movement, Lifetime>();
+    private QueryDescriptor rotationOnlyDescriptor = new QueryDescriptor()
+        .WithAll<Transform, RotationController, Lifetime>()
+        .WithNone<Movement>();
 
     public void Update()
+    {
+        UpdateMovement();
+        UpdateRotationOnly();
+    }
+
+    private void UpdateMovement()
     {
         var q = world.GetOrCreateQuery(descriptor);
 
@@ -106,9 +115,49 @@ public sealed class MovementSystem(World world)
                         transform.Rotation = angle;
 
                     if (hasRot)
-                        UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref transform);
+                    {
+                        ref var rotation = ref transform.Rotation;
+                        if (hasHrc)
+                        {
+                            ref var hierarchy = ref hrcSpan.UnsafeAt(i);
+                            if (hierarchy.Parent != default && !hierarchy.PreserveTransformRotation)
+                                rotation = ref hierarchy.LocalRotation;
+                        }
 
-                    lifetime.AliveFrames++;
+                        UpdateRotationController(ref rotSpan.UnsafeAt(i), currentFrame, ref rotation);
+                    }
+                }
+            }
+        }
+    }
+
+    private void UpdateRotationOnly()
+    {
+        var q = world.GetOrCreateQuery(rotationOnlyDescriptor);
+
+        foreach (var archetype in q.GetMatchingArchetypesSpan())
+        {
+            bool hasHrc = archetype.Has<Hierarchy>();
+
+            foreach (ref var chunk in archetype.GetChunksSpan())
+            {
+                chunk.GetFilledComponentSpan<Transform, RotationController, Lifetime>(
+                    out var transforms, out var rotations, out var lifetimes);
+
+                var hrcSpan = hasHrc ? chunk.GetFilledComponentSpan<Hierarchy>() : default;
+
+                for (int i = 0; i < chunk.EntityCount; i++)
+                {
+                    ref var transform = ref transforms.UnsafeAt(i);
+                    ref var rotation = ref transform.Rotation;
+                    if (hasHrc)
+                    {
+                        ref var hierarchy = ref hrcSpan.UnsafeAt(i);
+                        if (hierarchy.Parent != default && !hierarchy.PreserveTransformRotation)
+                            rotation = ref hierarchy.LocalRotation;
+                    }
+
+                    UpdateRotationController(ref rotations.UnsafeAt(i), lifetimes.UnsafeAt(i).AliveFrames, ref rotation);
                 }
             }
         }
@@ -325,7 +374,7 @@ public sealed class MovementSystem(World world)
         }
     }
 
-    private static void UpdateRotationController(ref RotationController ctrl, ushort currentFrame, ref Transform transform)
+    private static void UpdateRotationController(ref RotationController ctrl, ushort currentFrame, ref float rotation)
     {
         var insts = ctrl.Instructions;
         // handle instruction advance
@@ -337,15 +386,15 @@ public sealed class MovementSystem(World world)
             switch (inst.Op)
             {
                 case RotationInstruction.Ops.SetRotation:
-                    ctrl.StartRotation = transform.Rotation;
-                    ctrl.EndRotation = transform.Rotation + MathHelper.WrapAngle(inst.Params - transform.Rotation); // newRotation
+                    ctrl.StartRotation = rotation;
+                    ctrl.EndRotation = rotation + MathHelper.WrapAngle(inst.Params - rotation); // newRotation
                     break;
                 case RotationInstruction.Ops.SetRotationalVelocity:
                     ctrl.RotationalVelocity = inst.Params; // newRotationalVelocity
                     break;
                 case RotationInstruction.Ops.AddRotation:
-                    ctrl.StartRotation = transform.Rotation;
-                    ctrl.EndRotation = transform.Rotation + inst.Params; // rotationDelta
+                    ctrl.StartRotation = rotation;
+                    ctrl.EndRotation = rotation + inst.Params; // rotationDelta
                     break;
                 case RotationInstruction.Ops.AddRotationalVelocity:
                     ctrl.RotationalVelocity += inst.Params; // rotationalVelocityDelta
@@ -357,7 +406,7 @@ public sealed class MovementSystem(World world)
             if (inst.Duration == 0)
             {
                 if (inst.Op == RotationInstruction.Ops.SetRotation || inst.Op == RotationInstruction.Ops.AddRotation)
-                    transform.Rotation = ctrl.EndRotation;
+                    rotation = ctrl.EndRotation;
             }
         }
 
@@ -373,12 +422,12 @@ public sealed class MovementSystem(World world)
                 {
                     var t = (float)(relativeTick + 1) / inst.Duration;
                     t = Easing.Evaluate(inst.EaseType, t);
-                    transform.Rotation = float.Lerp(ctrl.StartRotation, ctrl.EndRotation, t);
+                    rotation = float.Lerp(ctrl.StartRotation, ctrl.EndRotation, t);
                 }
             }
         }
 
-        transform.Rotation += ctrl.RotationalVelocity;
+        rotation += ctrl.RotationalVelocity;
     }
 
     private static void UpdateCurvyLaser(ref CurvyLaser curvyLaser, Vector2 currentPos)

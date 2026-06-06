@@ -41,8 +41,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
     {
         public Texture2D Texture;                       // 8
         public UnsafePooledQueue<Vector2> LaserNodes;   // 8
-        public SpriteAsset SourceSprite;                // 8
-        public Vector2 SourceScale;                     // 8: 4 + 4
         public Rectangle SourceRect;                    // 16: 4 + 4 + 4 + 4
         public float TextureRotation;                   // 4
         public float HalfWidth;                         // 4
@@ -122,7 +120,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
         {
             bool hasSpawnEffect = archetype.Has<SpawnEffect>();
             bool hasCurvyLaser = archetype.Has<CurvyLaser>();
-            bool hasLaserSourceRenderer = hasCurvyLaser && archetype.Has<LaserSourceRenderer>();
 
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
@@ -133,12 +130,12 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                     chunk.GetFilledComponentSpan<SpawnEffect>() : default;
                 var curvyLasers = hasCurvyLaser ?
                     chunk.GetFilledComponentSpan<CurvyLaser>() : default;
-                var laserSources = hasLaserSourceRenderer ?
-                    chunk.GetFilledComponentSpan<LaserSourceRenderer>() : default;
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
                     ref var renderer = ref renderers.UnsafeAt(i);
+                    if (!renderer.IsVisible)
+                        continue;
 
                     if (!hasCurvyLaser)
                     {
@@ -194,16 +191,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                         {
                             int currentIndex = deferredCurvyLaserDraws.Count;
 
-                            SpriteAsset sourceSprite = null!;
-                            Vector2 sourceScale = default;
-
-                            if (hasLaserSourceRenderer && laser.IsSpawning)
-                            {
-                                ref var glow = ref laserSources.UnsafeAt(i);
-                                sourceSprite = glow.Sprite;
-                                sourceScale = glow.Scale;
-                            }
-
                             deferredCurvyLaserDraws.Add(new DeferredCurvyLaserDrawData
                             {
                                 Texture = renderer.Texture,
@@ -214,8 +201,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                                 Color = renderer.Color,
                                 Layer = renderer.Layer,
                                 BlendState = renderer.BlendState,
-                                SourceSprite = sourceSprite,
-                                SourceScale = sourceScale
                             });
 
                             sortKeys.Add(new DrawSortKey
@@ -277,23 +262,6 @@ public sealed class RenderSystem(World world, StgBatch batch, Rectangle bounds) 
                         d.Color, d.Layer, d.BlendState);
                 }
 
-                if (d.SourceSprite is not null)
-                {
-                    Vector2 headPosition = d.LaserNodes.PeekHead();
-
-                    batch.Draw(
-                        d.SourceSprite.Texture,
-                        headPosition,
-                        d.SourceSprite.SourceRect,
-                        d.Color,
-                        0f,
-                        d.SourceSprite.Anchor,
-                        d.SourceScale,
-                        SpriteEffects.None,
-                        d.Layer,
-                        d.BlendState
-                    );
-                }
             }
         }
 

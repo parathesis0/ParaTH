@@ -348,6 +348,7 @@ public sealed class TestScript(BulletFactory bulletFactory, World world, Engine 
             // one-shot anchored patterns (spin/orbit in place, never go offscreen)
             if (counter == 0)
             {
+                SetupLaserBuilderSmokeTest();
                 SetupPatternB_IsFixedRotation();
                 SetupPatternC_PreserveTransformRotation();
                 SetupPatternD_SweepingEmitter();
@@ -404,6 +405,61 @@ public sealed class TestScript(BulletFactory bulletFactory, World world, Engine 
         }
 
         counter++;
+    }
+
+    private void SetupLaserBuilderSmokeTest()
+    {
+        bulletFactory.CreateLaser()
+            .MakeLaser(new Vector2(70, 110), 220f, 0f, 6f, "longlaser_lightred")
+            .SetLaserSource("lasersource_red", new Vector2(0.7f, 0.7f))
+            .SetLaserBeam("longlaser_lightred")
+            .SetLaserEnd("lasersource_red", new Vector2(0.55f, 0.55f))
+            .SetCollisionGroup(0b0000_0010)
+            .SetTargetGroup(0b0000_0001)
+            .SetMaxAliveFrames(420)
+            .Build();
+
+        bulletFactory.CreateLaser()
+            .MakeLaser(new Vector2(90, 165), new Vector2(300, 215), 5f, "longlaser_lightblue")
+            .SetLaserSource(null, Vector2.One)
+            .SetLaserBeam("longlaser_lightblue")
+            .SetMaxAliveFrames(420)
+            .Build();
+
+        Span<Entity> spreadSources = stackalloc Entity[5];
+        bulletFactory.CreateLaser()
+            .MakeLaser(new Vector2(320, 300), 160f, -MathHelper.PiOver2, 4f, "longlaser_lightgreen")
+            .SetLaserSource("lasersource_yellow", new Vector2(0.55f, 0.55f))
+            .SetLaserBeam("longlaser_lightgreen")
+            .SetSpawningSpreadByTotal(5, MathHelper.PiOver2)
+            .SetMaxAliveFrames(420)
+            .Build(spreadSources);
+
+        var spinner = world.CreateEntity(
+            new Transform(new Vector2(500, 220), Vector2.One, 0f),
+            new Lifetime(-1, maxAliveFrames: 420));
+        world.AddComponent(spinner, new RotationController
+        {
+            Instructions =
+            [
+                new RotationInstruction(0, 0.025f, 0, EaseType.Linear, RotationInstruction.Ops.SetRotationalVelocity)
+            ],
+            Index = -1
+        });
+
+        Span<Entity> rotatingSources = stackalloc Entity[3];
+        bulletFactory.CreateLaser()
+            .MakeLaser(Vector2.Zero, 135f, 0f, 5f, "longlaser_lightpink")
+            .SetLaserSource("lasersource_pink", new Vector2(0.65f, 0.65f))
+            .SetLaserBeam("longlaser_lightpink")
+            .SetLaserEnd("lasersource_pink", new Vector2(0.45f, 0.45f))
+            .SetRotationalVelocity(-0.012f)
+            .SetSpawningSpreadByDelta(3, MathHelper.Pi / 9f)
+            .SetMaxAliveFrames(420)
+            .Build(rotatingSources);
+
+        for (int i = 0; i < rotatingSources.Length; i++)
+            engine.Hierarchy.SetParent(rotatingSources[i], spinner, false);
     }
 
     // ----------------------------------------------------------------
@@ -601,6 +657,9 @@ public sealed class Engine : Game
         assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "heart_pink");
         assetManager.Load<SpriteAsset>("bullet/bullet_sprites.txt", "arrow_pink");
         assetManager.Load<SpriteAsset>("bullet/laser_sprites_test.txt", "longlaser_lightred");
+        assetManager.Load<SpriteAsset>("bullet/laser_sprites_test.txt", "longlaser_lightblue");
+        assetManager.Load<SpriteAsset>("bullet/laser_sprites_test.txt", "longlaser_lightgreen");
+        assetManager.Load<SpriteAsset>("bullet/laser_sprites_test.txt", "longlaser_lightpink");
 
         assetManager.Load<AnimationAsset>("bullet/bullet_animations.txt", "fireball_red");
 

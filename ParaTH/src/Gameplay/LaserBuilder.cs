@@ -4,53 +4,40 @@ using System.Runtime.CompilerServices;
 
 namespace ParaTH;
 
-// this is a fucking piece of shit, rewrite
-internal struct StraightLaserConfig
+internal enum LaserSpawningType : byte
 {
-    public SpriteAsset Sprite;
-    public float Length;
-    public float RenderHalfWidth;
-    public Color Color;
-    public byte Layer;
-    public StgBlendState BlendState;
+    None,
+    SpreadTotal,
+    SpreadDelta
 }
 
 [SkipLocalsInit]
 public ref struct LaserBuilder(BulletFactory bulletFactory)
 {
+    private const byte DefaultLayer = 100;
+    private const StgBlendState DefaultBlendState = StgBlendState.Additive;
+
     private readonly BulletFactory factory = bulletFactory;
 
     private Transform sourceTransform = new(Vector2.Zero, Vector2.One, 0);
-    private Movement sourceMovement;
-    private Lifetime lifetime;
+    private Lifetime lifetime = new(-1);
     private Collider collider;
-    private LaserSourceRenderer sourceRenderer;
-    private StraightLaserConfig laser;
+
+    private Renderer sourceRenderer;
+    private Renderer beamRenderer;
+    private Renderer endRenderer;
+
+    private float length;
+    private float halfWidth;
     private bool hasLaser;
 
-    private bool hasSourceHierarchy;
-    private Hierarchy sourceHierarchy;
-
-    private ushort currentFrame = 0;
+    private ushort currentFrame;
     private readonly UnsafePooledList<RotationInstruction> rotationInstructions = new(4);
 
     private int way = 1;
-    private int layer = 1;
-    private float layerVelocityDelta = 0;
-    private float layerAccelerationDelta = 0;
-    private float layerAngleOffset = 0;
-    private float distanceToCenter = 0;
-    private float totalSpread = 0;
-    private float spreadDelta = 0;
-    private SpawningType spawningType = SpawningType.None;
-
-    // TEMP
-    [UnscopedRef]
-    public ref LaserBuilder SetPosition(Vector2 position)
-    {
-        sourceTransform.Position = position;
-        return ref this;
-    }
+    private float totalSpread;
+    private float spreadDelta;
+    private LaserSpawningType spawningType = LaserSpawningType.None;
 
     #region Rotation
     [UnscopedRef]
@@ -123,46 +110,62 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
     }
     #endregion
 
-    #region Hierarchy
-    [UnscopedRef]
-    public ref LaserBuilder SetParent(Entity parent, Vector2 localPosition, Vector2 localScale,
-                                      float localRotation = 0, bool preserveTransformRotation = false)
-    {
-        hasSourceHierarchy = true;
-        sourceHierarchy = new Hierarchy(parent, localPosition, localScale, localRotation, preserveTransformRotation)
-        {
-            Depth = GetChildDepth(factory.World, parent)
-        };
-        sourceTransform.Position = localPosition;
-        sourceTransform.Scale = localScale;
-        sourceTransform.Rotation = localRotation;
-        return ref this;
-    }
-    #endregion
-
     #region Main
     [UnscopedRef]
-    public ref LaserBuilder MakeLaser(string spriteName, float length, float halfWidth, float rotation,
-                                      Color color, byte layer, StgBlendState blendState)
+    public ref LaserBuilder MakeLaser(Vector2 pos, float length, float rotation, float halfWidth, string spriteName)
     {
-        laser.Sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
-        laser.Length = length;
-        laser.RenderHalfWidth = halfWidth;
-        laser.Color = color;
-        laser.Layer = layer;
-        laser.BlendState = blendState;
+        sourceTransform.Position = pos;
         sourceTransform.Rotation = rotation;
-        if (hasSourceHierarchy)
-            sourceHierarchy.LocalRotation = rotation;
+
+        this.length = length;
+        this.halfWidth = halfWidth;
         hasLaser = true;
+        SetLaserBeam(spriteName);
         return ref this;
     }
 
     [UnscopedRef]
-    public ref LaserBuilder SetLaserSourceSprite(string spriteName, Vector2 scale)
+    public ref LaserBuilder MakeLaser(Vector2 start, Vector2 end, float halfWidth, string spriteName)
     {
-        sourceRenderer.Sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
-        sourceRenderer.Scale = scale;
+        var delta = end - start;
+        return ref MakeLaser(start, delta.Length(), MathF.Atan2(delta.Y, delta.X), halfWidth, spriteName);
+    }
+
+    [UnscopedRef]
+    public ref LaserBuilder SetLaserSource(string? spriteName, Vector2 scale, Color? color = null,
+                                           byte layer = DefaultLayer,
+                                           StgBlendState blendState = DefaultBlendState)
+    {
+        sourceRenderer = CreateRenderer(factory.AssetManager, spriteName, scale, color ?? Color.White, layer, blendState);
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref LaserBuilder SetLaserBeam(string spriteName, Color? color = null,
+                                         byte layer = DefaultLayer,
+                                         StgBlendState blendState = DefaultBlendState)
+    {
+        var sprite = factory.AssetManager.Get<SpriteAsset>(spriteName);
+        beamRenderer = new Renderer
+        {
+            Texture = sprite.Texture,
+            SourceRect = sprite.SourceRect,
+            Anchor = new Vector2(sprite.SourceRect.Width * 0.5f, sprite.SourceRect.Height * 0.5f),
+            Scale = new Vector2(length / sprite.SourceRect.Width, halfWidth * 2f / sprite.SourceRect.Height),
+            Color = color ?? Color.White,
+            Layer = layer,
+            BlendState = blendState,
+            IsVisible = true
+        };
+        return ref this;
+    }
+
+    [UnscopedRef]
+    public ref LaserBuilder SetLaserEnd(string? spriteName, Vector2 scale, Color? color = null,
+                                        byte layer = DefaultLayer,
+                                        StgBlendState blendState = DefaultBlendState)
+    {
+        endRenderer = CreateRenderer(factory.AssetManager, spriteName, scale, color ?? Color.White, layer, blendState);
         return ref this;
     }
     #endregion
@@ -192,99 +195,57 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
         lifetime.OffscreenFramesToLive = frames;
         return ref this;
     }
+
+    [UnscopedRef]
+    public ref LaserBuilder SetMaxAliveFrames(ushort frames)
+    {
+        lifetime.MaxAliveFrames = frames;
+        return ref this;
+    }
     #endregion
 
     #region Spawning
     [UnscopedRef]
-    public ref LaserBuilder SetSpawningNone(
-        int layer = 1,
-        float layerVelocityDelta = 0,
-        float layerAccelerationDelta = 0,
-        float distanceToCenter = 0)
+    public ref LaserBuilder SetSpawningNone()
     {
-        this.spawningType = SpawningType.None;
-        this.way = 1;
-        this.layer = layer;
-        this.layerVelocityDelta = layerVelocityDelta;
-        this.layerAccelerationDelta = layerAccelerationDelta;
-        this.distanceToCenter = distanceToCenter;
+        spawningType = LaserSpawningType.None;
+        way = 1;
         return ref this;
     }
 
     [UnscopedRef]
-    public ref LaserBuilder SetSpawningCircle(
-        int way,
-        int layer = 1,
-        float layerVelocityDelta = 0,
-        float layerAccelerationDelta = 0,
-        float layerAngleOffset = 0,
-        float distanceToCenter = 0)
+    public ref LaserBuilder SetSpawningSpreadByTotal(int way, float totalSpread)
     {
-        this.spawningType = SpawningType.Circle;
-        this.way = way;
-        this.layer = layer;
-        this.layerVelocityDelta = layerVelocityDelta;
-        this.layerAccelerationDelta = layerAccelerationDelta;
-        this.layerAngleOffset = layerAngleOffset;
-        this.distanceToCenter = distanceToCenter;
-        return ref this;
-    }
-
-    [UnscopedRef]
-    public ref LaserBuilder SetSpawningSpreadByTotal(
-        int way,
-        float totalSpread,
-        int layer = 1,
-        float layerVelocityDelta = 0,
-        float layerAccelerationDelta = 0,
-        float distanceToCenter = 0)
-    {
-        this.spawningType = SpawningType.Spread;
+        spawningType = LaserSpawningType.SpreadTotal;
         this.way = way;
         this.totalSpread = totalSpread;
-        this.spreadDelta = 0;
-        this.layer = layer;
-        this.layerVelocityDelta = layerVelocityDelta;
-        this.layerAccelerationDelta = layerAccelerationDelta;
-        this.distanceToCenter = distanceToCenter;
+        spreadDelta = 0;
         return ref this;
     }
 
     [UnscopedRef]
-    public ref LaserBuilder SetSpawningSpreadByDelta(
-        int way,
-        float spreadDelta,
-        int layer = 1,
-        float layerVelocityDelta = 0,
-        float layerAccelerationDelta = 0,
-        float distanceToCenter = 0)
+    public ref LaserBuilder SetSpawningSpreadByDelta(int way, float spreadDelta)
     {
-        this.spawningType = SpawningType.Spread;
+        spawningType = LaserSpawningType.SpreadDelta;
         this.way = way;
-        this.totalSpread = 0;
+        totalSpread = 0;
         this.spreadDelta = spreadDelta;
-        this.layer = layer;
-        this.layerVelocityDelta = layerVelocityDelta;
-        this.layerAccelerationDelta = layerAccelerationDelta;
-        this.distanceToCenter = distanceToCenter;
         return ref this;
     }
     #endregion
 
     public readonly void Build(scoped Span<Entity> outputEntities = default)
     {
-        if (!hasLaser)
+        if (!hasLaser || way <= 0)
         {
             DisposeInstructions();
             return;
         }
 
-        BuildCore(factory, sourceTransform, sourceMovement, lifetime,
-            collider, sourceRenderer, laser,
-            rotationInstructions,
-            spawningType, way, layer, layerVelocityDelta, layerAccelerationDelta,
-            layerAngleOffset, distanceToCenter, totalSpread, spreadDelta,
-            hasSourceHierarchy, sourceHierarchy, outputEntities);
+        BuildCore(factory, sourceTransform, lifetime, collider,
+            sourceRenderer, beamRenderer, endRenderer, length, halfWidth,
+            rotationInstructions, spawningType, way, totalSpread, spreadDelta,
+            outputEntities);
 
         DisposeInstructions();
     }
@@ -292,215 +253,195 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
     private static void BuildCore(
         BulletFactory factory,
         Transform baseSourceTransform,
-        Movement baseSourceMovement,
         Lifetime lifetime,
         Collider baseCollider,
-        LaserSourceRenderer sourceRenderer,
-        StraightLaserConfig laser,
+        Renderer sourceRenderer,
+        Renderer beamRenderer,
+        Renderer endRenderer,
+        float length,
+        float halfWidth,
         UnsafePooledList<RotationInstruction> rotationInstructions,
-        SpawningType spawningType,
-        int way,
-        int layer,
-        float layerVelocityDelta,
-        float layerAccelerationDelta,
-        float layerAngleOffset,
-        float distanceToCenter,
+        LaserSpawningType spawningType,
+        int amount,
         float totalSpread,
         float spreadDelta,
-        bool hasSourceHierarchy,
-        Hierarchy baseSourceHierarchy,
         scoped Span<Entity> outputEntities)
     {
-        int amount = way * layer;
-        if (amount <= 0 || laser.Sprite is null)
-            return;
-
-        bool hasSourceRenderer = sourceRenderer.Sprite is not null;
         bool hasRotCtr = rotationInstructions.Count > 0;
         bool hasCollider = baseCollider.IsActive;
 
-        int sourceTypeCount = 4 + Unsafe.As<bool, byte>(ref hasSourceRenderer)
-                                + Unsafe.As<bool, byte>(ref hasRotCtr);
-
+        int sourceTypeCount = 4 + Unsafe.As<bool, byte>(ref hasRotCtr);
         Span<ComponentTypeInfo> sourceTypes = stackalloc ComponentTypeInfo[sourceTypeCount];
         int idx = 0;
         sourceTypes.UnsafeAt(idx++) = Component<Transform>.TypeInfo;
-        sourceTypes.UnsafeAt(idx++) = Component<Movement>.TypeInfo;
-        sourceTypes.UnsafeAt(idx++) = Component<Lifetime>.TypeInfo;
         sourceTypes.UnsafeAt(idx++) = Component<Hierarchy>.TypeInfo;
-        if (hasSourceRenderer) sourceTypes.UnsafeAt(idx++) = Component<Renderer>.TypeInfo;
+        sourceTypes.UnsafeAt(idx++) = Component<Lifetime>.TypeInfo;
+        sourceTypes.UnsafeAt(idx++) = Component<Renderer>.TypeInfo;
         if (hasRotCtr) sourceTypes.UnsafeAt(idx++) = Component<RotationController>.TypeInfo;
 
-        int bodyTypeCount = 4 + Unsafe.As<bool, byte>(ref hasCollider);
-        Span<ComponentTypeInfo> bodyTypes = stackalloc ComponentTypeInfo[bodyTypeCount];
+        int beamTypeCount = 4 + Unsafe.As<bool, byte>(ref hasCollider);
+        Span<ComponentTypeInfo> beamTypes = stackalloc ComponentTypeInfo[beamTypeCount];
         idx = 0;
-        bodyTypes.UnsafeAt(idx++) = Component<Transform>.TypeInfo;
-        bodyTypes.UnsafeAt(idx++) = Component<Lifetime>.TypeInfo;
-        bodyTypes.UnsafeAt(idx++) = Component<Renderer>.TypeInfo;
-        bodyTypes.UnsafeAt(idx++) = Component<Hierarchy>.TypeInfo;
-        if (hasCollider) bodyTypes.UnsafeAt(idx++) = Component<Collider>.TypeInfo;
+        beamTypes.UnsafeAt(idx++) = Component<Transform>.TypeInfo;
+        beamTypes.UnsafeAt(idx++) = Component<Hierarchy>.TypeInfo;
+        beamTypes.UnsafeAt(idx++) = Component<Lifetime>.TypeInfo;
+        beamTypes.UnsafeAt(idx++) = Component<Renderer>.TypeInfo;
+        if (hasCollider) beamTypes.UnsafeAt(idx++) = Component<Collider>.TypeInfo;
+
+        Span<ComponentTypeInfo> endTypes = stackalloc ComponentTypeInfo[4];
+        endTypes.UnsafeAt(0) = Component<Transform>.TypeInfo;
+        endTypes.UnsafeAt(1) = Component<Hierarchy>.TypeInfo;
+        endTypes.UnsafeAt(2) = Component<Lifetime>.TypeInfo;
+        endTypes.UnsafeAt(3) = Component<Renderer>.TypeInfo;
 
         using var sourceEntities = ScopedPooledArray<Entity>.Rent(amount);
-        using var bodyEntities = ScopedPooledArray<Entity>.Rent(amount);
+        using var beamEntities = ScopedPooledArray<Entity>.Rent(amount);
+        using var endEntities = ScopedPooledArray<Entity>.Rent(amount);
 
         using var sourceTransforms = ScopedPooledArray<Transform>.Rent(amount);
-        using var sourceMovements = ScopedPooledArray<Movement>.Rent(amount);
-        using var sourceLifetimes = ScopedPooledArray<Lifetime>.Rent(amount);
-        using var bodyTransforms = ScopedPooledArray<Transform>.Rent(amount);
-        using var bodyLifetimes = ScopedPooledArray<Lifetime>.Rent(amount);
-        using var bodyRenderers = ScopedPooledArray<Renderer>.Rent(amount);
-        using var bodyHierarchies = ScopedPooledArray<Hierarchy>.Rent(amount);
-
-        using var sourceRenderers = hasSourceRenderer ? ScopedPooledArray<Renderer>.Rent(amount) : default;
         using var sourceHierarchies = ScopedPooledArray<Hierarchy>.Rent(amount);
-        using var rotCtrs = hasRotCtr ? ScopedPooledArray<RotationController>.Rent(amount) : default;
-        using var bodyColliders = hasCollider ? ScopedPooledArray<Collider>.Rent(amount) : default;
+        using var sourceLifetimes = ScopedPooledArray<Lifetime>.Rent(amount);
+        using var sourceRenderers = ScopedPooledArray<Renderer>.Rent(amount);
+        using var beamTransforms = ScopedPooledArray<Transform>.Rent(amount);
+        using var beamHierarchies = ScopedPooledArray<Hierarchy>.Rent(amount);
+        using var beamLifetimes = ScopedPooledArray<Lifetime>.Rent(amount);
+        using var beamRenderers = ScopedPooledArray<Renderer>.Rent(amount);
+        using var endTransforms = ScopedPooledArray<Transform>.Rent(amount);
+        using var endHierarchies = ScopedPooledArray<Hierarchy>.Rent(amount);
+        using var endLifetimes = ScopedPooledArray<Lifetime>.Rent(amount);
+        using var endRenderers = ScopedPooledArray<Renderer>.Rent(amount);
 
-        float baseVelMag = baseSourceMovement.Velocity.Length();
-        float baseVelAngle = baseVelMag > 0 ? MathF.Atan2(baseSourceMovement.Velocity.Y, baseSourceMovement.Velocity.X) : 0;
-        float baseAccMag = baseSourceMovement.Acceleration.Length();
-        float baseAccAngle = baseAccMag > 0 ? MathF.Atan2(baseSourceMovement.Acceleration.Y, baseSourceMovement.Acceleration.X) : baseVelAngle;
+        using var rotCtrs = hasRotCtr ? ScopedPooledArray<RotationController>.Rent(amount) : default;
+        using var colliders = hasCollider ? ScopedPooledArray<Collider>.Rent(amount) : default;
 
         var sharedRotInstr = hasRotCtr ? rotationInstructions.ToArray() : null;
+        uint spawnId = SpawnId.NextBlock((uint)amount * 3u);
 
-        uint baseSpawnId = factory.GlobalSpawnCounter;
-        uint spawnIdStride = hasSourceRenderer ? 2u : 1u;
-        factory.GlobalSpawnCounter += (uint)amount * spawnIdStride;
-
-        var laserSprite = laser.Sprite;
-        var bodyRenderer = new Renderer
+        var baseBeamHierarchy = new Hierarchy(default, new Vector2(length * 0.5f, 0), Vector2.One, 0)
         {
-            Texture = laserSprite.Texture,
-            SourceRect = laserSprite.SourceRect,
-            Anchor = new Vector2(laserSprite.SourceRect.Width * 0.5f, laserSprite.SourceRect.Height * 0.5f),
-            Scale = new Vector2(laser.Length / laserSprite.SourceRect.Width,
-                                laser.RenderHalfWidth * 2f / laserSprite.SourceRect.Height),
-            Rotation = 0,
-            Color = laser.Color,
-            Layer = laser.Layer,
-            BlendState = laser.BlendState
+            Depth = 0
+        };
+        var baseEndHierarchy = new Hierarchy(default, new Vector2(length, 0), Vector2.One, 0)
+        {
+            Depth = 0
         };
 
         var laserCollider = baseCollider;
         laserCollider.ShapeType = ShapeType.ObbRect;
-        laserCollider.ObbRect.HalfSize = new Vector2(laser.Length * 0.5f, laser.RenderHalfWidth * 0.5f);
-
-        int sourceDepth = hasSourceHierarchy ? baseSourceHierarchy.Depth : -1;
-        var bodyHierarchy = new Hierarchy(default, new Vector2(laser.Length * 0.5f, 0), Vector2.One, 0)
-        {
-            Depth = sourceDepth + 1
-        };
+        laserCollider.ObbRect.HalfSize = new Vector2(length * 0.5f, halfWidth);
 
         for (int i = 0; i < amount; i++)
         {
-            int l = i / way;
-            int w = i % way;
-
-            float angle = baseVelAngle;
-            if (spawningType == SpawningType.Circle)
-            {
-                angle += (MathF.PI * 2f / way) * w + l * layerAngleOffset;
-            }
-            else if (spawningType == SpawningType.Spread && way > 1)
-            {
-                float total = totalSpread > 0 ? totalSpread : spreadDelta * (way - 1);
-                float delta = total / (way - 1);
-                angle += -total / 2f + delta * w;
-            }
-
-            float curVelMag = baseVelMag + l * layerVelocityDelta;
-            float curAccMag = baseAccMag + l * layerAccelerationDelta;
-            float curAccAngle = baseAccAngle + (angle - baseVelAngle);
-
-            var velDir = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
-            var accDir = new Vector2(MathF.Cos(curAccAngle), MathF.Sin(curAccAngle));
+            float rotation = ResolveSpawnRotation(baseSourceTransform.Rotation, i, amount,
+                spawningType, totalSpread, spreadDelta);
 
             var sourceTransform = baseSourceTransform;
-            if (hasSourceHierarchy)
-            {
-                var sourceHierarchy = baseSourceHierarchy;
-                sourceHierarchy.LocalPosition += velDir * distanceToCenter;
-                sourceHierarchies[i] = sourceHierarchy;
-            }
-            else
-            {
-                sourceTransform.Position += velDir * distanceToCenter;
-                sourceHierarchies[i] = new Hierarchy(default, Vector2.Zero, Vector2.One, 0);
-            }
+            sourceTransform.Rotation = rotation;
 
             sourceTransforms[i] = sourceTransform;
-            sourceMovements[i] = new Movement(velDir * curVelMag,
-                                              accDir * curAccMag,
-                                              baseSourceMovement.SyncTransformRotation);
+            sourceHierarchies[i] = new Hierarchy(default, Vector2.Zero, Vector2.One, 0);
             sourceLifetimes[i] = lifetime;
+            sourceRenderers[i] = sourceRenderer;
+            sourceRenderers[i].SpawnId = spawnId++;
 
-            uint bodySpawnId = baseSpawnId + (uint)i * spawnIdStride;
-            bodyRenderers[i] = bodyRenderer;
-            bodyRenderers[i].SpawnId = bodySpawnId;
+            var beamHierarchy = baseBeamHierarchy;
+            var endHierarchy = baseEndHierarchy;
 
-            if (hasSourceRenderer)
-            {
-                var sprite = sourceRenderer.Sprite!;
-                sourceRenderers[i] = new Renderer
-                {
-                    Texture = sprite.Texture,
-                    SourceRect = sprite.SourceRect,
-                    Anchor = sprite.Anchor,
-                    Scale = sourceRenderer.Scale,
-                    Rotation = 0,
-                    Color = laser.Color,
-                    SpawnId = bodySpawnId + 1,  // why the fuck isn't this unique
-                    Layer = laser.Layer,
-                    BlendState = laser.BlendState
-                };
-            }
+            beamTransforms[i] = CalculateChildTransform(sourceTransform, beamHierarchy);
+            beamHierarchies[i] = beamHierarchy;
+            beamLifetimes[i] = lifetime;
+            beamRenderers[i] = beamRenderer;
+            beamRenderers[i].SpawnId = spawnId++;
+
+            endTransforms[i] = CalculateChildTransform(sourceTransform, endHierarchy);
+            endHierarchies[i] = endHierarchy;
+            endLifetimes[i] = lifetime;
+            endRenderers[i] = endRenderer;
+            endRenderers[i].SpawnId = spawnId++;
 
             if (hasRotCtr) rotCtrs[i] = new() { Instructions = sharedRotInstr!, Index = -1 };
-
-            bodyTransforms[i] = CalculateChildTransform(sourceTransform, bodyHierarchy);
-            bodyLifetimes[i] = lifetime;
-            bodyHierarchies[i] = bodyHierarchy;
-            if (hasCollider) bodyColliders[i] = laserCollider;
+            if (hasCollider) colliders[i] = laserCollider;
         }
 
-        factory.World.ReserveEntityBulk(sourceEntities.AsSpan(), sourceTypes, out Archetype sourceArchetype, out Slot sourceStart, out Slot sourceEnd);
-        factory.World.ReserveEntityBulk(bodyEntities.AsSpan(), bodyTypes, out Archetype bodyArchetype, out Slot bodyStart, out Slot bodyEnd);
+        factory.World.ReserveEntityBulk(sourceEntities.AsSpan(), sourceTypes,
+            out Archetype sourceArchetype, out Slot sourceStart, out Slot sourceEnd);
+        factory.World.ReserveEntityBulk(beamEntities.AsSpan(), beamTypes,
+            out Archetype beamArchetype, out Slot beamStart, out Slot beamEnd);
+        factory.World.ReserveEntityBulk(endEntities.AsSpan(), endTypes,
+            out Archetype endArchetype, out Slot endStart, out Slot endEnd);
 
         for (int i = 0; i < amount; i++)
         {
-            sourceHierarchies[i].FirstChild = bodyEntities[i];
-            sourceHierarchies[i].ChildCount = 1;
-            bodyHierarchies[i].Parent = sourceEntities[i];
+            sourceHierarchies[i].FirstChild = beamEntities[i];
+            sourceHierarchies[i].ChildCount = 2;
+
+            beamHierarchies[i].Parent = sourceEntities[i];
+            beamHierarchies[i].NextSibling = endEntities[i];
+
+            endHierarchies[i].Parent = sourceEntities[i];
+            endHierarchies[i].PrevSibling = beamEntities[i];
         }
 
-        if (hasSourceHierarchy)
-            LinkSourcesToParent(factory.World, sourceEntities.AsSpan(), sourceHierarchies.AsSpan());
-
-        sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceTransforms.AsSpan(), sourceMovements.AsSpan(),
-            sourceLifetimes.AsSpan(), sourceHierarchies.AsSpan());
-        if (hasSourceRenderer) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, sourceRenderers.AsSpan());
+        sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd,
+            sourceTransforms.AsSpan(), sourceHierarchies.AsSpan(), sourceLifetimes.AsSpan(), sourceRenderers.AsSpan());
         if (hasRotCtr) sourceArchetype.SetRangeWithSpanBulk(sourceStart, sourceEnd, rotCtrs.AsSpan());
 
-        bodyArchetype.SetRangeWithSpanBulk(bodyStart, bodyEnd, bodyTransforms.AsSpan(), bodyLifetimes.AsSpan(),
-            bodyRenderers.AsSpan(), bodyHierarchies.AsSpan());
-        if (hasCollider) bodyArchetype.SetRangeWithSpanBulk(bodyStart, bodyEnd, bodyColliders.AsSpan());
+        beamArchetype.SetRangeWithSpanBulk(beamStart, beamEnd,
+            beamTransforms.AsSpan(), beamHierarchies.AsSpan(), beamLifetimes.AsSpan(), beamRenderers.AsSpan());
+        if (hasCollider) beamArchetype.SetRangeWithSpanBulk(beamStart, beamEnd, colliders.AsSpan());
+
+        endArchetype.SetRangeWithSpanBulk(endStart, endEnd,
+            endTransforms.AsSpan(), endHierarchies.AsSpan(), endLifetimes.AsSpan(), endRenderers.AsSpan());
 
         if (!outputEntities.IsEmpty)
+            sourceEntities.AsSpan()[..Math.Min(amount, outputEntities.Length)].CopyTo(outputEntities);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float ResolveSpawnRotation(float baseRotation, int index, int amount,
+        LaserSpawningType spawningType, float totalSpread, float spreadDelta)
+    {
+        if (amount <= 1 || spawningType == LaserSpawningType.None)
+            return baseRotation;
+
+        if (spawningType == LaserSpawningType.SpreadDelta)
+            totalSpread = spreadDelta * (amount - 1);
+
+        return baseRotation - totalSpread * 0.5f + totalSpread / (amount - 1) * index;
+    }
+
+    private static Renderer CreateRenderer(
+        AssetManager assetManager,
+        string? spriteName,
+        Vector2 scale,
+        Color color,
+        byte layer,
+        StgBlendState blendState)
+    {
+        if (spriteName is null)
         {
-            if (outputEntities.Length >= amount * 2)
+            return new Renderer
             {
-                int outIndex = 0;
-                for (int i = 0; i < amount; i++)
-                {
-                    outputEntities[outIndex++] = sourceEntities[i];
-                    outputEntities[outIndex++] = bodyEntities[i];
-                }
-            }
-            else
-            {
-                sourceEntities.AsSpan()[..Math.Min(amount, outputEntities.Length)].CopyTo(outputEntities);
-            }
+                Scale = scale,
+                Color = color,
+                Layer = layer,
+                BlendState = blendState,
+                IsVisible = false
+            };
         }
+
+        var sprite = assetManager.Get<SpriteAsset>(spriteName);
+        return new Renderer
+        {
+            Texture = sprite.Texture,
+            SourceRect = sprite.SourceRect,
+            Anchor = sprite.Anchor,
+            Scale = scale,
+            Color = color,
+            Layer = layer,
+            BlendState = blendState,
+            IsVisible = true
+        };
     }
 
     private static Transform CalculateChildTransform(Transform parentTransform, Hierarchy local)
@@ -517,39 +458,6 @@ public ref struct LaserBuilder(BulletFactory bulletFactory)
                 parentTransform.Position.Y + (localX * sin + localY * cos)),
             parentTransform.Scale * local.LocalScale,
             local.PreserveTransformRotation ? parentTransform.Rotation : parentTransform.Rotation + local.LocalRotation);
-    }
-
-    private static int GetChildDepth(World world, Entity parent)
-    {
-        if (world.TryGetComponent<Hierarchy>(parent, out var hierarchy))
-            return hierarchy.Parent != default ? hierarchy.Depth + 1 : 0;
-        return 0;
-    }
-
-    private static void LinkSourcesToParent(World world, Span<Entity> sourceEntities, Span<Hierarchy> sourceHierarchies)
-    {
-        if (sourceHierarchies.IsEmpty)
-            return;
-
-        Entity parent = sourceHierarchies[0].Parent;
-        if (!world.HasComponent<Hierarchy>(parent))
-            world.AddComponent(parent, new Hierarchy(default, Vector2.Zero, Vector2.One, 0));
-
-        ref var parentHierarchy = ref world.GetComponent<Hierarchy>(parent);
-        Entity oldFirst = parentHierarchy.FirstChild;
-        int lastIndex = sourceHierarchies.Length - 1;
-
-        for (int i = 0; i < sourceHierarchies.Length; i++)
-        {
-            sourceHierarchies[i].PrevSibling = i == lastIndex ? default : sourceEntities[i + 1];
-            sourceHierarchies[i].NextSibling = i == 0 ? oldFirst : sourceEntities[i - 1];
-        }
-
-        if (oldFirst != default)
-            world.GetComponent<Hierarchy>(oldFirst).PrevSibling = sourceEntities[0];
-
-        parentHierarchy.FirstChild = sourceEntities[lastIndex];
-        parentHierarchy.ChildCount += sourceHierarchies.Length;
     }
 
     private readonly void DisposeInstructions()

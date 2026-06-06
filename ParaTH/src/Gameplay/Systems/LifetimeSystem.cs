@@ -5,8 +5,9 @@ namespace ParaTH;
 
 using DepthBuckets = UnsafePooledList<UnsafePooledList<LifetimeSystem.HierarchyPair>>;
 
-// handles the destruction of offbound entities
-// a parent children hierarchy is seen as a whole and will not be destroyed until all its entities are offscreen
+// handles lifetime expiry and offbound destruction.
+// offscreen expiry is soft: a parent-child hierarchy dies as a group only when all Lifetime nodes are ready.
+// max-age expiry is hard: the expired node owns and destroys its whole subtree.
 [SkipLocalsInit]
 public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
 {
@@ -16,9 +17,14 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Lifetime>();
 
-    private readonly UnsafeBitset isReadyToDie = new(4);                                // bitset for checking whether an entity should die
-    private readonly UnsafePooledList<Entity> potentialToDestroy = new(256);            // contains entites without curvy laser components
-    private readonly UnsafePooledList<Entity> potentialCurvyLaserToDestroy = new(16);   // handled separately because curvy lasers owns resources that need manual disposal
+    private readonly UnsafeBitset lifetimeNodes = new(4);                               // entities participating in soft lifetime groups
+    private readonly UnsafeBitset softReadyToDie = new(4);                              // offscreen expiry
+    private readonly UnsafeBitset hardReadyToDie = new(4);                              // max-age expiry
+    private readonly UnsafeBitset toDestroy = new(4);                                   // final destroy set, may include nodes without Lifetime
+    private readonly UnsafePooledList<Entity> softDestroyCandidates = new(256);
+    private readonly UnsafePooledList<Entity> hardDestroyCandidates = new(64);
+    private readonly UnsafePooledList<Entity> destroyEntities = new(256);
+    private readonly UnsafePooledList<Entity> subtreeStack = new(64);
     private readonly DepthBuckets hierarchyEntityBuckets = new(4);                      // depth-based buckets used for syncing parent and children's lifetimes
     private int maxDepthSeen = -1;
 
@@ -31,15 +37,27 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
     public void Update()
     {
         var q = world.GetOrCreateQuery(descriptor);
-        var potentialToDestroy = this.potentialToDestroy;
-        var potentialCurvyLaserToDestroy = this.potentialCurvyLaserToDestroy;
+        var softDestroyCandidates = this.softDestroyCandidates;
+        var hardDestroyCandidates = this.hardDestroyCandidates;
         var hierarchyEntityBuckets = this.hierarchyEntityBuckets;
-        var isReadyToDie = this.isReadyToDie;
+        var lifetimeNodes = this.lifetimeNodes;
+        var softReadyToDie = this.softReadyToDie;
+        var hardReadyToDie = this.hardReadyToDie;
+        var toDestroy = this.toDestroy;
 
-        potentialToDestroy.Clear();
-        potentialCurvyLaserToDestroy.Clear();
-        isReadyToDie.Clear();
-        isReadyToDie.EnsureCapacity(world.MaxEntityId);
+        softDestroyCandidates.Clear();
+        hardDestroyCandidates.Clear();
+        destroyEntities.Clear();
+        lifetimeNodes.Clear();
+        softReadyToDie.Clear();
+        hardReadyToDie.Clear();
+        toDestroy.Clear();
+
+        int bitCapacity = world.MaxEntityId + 1;
+        lifetimeNodes.EnsureCapacity(bitCapacity);
+        softReadyToDie.EnsureCapacity(bitCapacity);
+        hardReadyToDie.EnsureCapacity(bitCapacity);
+        toDestroy.EnsureCapacity(bitCapacity);
 
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
@@ -62,44 +80,52 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                     ref var lifetime = ref lifetimes.UnsafeAt(i);
                     var entity = chunk.Entities.UnsafeAt(i);
 
-                    // calculate if an entity is offscreen
-                    bool isOffscreen;
-                    if (hasCurvyLaser)
+                    lifetimeNodes.Set(entity.Id);
+
+                    if (lifetime.MaxAliveFrames > 0 && lifetime.AliveFrames >= lifetime.MaxAliveFrames)
                     {
-                        isOffscreen = IsCurvyLaserOffscreen(ref curvyLasers.UnsafeAt(i));
-                    }
-                    else if (hasRenderer)
-                    {
-                        float radius = CalculateSpriteRadius(ref renderers.UnsafeAt(i));
-                        isOffscreen = IsCircleOffscreen(transform.Position, radius);
-                    }
-                    else
-                    {
-                        isOffscreen = IsPointOffscreen(transform.Position);
+                        hardReadyToDie.Set(entity.Id);
+                        hardDestroyCandidates.Add(entity);
                     }
 
-                    // decrement ttl or put on kill list
-                    if (isOffscreen)
+                    if (lifetime.OffscreenFramesToLive >= 0)
                     {
-                        if (lifetime.OffscreenFramesToLive > 0)
+                        // calculate if an entity is offscreen
+                        bool isOffscreen;
+                        if (hasCurvyLaser)
                         {
-                            lifetime.OffscreenFramesToLive--;
-                            if (lifetime.OffscreenFramesToLive <= 0)
-                                isReadyToDie.Set(entity.Id);
+                            isOffscreen = IsCurvyLaserOffscreen(ref curvyLasers.UnsafeAt(i));
+                        }
+                        else if (hasRenderer)
+                        {
+                            float radius = CalculateSpriteRadius(ref renderers.UnsafeAt(i));
+                            isOffscreen = IsCircleOffscreen(transform.Position, radius);
                         }
                         else
                         {
-                            isReadyToDie.Set(entity.Id);
+                            isOffscreen = IsPointOffscreen(transform.Position);
                         }
 
-                        if (isReadyToDie.IsSet(entity.Id))
+                        // decrement ttl or put on kill list
+                        if (isOffscreen)
                         {
-                            if (hasCurvyLaser)
-                                potentialCurvyLaserToDestroy.Add(entity);
+                            if (lifetime.OffscreenFramesToLive > 0)
+                            {
+                                lifetime.OffscreenFramesToLive--;
+                                if (lifetime.OffscreenFramesToLive <= 0)
+                                    softReadyToDie.Set(entity.Id);
+                            }
                             else
-                                potentialToDestroy.Add(entity);
+                            {
+                                softReadyToDie.Set(entity.Id);
+                            }
+
+                            if (softReadyToDie.IsSet(entity.Id))
+                                softDestroyCandidates.Add(entity);
                         }
                     }
+
+                    lifetime.AliveFrames++;
 
                     // only parented hierarchy nodes participate in group lifetime propagation
                     if (hasHrc)
@@ -135,8 +161,8 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
             {
                 var pair = bucketSpan.UnsafeAt(i);
 
-                if (!isReadyToDie.IsSet(pair.Child.Id))
-                    isReadyToDie.Unset(pair.Parent.Id);
+                if (CanSaveSoftGroup(pair.Child))
+                    softReadyToDie.Unset(pair.Parent.Id);
             }
         }
 
@@ -150,31 +176,120 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
             {
                 var pair = bucketSpan.UnsafeAt(i);
 
-                if (!isReadyToDie.IsSet(pair.Parent.Id))
-                    isReadyToDie.Unset(pair.Child.Id);
+                if (CanSaveSoftGroup(pair.Parent))
+                    softReadyToDie.Unset(pair.Child.Id);
             }
 
             bucket.Clear();
         }
 
-        // hot path: regular bullets
-        for (int i = 0; i < potentialToDestroy.Count; i++)
+        for (int i = 0; i < hardDestroyCandidates.Count; i++)
         {
-            var entity = potentialToDestroy[i];
-            if (isReadyToDie.IsSet(entity.Id))
-                world.DestroyEntity(entity);
+            var entity = hardDestroyCandidates[i];
+            if (hardReadyToDie.IsSet(entity.Id))
+                MarkSubtreeForDestroy(entity);
         }
 
-        // cold path: curvy lasers
-        for (int i = 0; i < potentialCurvyLaserToDestroy.Count; i++)
+        for (int i = 0; i < softDestroyCandidates.Count; i++)
         {
-            var entity = potentialCurvyLaserToDestroy[i];
-            if (isReadyToDie.IsSet(entity.Id))
+            var entity = softDestroyCandidates[i];
+            if (softReadyToDie.IsSet(entity.Id))
+                MarkSubtreeForDestroy(entity);
+        }
+
+        UnlinkDestroyRoots();
+        DestroyMarkedEntities();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        bool CanSaveSoftGroup(Entity entity)
+        {
+            int id = entity.Id;
+            return lifetimeNodes.IsSet(id) && !hardReadyToDie.IsSet(id) && !softReadyToDie.IsSet(id);
+        }
+    }
+
+    private void MarkSubtreeForDestroy(Entity root)
+    {
+        var stack = subtreeStack;
+        stack.Clear();
+        stack.Add(root);
+
+        while (stack.Count > 0)
+        {
+            var entity = stack[^1];
+            stack.RemoveLast();
+
+            if (toDestroy.IsSet(entity.Id))
+                continue;
+
+            toDestroy.Set(entity.Id);
+            destroyEntities.Add(entity);
+
+            if (!world.HasComponent<Hierarchy>(entity))
+                continue;
+
+            ref var hierarchy = ref world.GetComponent<Hierarchy>(entity);
+            var child = hierarchy.FirstChild;
+            while (child != default)
             {
-                ref var laser = ref world.GetComponent<CurvyLaser>(entity);
-                laser.LaserNodes.Dispose();
-                world.DestroyEntity(entity);
+                stack.Add(child);
+                child = world.GetComponent<Hierarchy>(child).NextSibling;
             }
+        }
+    }
+
+    private void UnlinkDestroyRoots()
+    {
+        for (int i = 0; i < destroyEntities.Count; i++)
+        {
+            var entity = destroyEntities[i];
+            if (!world.HasComponent<Hierarchy>(entity))
+                continue;
+
+            ref var hierarchy = ref world.GetComponent<Hierarchy>(entity);
+            var parent = hierarchy.Parent;
+            if (parent == default || toDestroy.IsSet(parent.Id))
+                continue;
+
+            UnlinkFromParent(parent, ref hierarchy);
+        }
+    }
+
+    private void UnlinkFromParent(Entity parent, ref Hierarchy childHierarchy)
+    {
+        var prev = childHierarchy.PrevSibling;
+        var next = childHierarchy.NextSibling;
+
+        if (prev != default)
+            world.GetComponent<Hierarchy>(prev).NextSibling = next;
+        else
+            world.GetComponent<Hierarchy>(parent).FirstChild = next;
+
+        if (next != default)
+            world.GetComponent<Hierarchy>(next).PrevSibling = prev;
+
+        childHierarchy.Parent = default;
+        childHierarchy.PrevSibling = default;
+        childHierarchy.NextSibling = default;
+
+        ref var parentHierarchy = ref world.GetComponent<Hierarchy>(parent);
+        if (parentHierarchy.ChildCount > 0)
+            parentHierarchy.ChildCount--;
+
+        if (parentHierarchy.Parent == default && parentHierarchy.FirstChild == default)
+            world.RemoveComponent<Hierarchy>(parent);
+    }
+
+    private void DestroyMarkedEntities()
+    {
+        for (int i = 0; i < destroyEntities.Count; i++)
+        {
+            var entity = destroyEntities[i];
+
+            if (world.HasComponent<CurvyLaser>(entity))
+                world.GetComponent<CurvyLaser>(entity).LaserNodes.Dispose();
+
+            world.DestroyEntity(entity);
         }
     }
 
@@ -245,9 +360,14 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
 
     public void Dispose()
     {
-        isReadyToDie.Dispose();
-        potentialToDestroy.Dispose();
-        potentialCurvyLaserToDestroy.Dispose();
+        lifetimeNodes.Dispose();
+        softReadyToDie.Dispose();
+        hardReadyToDie.Dispose();
+        toDestroy.Dispose();
+        softDestroyCandidates.Dispose();
+        hardDestroyCandidates.Dispose();
+        destroyEntities.Dispose();
+        subtreeStack.Dispose();
 
         for (int i = 0; i < hierarchyEntityBuckets.Count; i++)
             hierarchyEntityBuckets[i].Dispose();

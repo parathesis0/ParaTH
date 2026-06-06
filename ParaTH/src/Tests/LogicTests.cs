@@ -43,11 +43,15 @@ public static class LogicTests
         Test_Hierarchy_Reparent_UpdatesSubtreeDepth();
         Test_Hierarchy_Unparent_ReRootsChildren();
         Test_Hierarchy_ChildTraversal();
-        Test_Lifetime_Hierarchy_AnyAliveSavesGroup();
-        Test_Lifetime_Hierarchy_AllReadyDestroysGroup();
+        Test_Lifetime_Hierarchy_Offscreen_ChildSavesParent();
+        Test_Lifetime_Hierarchy_Offscreen_AllReadyDestroysGroup();
+        Test_Lifetime_Hierarchy_MaxAgeParentDestroysChildWithoutLifetime();
+        Test_Lifetime_Hierarchy_MaxAgeChildDoesNotDestroyParent();
+        Test_Lifetime_NoMovement_StillAges();
 
         Test_RotationController_RotationalVelocity();
         Test_RotationController_SetRotation_Immediate();
+        Test_RotationController_NoMovement_ParentedLocalRotation();
         Test_Integration_SpinningParent_OrbitsChild();
 
         Console.WriteLine($"== done: {passed} passed, {failed} failed ==");
@@ -302,7 +306,7 @@ public static class LogicTests
     #endregion
 
     #region Hierarchy lifetime
-    private static void Test_Lifetime_Hierarchy_AnyAliveSavesGroup()
+    private static void Test_Lifetime_Hierarchy_Offscreen_ChildSavesParent()
     {
         using var world = NewWorld();
         var manager = new HierarchyManager(world);
@@ -314,11 +318,11 @@ public static class LogicTests
 
         lifetime.Update();
 
-        Check(world.IsAlive(parent), "lifetime hierarchy: child saves offscreen parent");
+        Check(world.IsAlive(parent), "lifetime hierarchy: onscreen child saves offscreen parent");
         Check(world.IsAlive(child), "lifetime hierarchy: onscreen child remains alive");
     }
 
-    private static void Test_Lifetime_Hierarchy_AllReadyDestroysGroup()
+    private static void Test_Lifetime_Hierarchy_Offscreen_AllReadyDestroysGroup()
     {
         using var world = NewWorld();
         var manager = new HierarchyManager(world);
@@ -332,6 +336,66 @@ public static class LogicTests
 
         Check(!world.IsAlive(parent), "lifetime hierarchy: ready parent destroyed");
         Check(!world.IsAlive(child), "lifetime hierarchy: ready child destroyed");
+    }
+
+    private static void Test_Lifetime_Hierarchy_MaxAgeParentDestroysChildWithoutLifetime()
+    {
+        using var world = NewWorld();
+        var manager = new HierarchyManager(world);
+        var lifetime = new LifetimeSystem(world, new Rectangle(0, 0, 100, 100));
+
+        var parent = world.CreateEntity(
+            new Transform(new Vector2(50, 50), Vector2.One, 0f),
+            new Lifetime(-1, maxAliveFrames: 1));
+        var child = world.CreateEntity(
+            new Transform(new Vector2(60, 50), Vector2.One, 0f));
+        manager.SetParent(child, parent, worldPositionStays: true);
+
+        lifetime.Update();
+        Check(world.IsAlive(parent), "lifetime hard ttl: parent alive on first frame");
+        Check(world.IsAlive(child), "lifetime hard ttl: child alive on first frame");
+        Check(world.GetComponent<Lifetime>(parent).AliveFrames == 1, "lifetime hard ttl: parent aged first frame");
+
+        lifetime.Update();
+        Check(!world.IsAlive(parent), "lifetime hard ttl: parent destroyed at max age");
+        Check(!world.IsAlive(child), "lifetime hard ttl: child without Lifetime destroyed with parent");
+    }
+
+    private static void Test_Lifetime_Hierarchy_MaxAgeChildDoesNotDestroyParent()
+    {
+        using var world = NewWorld();
+        var manager = new HierarchyManager(world);
+        var lifetime = new LifetimeSystem(world, new Rectangle(0, 0, 100, 100));
+
+        var parent = MakeNode(world, new Vector2(50, 50), offscreenFramesToLive: 60);
+        var child = world.CreateEntity(
+            new Transform(new Vector2(60, 50), Vector2.One, 0f),
+            new Lifetime(-1, maxAliveFrames: 1));
+        manager.SetParent(child, parent, worldPositionStays: true);
+
+        lifetime.Update();
+        lifetime.Update();
+
+        Check(world.IsAlive(parent), "lifetime hard ttl: child expiry does not destroy parent");
+        Check(!world.IsAlive(child), "lifetime hard ttl: child destroyed at max age");
+        Check(manager.GetChildCount(parent) == 0, "lifetime hard ttl: destroyed child unlinked from parent");
+    }
+
+    private static void Test_Lifetime_NoMovement_StillAges()
+    {
+        using var world = NewWorld();
+        var lifetime = new LifetimeSystem(world, new Rectangle(0, 0, 100, 100));
+
+        var e = world.CreateEntity(
+            new Transform(new Vector2(50, 50), Vector2.One, 0f),
+            new Lifetime(-1, maxAliveFrames: 1));
+
+        lifetime.Update();
+        Check(world.IsAlive(e), "lifetime no movement: entity alive on first frame");
+        Check(world.GetComponent<Lifetime>(e).AliveFrames == 1, "lifetime no movement: AliveFrames increments");
+
+        lifetime.Update();
+        Check(!world.IsAlive(e), "lifetime no movement: max age destroys entity");
     }
     #endregion
 
@@ -383,6 +447,36 @@ public static class LogicTests
         movement.Update();
         ApproxEq(world.GetComponent<Transform>(e).Rotation, MathHelper.PiOver2,
             "RotationController: SetRotation duration 0 applied immediately");
+    }
+
+    private static void Test_RotationController_NoMovement_ParentedLocalRotation()
+    {
+        using var world = NewWorld();
+        var movement = new MovementSystem(world);
+        var manager = new HierarchyManager(world);
+        var hierarchySys = new HierarchySystem(world);
+
+        var parent = world.CreateEntity(new Transform(new Vector2(50, 50), Vector2.One, 1.0f));
+        var child = world.CreateEntity(
+            new Transform(new Vector2(10, 0), Vector2.One, 0f),
+            new Lifetime(60));
+        manager.SetParent(child, parent, worldPositionStays: false);
+        world.AddComponent(child, new RotationController
+        {
+            Instructions =
+            [
+                new RotationInstruction(0, 0.2f, 0, EaseType.Linear, RotationInstruction.Ops.SetRotationalVelocity)
+            ],
+            Index = -1
+        });
+
+        movement.Update();
+        hierarchySys.Update();
+
+        ApproxEq(world.GetComponent<Hierarchy>(child).LocalRotation, 0.2f,
+            "RotationController: no Movement updates local rotation");
+        ApproxEq(world.GetComponent<Transform>(child).Rotation, 1.2f,
+            "RotationController: parented no Movement propagates world rotation");
     }
     #endregion
 
