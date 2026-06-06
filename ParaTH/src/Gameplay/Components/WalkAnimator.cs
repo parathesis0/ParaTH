@@ -3,6 +3,7 @@ namespace ParaTH;
 using static AnimationAsset;
 
 // 16 bytes
+// packedStateData layout: | Unused (Bit 7-6) | CurrentDirection (Bit 5-4) | CurrentState (Bit 3-1) | IsReverse (Bit 0) |
 public struct WalkAnimator(
     AnimationAsset idle,
     AnimationAsset left,

@@ -358,8 +358,8 @@ public sealed class TestScript(BulletFactory bulletFactory, World world, Engine 
                 FirePatternA_SyncTransformRotation();
 
             // Pattern D: emitter sweeps via RotationController; fire along its current facing
-            //if (counter % 4 == 0)
-                //FirePatternD_Sweep();
+            if (counter % 4 == 0)
+                FirePatternD_Sweep();
         }
 
         // multi layer hierarchy test
@@ -391,9 +391,9 @@ public sealed class TestScript(BulletFactory bulletFactory, World world, Engine 
             for (int i = 0; i < 4; i++)
                 engine.Hierarchy.SetParent(depth1Span[i], parentSpan[0], false, true);
 
+            Span<Entity> depth2Span = stackalloc Entity[4];
             for (int i = 0; i < 4; i++)
             {
-                Span<Entity> depth2Span = stackalloc Entity[4];
                 bulletFactory.Create()
                     .SetSprite("ring_lightred", Color.White, 100, StgBlendState.Alpha)
                     .SetSpawningCircle(4, 1, 0, 0, 0, 50)
@@ -751,26 +751,5 @@ public sealed class Engine : Game
         hierarcySystem.Dispose();
         hierarchyManager.Dispose();
         base.UnloadContent();
-    }
-
-    // really bad test methods, no safeguarding whatsoever
-    // todo: should these be in a separate class/system?
-    public void SetParentTest(Entity parent, Entity children, Vector2 localPosition, Vector2 localScale, float rotation = 0)
-    {
-        // route through the manager so Depth + parent->child links stay correct.
-        // keep-local mode, then stamp the explicit local TRS the caller asked for.
-        hierarchyManager.SetParent(children, parent, worldPositionStays: false);
-        ref var hierarchy = ref world.GetComponent<Hierarchy>(children);
-        hierarchy.LocalPosition = localPosition;
-        hierarchy.LocalScale = localScale;
-        hierarchy.LocalRotation = rotation;
-    }
-
-    public void SetParentTest(Entity parent, Entity children, bool keepWorldTransform)
-    {
-        if (!world.HasComponent<Transform>(children))
-            return;
-
-        hierarchyManager.SetParent(parent: parent, child: children, worldPositionStays: keepWorldTransform);
     }
 }
