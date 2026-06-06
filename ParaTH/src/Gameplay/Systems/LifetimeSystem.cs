@@ -59,6 +59,11 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         hardReadyToDie.EnsureCapacity(bitCapacity);
         toDestroy.EnsureCapacity(bitCapacity);
 
+        // maxDepthSeen is the bucket allocation high-water mark (kept for pooling); the save-group
+        // loops below must only walk depths actually populated this frame, else a single past deep
+        // hierarchy makes them sweep empty buckets forever.
+        int maxDepthThisFrame = -1;
+
         foreach (var archetype in q.GetMatchingArchetypesSpan())
         {
             bool hasRenderer = archetype.Has<Renderer>();
@@ -145,6 +150,9 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
                             maxDepthSeen = depth;
                         }
 
+                        if (depth > maxDepthThisFrame)
+                            maxDepthThisFrame = depth;
+
                         hierarchyEntityBuckets[depth].Add(new HierarchyPair(entity, parent));
                     }
                 }
@@ -152,7 +160,7 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         }
 
         // process hierarchy from deepest to shallowest (children save parents)
-        for (int depth = maxDepthSeen; depth >= 0; depth--)
+        for (int depth = maxDepthThisFrame; depth >= 0; depth--)
         {
             var bucket = hierarchyEntityBuckets[depth];
             var bucketSpan = bucket.AsSpan();
@@ -167,7 +175,7 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         }
 
         // process hierarchy from shallowest to deepest (parents save children)
-        for (int depth = 0; depth <= maxDepthSeen; depth++)
+        for (int depth = 0; depth <= maxDepthThisFrame; depth++)
         {
             var bucket = hierarchyEntityBuckets[depth];
             var bucketSpan = bucket.AsSpan();
@@ -225,10 +233,10 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
             toDestroy.Set(entity.Id);
             destroyEntities.Add(entity);
 
-            if (!world.HasComponent<Hierarchy>(entity))
+            ref var hierarchy = ref world.TryGetComponentRef<Hierarchy>(entity);
+            if (Unsafe.IsNullRef(ref hierarchy))
                 continue;
 
-            ref var hierarchy = ref world.GetComponent<Hierarchy>(entity);
             var child = hierarchy.FirstChild;
             while (child != default)
             {
@@ -243,10 +251,11 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         for (int i = 0; i < destroyEntities.Count; i++)
         {
             var entity = destroyEntities[i];
-            if (!world.HasComponent<Hierarchy>(entity))
+
+            ref var hierarchy = ref world.TryGetComponentRef<Hierarchy>(entity);
+            if (Unsafe.IsNullRef(ref hierarchy))
                 continue;
 
-            ref var hierarchy = ref world.GetComponent<Hierarchy>(entity);
             var parent = hierarchy.Parent;
             if (parent == default || toDestroy.IsSet(parent.Id))
                 continue;
@@ -286,8 +295,9 @@ public sealed class LifetimeSystem(World world, Rectangle bounds) : IDisposable
         {
             var entity = destroyEntities[i];
 
-            if (world.HasComponent<CurvyLaser>(entity))
-                world.GetComponent<CurvyLaser>(entity).LaserNodes.Dispose();
+            ref var curvyLaser = ref world.TryGetComponentRef<CurvyLaser>(entity);
+            if (!Unsafe.IsNullRef(ref curvyLaser))
+                curvyLaser.LaserNodes.Dispose();
 
             world.DestroyEntity(entity);
         }

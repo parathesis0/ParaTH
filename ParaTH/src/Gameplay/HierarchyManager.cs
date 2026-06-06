@@ -84,18 +84,22 @@ public sealed class HierarchyManager(World world) : IDisposable
     {
         Debug.Assert(world.IsAlive(child));
 
-        if (!world.HasComponent<Hierarchy>(child))
+        ref var childHierarchy = ref world.TryGetComponentRef<Hierarchy>(child);
+        if (Unsafe.IsNullRef(ref childHierarchy))
             return;
 
-        Entity oldParent = world.GetComponent<Hierarchy>(child).Parent;
+        Entity oldParent = childHierarchy.Parent;
         if (oldParent == default)
         {
-            RemoveHierarchyIfDetachedLeaf(child);
+            // already a root: drop the component only if it isn't holding a child list.
+            if (childHierarchy.FirstChild == default)
+                world.RemoveComponent<Hierarchy>(child);
             return;
         }
 
         UnlinkChild(oldParent, child);
 
+        // re-resolve: UnlinkChild can structurally move child (it may drop the parent's Hierarchy).
         ref var hierarchy = ref world.GetComponent<Hierarchy>(child);
         hierarchy.Parent = default;
         hierarchy.PrevSibling = default;
@@ -275,17 +279,21 @@ public sealed class HierarchyManager(World world) : IDisposable
 
     private void UnlinkChild(Entity parent, Entity child)
     {
-        if (!world.HasComponent<Hierarchy>(child))
+        ref var childHierarchy = ref world.TryGetComponentRef<Hierarchy>(child);
+        if (Unsafe.IsNullRef(ref childHierarchy))
             return;
 
-        ref var childHierarchy = ref world.GetComponent<Hierarchy>(child);
         Entity prev = childHierarchy.PrevSibling;
         Entity next = childHierarchy.NextSibling;
 
+        // resolve the parent once and reuse the ref for the relink, the count, and the leaf prune.
+        ref var parentHierarchy = ref world.TryGetComponentRef<Hierarchy>(parent);
+        bool parentHasHierarchy = !Unsafe.IsNullRef(ref parentHierarchy);
+
         if (prev != default)
             world.GetComponent<Hierarchy>(prev).NextSibling = next;
-        else if (world.HasComponent<Hierarchy>(parent))
-            world.GetComponent<Hierarchy>(parent).FirstChild = next;
+        else if (parentHasHierarchy)
+            parentHierarchy.FirstChild = next;
 
         if (next != default)
             world.GetComponent<Hierarchy>(next).PrevSibling = prev;
@@ -293,14 +301,15 @@ public sealed class HierarchyManager(World world) : IDisposable
         childHierarchy.PrevSibling = default;
         childHierarchy.NextSibling = default;
 
-        if (world.HasComponent<Hierarchy>(parent))
+        if (parentHasHierarchy)
         {
-            ref var parentHierarchy = ref world.GetComponent<Hierarchy>(parent);
             if (parentHierarchy.ChildCount > 0)
                 parentHierarchy.ChildCount--;
-        }
 
-        RemoveHierarchyIfDetachedLeaf(parent);
+            // inlined detached-leaf prune; must be last, RemoveComponent invalidates parentHierarchy.
+            if (parentHierarchy.Parent == default && parentHierarchy.FirstChild == default)
+                world.RemoveComponent<Hierarchy>(parent);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -309,16 +318,6 @@ public sealed class HierarchyManager(World world) : IDisposable
         if (!world.HasComponent<Hierarchy>(entity))
             world.AddComponent(entity, new Hierarchy(default, Vector2.Zero, Vector2.One, 0));
         return ref world.GetComponent<Hierarchy>(entity);
-    }
-
-    private void RemoveHierarchyIfDetachedLeaf(Entity entity)
-    {
-        if (!world.HasComponent<Hierarchy>(entity))
-            return;
-
-        ref var hierarchy = ref world.GetComponent<Hierarchy>(entity);
-        if (hierarchy.Parent == default && hierarchy.FirstChild == default)
-            world.RemoveComponent<Hierarchy>(entity);
     }
 
     private int GetDepthAsChildOf(Entity parent)

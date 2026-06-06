@@ -11,7 +11,17 @@ public sealed class HierarchySystem(World world) : IDisposable
     private QueryDescriptor descriptor = new QueryDescriptor()
         .WithAll<Transform, Hierarchy>();
 
-    private readonly UnsafePooledList<Entity> traversalStack = new(64);
+    private readonly UnsafePooledList<StackNode> traversalStack = new(64);
+
+    // a parent whose children still need their world transform written. carrying the
+    // already-resolved world Transform + FirstChild here means a node is never re-resolved
+    // through the EntityDataMap when it is popped: it was fully resolved as a child already.
+    // pure value type (no managed refs) so the pooled stack never has to clear slots.
+    private readonly struct StackNode(Entity firstChild, Transform world)
+    {
+        public readonly Entity FirstChild = firstChild;
+        public readonly Transform World = world;
+    }
 
     public void Update()
     {
@@ -23,6 +33,7 @@ public sealed class HierarchySystem(World world) : IDisposable
             foreach (ref var chunk in archetype.GetChunksSpan())
             {
                 chunk.GetFilledComponentSpan<Hierarchy>(out var hierarchies);
+                chunk.GetFilledComponentSpan<Transform>(out var transforms);
 
                 for (int i = 0; i < chunk.EntityCount; i++)
                 {
@@ -30,38 +41,37 @@ public sealed class HierarchySystem(World world) : IDisposable
                     if (hierarchy.Parent != default || hierarchy.FirstChild == default)
                         continue;
 
+                    // seed the root straight from the chunk span — sequential, no random lookup.
                     stack.Clear();
-                    stack.Add(chunk.Entities.UnsafeAt(i));
+                    stack.Add(new StackNode(hierarchy.FirstChild, transforms.UnsafeAt(i)));
                     PropagateSubtree(stack);
                 }
             }
         }
     }
 
-    private void PropagateSubtree(UnsafePooledList<Entity> stack)
+    private void PropagateSubtree(UnsafePooledList<StackNode> stack)
     {
         while (stack.Count > 0)
         {
-            var parent = stack[^1];
+            var node = stack[^1];
             stack.RemoveLast();
 
-            ref var parentHierarchy = ref world.GetComponent<Hierarchy>(parent);
-            ref var parentTransform = ref world.GetComponent<Transform>(parent);
+            float cos = MathF.Cos(node.World.Rotation);
+            float sin = MathF.Sin(node.World.Rotation);
 
-            float cos = MathF.Cos(parentTransform.Rotation);
-            float sin = MathF.Sin(parentTransform.Rotation);
-
-            Entity child = parentHierarchy.FirstChild;
+            Entity child = node.FirstChild;
             while (child != default)
             {
                 ref var childHierarchy = ref world.GetComponent<Hierarchy>(child);
                 Entity next = childHierarchy.NextSibling;
 
                 ref var childTransform = ref world.GetComponent<Transform>(child);
-                ApplyParentTransform(in parentTransform, ref childHierarchy, ref childTransform, cos, sin);
+                ApplyParentTransform(in node.World, ref childHierarchy, ref childTransform, cos, sin);
 
+                // push the child's freshly-written world transform; no re-resolve on pop.
                 if (childHierarchy.FirstChild != default)
-                    stack.Add(child);
+                    stack.Add(new StackNode(childHierarchy.FirstChild, childTransform));
 
                 child = next;
             }

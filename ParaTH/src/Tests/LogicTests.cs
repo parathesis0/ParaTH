@@ -43,6 +43,7 @@ public static class LogicTests
         Test_Hierarchy_Reparent_UpdatesSubtreeDepth();
         Test_Hierarchy_Unparent_ReRootsChildren();
         Test_Hierarchy_ChildTraversal();
+        Test_Hierarchy_MultiLevelPropagation();
         Test_Lifetime_Hierarchy_Offscreen_ChildSavesParent();
         Test_Lifetime_Hierarchy_Offscreen_AllReadyDestroysGroup();
         Test_Lifetime_Hierarchy_MaxAgeParentDestroysChildWithoutLifetime();
@@ -302,6 +303,35 @@ public static class LogicTests
         Check(manager.GetChild(parent, 3) == default, "traversal: out-of-range -> default");
         Check(Array.IndexOf(byIndex, c0) >= 0 && Array.IndexOf(byIndex, c1) >= 0 && Array.IndexOf(byIndex, c2) >= 0,
             "traversal: GetChild covers all children");
+    }
+
+    // exercises HierarchySystem propagation through a 2-level subtree: the grandchild's parent
+    // transform is the child transform written earlier in the same Update and carried on the stack.
+    private static void Test_Hierarchy_MultiLevelPropagation()
+    {
+        using var world = NewWorld();
+        var manager = new HierarchyManager(world);
+        var hierarchySys = new HierarchySystem(world);
+
+        // root at (100,100); chain parent -> child(local +10 X) -> grandchild(local +5 X)
+        var parent = world.CreateEntity(new Transform(new Vector2(100, 100), Vector2.One, 0f));
+        var child = world.CreateEntity(new Transform(new Vector2(10, 0), Vector2.One, 0f));
+        var grandchild = world.CreateEntity(new Transform(new Vector2(5, 0), Vector2.One, 0f));
+
+        manager.SetParent(child, parent, worldPositionStays: false);
+        manager.SetParent(grandchild, child, worldPositionStays: false);
+
+        // spin the root 90deg, then propagate
+        world.GetComponent<Transform>(parent).Rotation = MathHelper.PiOver2;
+        hierarchySys.Update();
+
+        // child: (100,100) + rot90(10,0) = (100,110); grandchild: (100,110) + rot90(5,0) = (100,115)
+        ApproxEq(world.GetComponent<Transform>(child).Position, new Vector2(100, 110),
+            "multi-level: child world position");
+        ApproxEq(world.GetComponent<Transform>(grandchild).Position, new Vector2(100, 115),
+            "multi-level: grandchild inherits via child world transform");
+        ApproxEq(world.GetComponent<Transform>(grandchild).Rotation, MathHelper.PiOver2,
+            "multi-level: grandchild world rotation cascades");
     }
     #endregion
 
